@@ -49,9 +49,9 @@ GLYPHS = {
             Path(r"C:\Windows\Fonts\segoepr.ttf"),
             Path(r"C:\Windows\Fonts\segoescb.ttf"),
         ],
-        # Tubular thicken + smooth join — round-pipe elegance vs ENj9B
-        "dilate": 8.2,
-        "round": 4.0,
+        # Tubular thicken + smooth join — round-pipe elegance vs ENj9B (void kill)
+        "dilate": 8.8,
+        "round": 4.4,
     },
 }
 
@@ -148,8 +148,8 @@ def bake_sdf(
     r_max = float(np.percentile(inside[ink], 98)) if ink.any() else 1.0
     t = np.clip(inside / max(r_max, 1e-3), 0.0, 1.0)
     # Steep round-pipe crest (ENj9B): flanks dark; crest near medial axis.
-    # pow 2.0 keeps enough crest area for silverRatio ~0.55 (2.6 was too dark).
-    height_tube = np.power(t, 2.0)
+    # pow 1.75 widens crest for silverRatio ~0.55 while keeping flank shade.
+    height_tube = np.power(t, 1.75)
     height_planar = np.clip(t * 2.4, 0.0, 1.0)
     height_planar = np.where(t > 0.35, 1.0, height_planar)
 
@@ -259,8 +259,8 @@ def main() -> None:
         if bl_mask is not None and bl_height is not None and bl_mask.sum() > 100:
             # Blender silhouette already has bevel/offset thickness — light soften only
             mask = bl_mask
-            dilate = 0.35 if gid == "chromeSansP" else 3.8
-            round_px = 0.4 if gid == "chromeSansP" else 2.2
+            dilate = 0.35 if gid == "chromeSansP" else 4.4
+            round_px = 0.4 if gid == "chromeSansP" else 2.5
             if dilate > 0 or round_px > 0:
                 outside = distance_transform_edt(~mask)
                 inside = distance_transform_edt(mask)

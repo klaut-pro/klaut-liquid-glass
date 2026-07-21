@@ -51,7 +51,15 @@ async function main() {
     () => typeof window.__lgGlyphCapture === "function",
     { timeout: 30000 },
   );
-  await page.waitForTimeout(1500);
+  await page.waitForSelector("#stage-chromeSansP canvas", { timeout: 45000 });
+  await page.waitForFunction(
+    () => {
+      const c = document.querySelector("#stage-chromeSansP canvas");
+      return c && c.width > 10 && c.height > 10;
+    },
+    { timeout: 45000 },
+  );
+  await page.waitForTimeout(2500);
 
   const probe = await page.evaluate(() => {
     const c = document.querySelector("#stage-chromeSansP canvas");

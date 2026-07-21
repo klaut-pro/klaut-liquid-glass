@@ -31,6 +31,17 @@ Rebake: `npm run bake:glyphs` · `npm run bake:faces` · `npm run bake:env`
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 40 (gold-led oil + olive crush + script void floor)
+
+- **Root cause:** iter-39 cyan-led oilFire + conceptAlive crushed synth gold → mint/cyan softbox; faceplate crush killed B then restored lime → olive swamp; silCover redefinition broke WebGL; script concept-dark punched tube voids
+- Faceplates: olive kill + B restore; spare cyan oil (not milk); localized gold stamps; script continuous crest/flank pipe (void0 on plate)
+- chromeSansP: gold-led oilFire; softboxGate=0 when conceptAlive; gold oil kept with concept; mint G-cap + tip cyan crush; cream~0.085 mint~0.13 cyan~0.25 gold~0.08 (bowl gold [255,247,125])
+- scriptProP: continuous warm silver tube + inkFloor void kill; silverRatio ~0.73; pink0; tip/drip sample still dark; residual voids vs ENj9B
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: script pink0 silverRatio ~0.73; chrome pink0 cream~0.085 mint~0.13 cyan~0.25 gold~0.08
+
+**Status:** ❌ not READY — chromeSansP regained planar gold oil (bowl) and crushed mint vs iter-39 but still cyan softbox residual vs 1c6PD/Z53Ve wet-mirror; scriptProP warmer continuous silver without pink but tubular voids / missing tip still lag ENj9B. Loop stays armed.
+
 ## Iteration 39 (steep EDT crest + cream crush + warm tubular)
 
 - **Root cause:** `inside/medial≈1` tube height plateaued → silCover mid-gray ice; cream crush→B-boost cool read as cyan/mint; softbox still overwrote concept plate
