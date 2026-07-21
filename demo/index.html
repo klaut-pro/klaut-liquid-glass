@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>klaut-liquid-glass demo</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(ellipse at 20% 20%, #1a4060 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 60%, #4a1a50 0%, transparent 45%),
+          linear-gradient(160deg, #070b14, #12182a);
+        color: #eef3ff;
+      }
+      .wrap {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 48px 20px 80px;
+      }
+      h1 { font-weight: 600; letter-spacing: -0.02em; }
+      .pane {
+        margin-top: 24px;
+        padding: 20px;
+        border-radius: 20px;
+        overflow: hidden;
+      }
+      .pane input, .pane button {
+        position: relative;
+        z-index: 2;
+        font: inherit;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.2);
+        background: rgba(0,0,0,0.25);
+        color: inherit;
+      }
+      .pane button {
+        background: rgba(120, 200, 255, 0.25);
+        cursor: pointer;
+      }
+      #debug {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 20;
+      }
+      .note { opacity: 0.65; font-size: 14px; margin-top: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>@klaut-pro/klaut-liquid-glass</h1>
+      <p class="note">
+        Live-DOM glassify · liquify→drops · thin-film fringe. Cap ≤3 live surfaces.
+      </p>
+      <div class="pane" id="waitlist">
+        <form style="display:flex;gap:8px;flex-wrap:wrap" onsubmit="return false">
+          <input type="email" placeholder="you@company.com" style="flex:1;min-width:180px" />
+          <button type="submit">Join early access</button>
+        </form>
+      </div>
+      <div class="pane" id="cta" style="margin-top:20px;text-align:center;padding:28px">
+        <strong>Join the waitlist</strong>
+        <p class="note" style="margin:8px 0 0">CTA glass surface #2</p>
+      </div>
+    </div>
+    <div id="debug"></div>
+    <script type="module">
+      // Built package: import from ../dist after npm run build
+      import { LiquidGlass } from "../dist/index.js";
+
+      const engine = LiquidGlass.create({ maxSurfaces: 3 });
+      let mat = { ...LiquidGlass.presets.chromeDrip };
+
+      const a = engine.glassify(document.getElementById("waitlist"), mat);
+      const b = engine.glassify(document.getElementById("cta"), {
+        ...LiquidGlass.presets.orbFilm,
+        liquify: 0.3,
+        drip: 0.15,
+      });
+      engine.start();
+
+      const debug = document.getElementById("debug");
+      const knobs = [
+        "glass", "liquify", "drip", "dispersion", "filmThickness", "ior", "bevel", "blur"
+      ];
+      debug.innerHTML = knobs.map((k) => {
+        const v = mat[k] ?? 0;
+        const max = k === "ior" ? 1.7 : 1;
+        const min = k === "ior" ? 1.1 : 0;
+        return `<label style="display:block;font:12px monospace;margin:4px 0;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:6px">
+          ${k} <input type="range" data-k="${k}" min="${min}" max="${max}" step="0.01" value="${v}" style="width:140px"/>
+          <span data-v="${k}">${Number(v).toFixed(2)}</span>
+        </label>`;
+      }).join("");
+      debug.addEventListener("input", (e) => {
+        const t = e.target;
+        if (!(t instanceof HTMLInputElement) || !t.dataset.k) return;
+        mat = { ...mat, [t.dataset.k]: Number(t.value) };
+        a.set(mat);
+        debug.querySelector(`[data-v="${t.dataset.k}"]`).textContent = Number(t.value).toFixed(2);
+      });
+    </script>
+  </body>
+</html>
