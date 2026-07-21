@@ -32,6 +32,16 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 15 (knife HDRI plate + planar softbox UV)
+
+- Procedural softbox ceiling: baked knife-edge plate (`demo/env/studio-softbox.png` via `bake-studio-env.py`) + NEAREST backdrop sampling
+- Planar studio UV (not equirect scramble); hardBar-gated plate add; denser razor streak cores; gentler tone-map
+- Script: stronger cylinder normals, thicker elegant mid-filament (~0.05), rounder pendant; pendant midtone floor
+- chromeSansP filmThickness cut (0.22) to reduce pastel wash over mirror bars
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+
+**Status:** ❌ not READY — chromeSansP bars still softer than wet-mirror 1c6PD/Z53Ve; scriptProP tubular/pendant closer but mid-filament elegance + face chrome still lag ENj9B. Blender still unavailable. Loop stays armed.
+
 ## Iteration 14 (env contrast + script face fill)
 
 - Razor softbox cores + soft shoulders in `studioEnv` / screen streaks; harder studio plate gradients

@@ -352,59 +352,59 @@ export class DripSim {
       if (!freeze) em.stretchT += dt / maps.stretchDuration;
       const t = clamp01(em.stretchT);
       // Freeze mid-stretch: elegant continuous filament (not fragmented / not lumpy)
-      const freezeNeckFloor = freeze ? 0.28 : 0.04;
+      const freezeNeckFloor = freeze ? 0.22 : 0.04;
       em.neckR = Math.max(
         freezeNeckFloor,
-        1 - t * maps.neckThinRate * (0.35 + 0.65 * t) * (freeze ? 0.58 : 1),
+        1 - t * maps.neckThinRate * (0.35 + 0.65 * t) * (freeze ? 0.62 : 1),
       );
       const stretch = t * maps.stretchLen * halfH * em.stretchScale;
       const tipY = bottomY - stretch;
-      const tipR = maps.dropR * minDim * (0.75 + 0.35 * emDrip) * (1.05 - 0.15 * t);
-      const neckY = mix(bottomY, tipY, 0.42);
+      const tipR = maps.dropR * minDim * (0.78 + 0.38 * emDrip) * (1.05 - 0.12 * t);
+      const neckY = mix(bottomY, tipY, 0.4);
       const neckR =
-        tipR * mix(0.14, 0.34, emVisc) * Math.max(em.neckR, freezeNeckFloor);
+        tipR * mix(0.12, 0.3, emVisc) * Math.max(em.neckR, freezeNeckFloor);
 
       // Lip anchor — blends into glyph stem (root sits inside letterform)
       blobs.push({
         x: em.x + wobble * 0.2,
         y: bottomY + minDim * 0.06,
-        r: tipR * mix(1.08, 1.22, emVisc),
-        w: emDrip * 1.18,
+        r: tipR * mix(1.1, 1.28, emVisc),
+        w: emDrip * 1.2,
       });
       blobs.push({
         x: em.x + wobble * 0.12,
         y: bottomY - stretch * 0.04,
-        r: tipR * mix(0.65, 0.85, emVisc),
+        r: tipR * mix(0.62, 0.82, emVisc),
         w: emDrip * 1.0,
       });
       blobs.push({
         x: em.x + wobble * 0.08,
         y: neckY,
-        r: neckR * 0.7,
-        w: emDrip * Math.max(0.48, em.neckR),
+        r: neckR * 0.62,
+        w: emDrip * Math.max(0.45, em.neckR),
       });
 
-      // Viscous filament — thin mid, swell to bulb (pendant profile)
+      // Viscous filament — thick lip → hair mid → elegant bulb (ENj9B pendant)
       {
-        const segments = freeze ? 14 : 5;
+        const segments = freeze ? 16 : 5;
         for (let si = 1; si < segments; si++) {
           const ft = si / segments;
-          // Classic pendant: thick lip → elegant filament → bulb tip
           let profile: number;
-          if (ft < 0.48) {
-            profile = mix(0.4, 0.038, ft / 0.48);
-          } else if (ft < 0.8) {
-            profile = mix(0.038, 0.034, (ft - 0.48) / 0.32);
+            if (ft < 0.42) {
+            profile = mix(0.45, 0.055, ft / 0.42);
+          } else if (ft < 0.78) {
+            // Mid-filament lag — elegant viscous thread (readable, not wire)
+            profile = mix(0.055, 0.048, (ft - 0.42) / 0.36);
           } else {
-            profile = mix(0.034, 1.1, (ft - 0.8) / 0.2);
+            profile = mix(0.048, 1.22, Math.pow((ft - 0.78) / 0.22, 1.25));
           }
           const sy = mix(bottomY, tipY, ft);
           const sr = tipR * profile * Math.max(em.neckR, freezeNeckFloor);
           blobs.push({
-            x: em.x + wobble * 0.02,
+            x: em.x + wobble * 0.015,
             y: sy,
-            r: Math.max(sr, tipR * (freeze ? 0.038 : 0.045)),
-            w: emDrip * mix(1.05, 0.52, ft) * Math.max(0.42, em.neckR),
+            r: Math.max(sr, tipR * (freeze ? 0.042 : 0.04)),
+            w: emDrip * mix(1.08, 0.48, ft) * Math.max(0.4, em.neckR),
           });
         }
       }
@@ -412,16 +412,25 @@ export class DripSim {
       blobs.push({
         x: em.x,
         y: mix(bottomY, tipY, 0.55),
-        r: tipR * mix(0.07, 0.13, emVisc) * Math.max(em.neckR, freezeNeckFloor),
-        w: emDrip * 0.52 * Math.max(0.35, em.neckR),
+        r: tipR * mix(0.055, 0.1, emVisc) * Math.max(em.neckR, freezeNeckFloor),
+        w: emDrip * 0.48 * Math.max(0.32, em.neckR),
       });
-      // Tip bulb
+      // Tip bulb — rounder elegant pendant
       blobs.push({
         x: em.x + wobble,
         y: tipY,
-        r: tipR * (freeze ? 1.08 : 1.0),
-        w: emDrip * 1.22,
+        r: tipR * (freeze ? 1.18 : 1.0),
+        w: emDrip * 1.28,
       });
+      // Soft shoulder under bulb for spherical read
+      if (freeze) {
+        blobs.push({
+          x: em.x,
+          y: tipY + tipR * 0.35,
+          r: tipR * 0.72,
+          w: emDrip * 0.85,
+        });
+      }
 
       if (!freeze && (em.neckR < 0.12 || t >= 1)) {
         this.frees.push({

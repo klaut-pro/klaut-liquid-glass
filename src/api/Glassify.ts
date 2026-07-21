@@ -17,6 +17,40 @@ import type { FieldMode, GlyphOptions } from "./GlyphOptions.js";
 import type { GlyphId } from "../field/GlyphProfiles.js";
 
 let idCounter = 0;
+let bakedStudioPlate: HTMLImageElement | null | undefined;
+
+/** Knife-edge HDRI plate baked by scripts/bake-studio-env.py (demo/env/). */
+async function loadBakedStudioPlate(): Promise<HTMLImageElement | null> {
+  if (bakedStudioPlate !== undefined) return bakedStudioPlate;
+  if (typeof Image === "undefined") {
+    bakedStudioPlate = null;
+    return null;
+  }
+  const candidates = [
+    "./env/studio-softbox.png",
+    "/demo/env/studio-softbox.png",
+    "demo/env/studio-softbox.png",
+  ];
+  for (const src of candidates) {
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+        el.decoding = "async";
+        el.onload = () => resolve(el);
+        el.onerror = () => reject(new Error(`fail ${src}`));
+        el.src = src;
+      });
+      if (img.naturalWidth > 8) {
+        bakedStudioPlate = img;
+        return img;
+      }
+    } catch {
+      /* try next */
+    }
+  }
+  bakedStudioPlate = null;
+  return null;
+}
 
 export type GlassSurface = {
   readonly el: HTMLElement;
@@ -260,16 +294,18 @@ export class LiquidGlassEngine {
     // Never hide the live canvas — visibility toggles caused hard flicker.
     try {
       if (surface.fieldMode === "glyph") {
-        // Glyph QA: studio chrome plate — no muddy DOM capture wash
-        const shot = createChromeStudioBackdrop(
-          surface.canvas.width || 512,
-          surface.canvas.height || 512,
-        );
-        surface.renderer.setBackdrop(shot, true);
+        // Prefer baked knife-edge HDRI plate; fallback to procedural softbox canvas
+        const shot =
+          (await loadBakedStudioPlate()) ??
+          createChromeStudioBackdrop(
+            surface.canvas.width || 512,
+            surface.canvas.height || 512,
+          );
+        surface.renderer.setBackdrop(shot, true, true);
       } else {
         const shot = await captureBackdrop(surface.el, { exclude: surface.el });
         if (!surface.destroyed && surface.renderer) {
-          surface.renderer.setBackdrop(shot, true);
+          surface.renderer.setBackdrop(shot, true, false);
         }
       }
     } catch {
@@ -284,7 +320,7 @@ export class LiquidGlassEngine {
                 surface.canvas.width || 256,
                 surface.canvas.height || 256,
               );
-        surface.renderer.setBackdrop(fb, true);
+        surface.renderer.setBackdrop(fb, true, surface.fieldMode === "glyph");
       }
     } finally {
       surface.lastCapture = performance.now();

@@ -316,11 +316,11 @@ export class Renderer {
 
    */
 
-  setBackdrop(source: TexImageSource, _force = false): void {
+  setBackdrop(source: TexImageSource, _force = false, sharp = false): void {
 
     void _force;
 
-    uploadTexture(this.gl, this.backdropTex, source);
+    uploadTexture(this.gl, this.backdropTex, source, { sharp });
 
   }
 
