@@ -401,7 +401,7 @@ export class DripSim {
             profile = mix(0.68, 0.26, ft / 0.28);
           } else if (ft < 0.7) {
             // Mid-filament — continuous tubular chrome elegance (ENj9B join)
-            profile = mix(0.32, 0.28, (ft - 0.28) / 0.42);
+            profile = mix(0.36, 0.32, (ft - 0.28) / 0.42);
           } else {
             profile = mix(0.28, 1.35, Math.pow((ft - 0.7) / 0.3, 1.1));
           }

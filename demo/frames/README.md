@@ -32,6 +32,15 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 23 (iridescent planar faces + tube join refine)
+
+- chromeSansP: chromatic softbox plate (cyan/magenta/lime/gold) + face-wide oil-slick edgeFire/film on planar slabs; cream crush spares high-chroma; filmThickness 0.45 slab-gated; knife white cores restored
+- scriptProP: lighter softMin join (less blob deformation); denser cylindrical wrap + join highlight; harder icy/white flood crush; atlas dilate 5.4 / round 2.1; pinkRatio 0; silverRatio ~0.49; voidInside ↓
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome bowl/stem iridescent (no cream); script pinkRatio 0; silverRatio ~0.49; voidInside ~378
+
+**Status:** ❌ not READY — chromeSansP iridescent faces closer to 1c6PD/Z53Ve but planar knife wet-mirror still short (facet blocks vs concept softbox fidelity; bowl join notch); scriptProP pink crushed + voids down but tubular elegance / join still lag ENj9B (residual icy bowl + wrap alias). Blender still unavailable. Loop stays armed.
+
 ## Iteration 22 (cream crush + cool planar softbox + chrome tube push)
 
 - chromeSansP: warm cream bowl killed (bowl probe `[242,239,229]`→`[168,179,184]` cool softbox); cool studio plate; wider hard-edged planar slabs + cream crush sparing cool peaks; filmThickness 0

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Bake studio softbox plate for wet-mirror glyph QA (Blender unavailable).
 
-Iteration 22: cool planar knife softbox — hard rectangular slabs + razor cores
-on charcoal. No warm cream panels (those cream-flood chromeSansP bowls).
+Iteration 23: iridescent planar knife softbox — hard chromatic slabs (cyan /
+magenta / lime) + white razor cores on charcoal. No warm cream panels.
 """
 from __future__ import annotations
 
@@ -48,16 +48,19 @@ def main() -> None:
     im = Image.new("RGBA", (w, h), (0, 0, 0, 255))
     draw = ImageDraw.Draw(im, "RGBA")
 
-    # Cool planar slabs (not warm cream 238,236,232) — knife wet-mirror faces
-    # Narrower than iter 21 so charcoal interstitial dominates bowl faces
-    panel_v(draw, w, h, w * 0.28, 28, (210, 214, 222))
-    panel_v(draw, w, h, w * 0.52, 34, (236, 240, 248))
-    panel_v(draw, w, h, w * 0.76, 24, (200, 206, 216))
+    # Iridescent planar slabs (oil-slick faces) — cool chroma only, never cream
+    panel_v(draw, w, h, w * 0.22, 22, (70, 210, 255))   # cyan
+    panel_v(draw, w, h, w * 0.40, 26, (255, 95, 210))    # magenta
+    panel_v(draw, w, h, w * 0.58, 30, (255, 255, 255))   # white knife key
+    panel_v(draw, w, h, w * 0.74, 22, (160, 255, 90))    # lime
+    panel_v(draw, w, h, w * 0.88, 18, (255, 200, 60))    # gold accent
 
     # Razor knife cores on panel centers
-    knife_v(draw, w, h, w * 0.28, 2, (255, 255, 255))
-    knife_v(draw, w, h, w * 0.52, 3, (255, 255, 255))
-    knife_v(draw, w, h, w * 0.76, 2, (255, 255, 255))
+    knife_v(draw, w, h, w * 0.22, 2, (220, 255, 255))
+    knife_v(draw, w, h, w * 0.40, 2, (255, 220, 255))
+    knife_v(draw, w, h, w * 0.58, 3, (255, 255, 255))
+    knife_v(draw, w, h, w * 0.74, 2, (230, 255, 200))
+    knife_v(draw, w, h, w * 0.88, 2, (255, 240, 180))
 
     # Horizontal strip — 2px hard core
     cy = int(h * 0.18)

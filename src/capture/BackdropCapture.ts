@@ -210,14 +210,18 @@ export function createChromeStudioBackdrop(
     ctx.fillRect(x0, 0, Math.max(2, Math.ceil(halfW * 2)), h);
   };
 
-  // Cool planar slabs (not warm cream) — charcoal interstitial dominates bowls
-  panelV(w * 0.28, Math.max(12, w * 0.026), "210,214,222");
-  panelV(w * 0.52, Math.max(14, w * 0.03), "236,240,248");
-  panelV(w * 0.76, Math.max(10, w * 0.022), "200,206,216");
+  // Iridescent planar slabs (1c6PD/Z53Ve oil-slick faces) — cool chroma, never cream
+  panelV(w * 0.22, Math.max(10, w * 0.02), "70,210,255");
+  panelV(w * 0.4, Math.max(12, w * 0.024), "255,95,210");
+  panelV(w * 0.58, Math.max(14, w * 0.028), "255,255,255");
+  panelV(w * 0.74, Math.max(10, w * 0.02), "160,255,90");
+  panelV(w * 0.88, Math.max(8, w * 0.016), "255,200,60");
 
-  knifeV(w * 0.28, Math.max(1, w * 0.0015), "255,255,255");
-  knifeV(w * 0.52, Math.max(2, w * 0.002), "255,255,255");
-  knifeV(w * 0.76, Math.max(1, w * 0.0015), "255,255,255");
+  knifeV(w * 0.22, Math.max(1, w * 0.0015), "220,255,255");
+  knifeV(w * 0.4, Math.max(1, w * 0.0015), "255,220,255");
+  knifeV(w * 0.58, Math.max(2, w * 0.002), "255,255,255");
+  knifeV(w * 0.74, Math.max(1, w * 0.0015), "230,255,200");
+  knifeV(w * 0.88, Math.max(1, w * 0.0015), "255,240,180");
 
   // Horizontal strip — hard core only
   {

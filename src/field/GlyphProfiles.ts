@@ -66,8 +66,8 @@ export const chromeSansP: GlyphProfile = {
     drip: 0.98,
     viscosity: 0.94,
     dispersion: 1,
-    // Face film = milky cyan wash — zero for planar knife softbox
-    filmThickness: 0,
+    // Slab-gated thin film for oil-slick iridescent faces (not cream flood)
+    filmThickness: 0.45,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.18,
@@ -99,14 +99,14 @@ export const scriptProP: GlyphProfile = {
     drip: 1,
     viscosity: 0.98,
     dispersion: 1,
-    filmThickness: 0.02,
+    filmThickness: 0.06,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.22,
     specular: 1,
     ior: 1.72,
     lightPosition: { x: -0.58, y: 0.92, z: 1.2 },
-    lightIntensity: 5.35,
+    lightIntensity: 5.55,
   },
   dripControl: {
     mode: "controlled",

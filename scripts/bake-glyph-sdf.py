@@ -51,8 +51,8 @@ GLYPHS = {
             Path(r"C:\Windows\Fonts\segoescb.ttf"),
         ],
         # Tubular thicken + junction round — chrome tube join vs ENj9B
-        "dilate": 5.2,
-        "round": 2.05,
+        "dilate": 5.4,
+        "round": 2.1,
     },
 }
 
