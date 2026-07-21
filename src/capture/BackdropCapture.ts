@@ -174,15 +174,13 @@ export function createFallbackBackdrop(
 }
 
 /**
- * Knife-edge studio HDRI plate for glyph QA (Blender bake unavailable).
- * Hard softbox cores as fillRect strips — wet-mirror bars for NEAREST sampling;
- * soft colored ambient is separate so faces don't crush to black / milk bars.
+ * Planar wet-mirror studio plate fallback (when baked HDRI missing).
+ * Soft elliptical softboxes + lime/gold oil puddles — NO vertical barcode strips.
  */
 export function createChromeStudioBackdrop(
   width: number,
   height: number,
 ): HTMLCanvasElement {
-  // Upsize plate so knife-edge cores stay sharp
   const scale = 3;
   const c = document.createElement("canvas");
   c.width = Math.max(2, Math.round(width * scale));
@@ -192,42 +190,47 @@ export function createChromeStudioBackdrop(
   const w = c.width;
   const h = c.height;
 
-  // Charcoal void — planar wet-mirror interstitial (no cyan/lavender/cream fog)
-  ctx.fillStyle = "#000000";
+  ctx.fillStyle = "#050506";
   ctx.fillRect(0, 0, w, h);
 
-  /** Absolute hard core only — knife-edge wet-mirror bars (no soft shoulder wash). */
-  const knifeV = (cx: number, coreW: number, rgb: string) => {
-    const hx = Math.floor(cx - coreW / 2);
-    ctx.fillStyle = `rgb(${rgb})`;
-    ctx.fillRect(hx, 0, Math.max(1, Math.ceil(coreW)), h);
+  const softEllipsis = (
+    cx: number,
+    cy: number,
+    rx: number,
+    ry: number,
+    rgb: string,
+    alpha: number,
+  ) => {
+    const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
+    rg.addColorStop(0, `rgba(${rgb},${alpha})`);
+    rg.addColorStop(0.55, `rgba(${rgb},${alpha * 0.45})`);
+    rg.addColorStop(1, `rgba(${rgb},0)`);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(rx / Math.max(ry, 1), 1);
+    ctx.fillStyle = rg;
+    ctx.beginPath();
+    ctx.arc(0, 0, ry, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   };
 
-  /** Hard rectangular softbox slab — planar knife wet-mirror (1c6PD/Z53Ve). */
-  const panelV = (cx: number, halfW: number, rgb: string) => {
-    const x0 = Math.floor(cx - halfW);
-    ctx.fillStyle = `rgb(${rgb})`;
-    ctx.fillRect(x0, 0, Math.max(2, Math.ceil(halfW * 2)), h);
-  };
+  softEllipsis(w * 0.28, h * 0.18, w * 0.38, h * 0.22, "248,250,255", 0.95);
+  softEllipsis(w * 0.62, h * 0.16, w * 0.34, h * 0.2, "232,236,244", 0.85);
+  softEllipsis(w * 0.45, h * 0.42, w * 0.48, h * 0.32, "190,198,210", 0.7);
+  softEllipsis(w * 0.22, h * 0.55, w * 0.3, h * 0.28, "168,176,188", 0.6);
+  softEllipsis(w * 0.78, h * 0.5, w * 0.28, h * 0.3, "175,182,192", 0.58);
+  softEllipsis(w * 0.55, h * 0.35, w * 0.32, h * 0.24, "78,220,72", 0.55);
+  softEllipsis(w * 0.4, h * 0.62, w * 0.3, h * 0.22, "225,195,52", 0.5);
+  softEllipsis(w * 0.75, h * 0.28, w * 0.22, h * 0.18, "95,210,70", 0.4);
+  softEllipsis(w * 0.68, h * 0.7, w * 0.26, h * 0.2, "210,175,45", 0.38);
 
-  // Faceted planar softbox — silver/lime/gold only (pink 0, no cyan milk flood)
-  panelV(w * 0.2, Math.max(22, w * 0.048), "235,240,250");
-  panelV(w * 0.42, Math.max(20, w * 0.042), "165,178,198");
-  panelV(w * 0.62, Math.max(16, w * 0.032), "100,215,90");
-  panelV(w * 0.8, Math.max(16, w * 0.03), "210,190,55");
-
-  knifeV(w * 0.2, Math.max(3, w * 0.003), "248,250,255");
-  knifeV(w * 0.42, Math.max(2, w * 0.0025), "230,238,250");
-  knifeV(w * 0.62, Math.max(2, w * 0.002), "210,255,180");
-  knifeV(w * 0.8, Math.max(2, w * 0.002), "255,240,160");
-
-  // Horizontal strip — hard core only
-  {
-    const cy = h * 0.18;
-    const coreH = Math.max(2, h * 0.0015);
-    ctx.fillStyle = "rgb(255,255,255)";
-    ctx.fillRect(0, Math.floor(cy - coreH / 2), w, Math.max(1, Math.ceil(coreH)));
-  }
+  const ceil = ctx.createLinearGradient(0, h * 0.08, 0, h * 0.22);
+  ceil.addColorStop(0, "rgba(250,252,255,0)");
+  ceil.addColorStop(0.5, "rgba(250,252,255,0.35)");
+  ceil.addColorStop(1, "rgba(250,252,255,0)");
+  ctx.fillStyle = ceil;
+  ctx.fillRect(0, h * 0.08, w, h * 0.14);
 
   return c;
 }

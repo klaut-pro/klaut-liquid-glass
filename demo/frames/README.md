@@ -32,6 +32,17 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 30 (planar softbox LINEAR + round-pipe crest/flank)
+
+- HDRI bake: killed vertical barcode columns → continuous elliptical softboxes + diagonal lime↔gold oil wash + heavy blur
+- Backdrop: glyph plate uses LINEAR (NEAREST was barcode); procedural fallback soft ellipses (no fillRect strips)
+- chromeSansP: removed synthetic `barX`/`fract(p.x)` knife barcode; soft planar face UV + wide H+V blur; low-freq oil tint; pink0 cream0 cyan~0; filmThickness 0.38
+- scriptProP: round-pipe shade from bodyT crest/flank (not wrapCoord cos bands); stronger softMin joins; atlas dilate 6.8 / round 3.2; silverRatio ~0.53; pinkRatio 0
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: script pinkRatio 0; silverRatio ~0.53; chrome avg lime/gold bias held
+
+**Status:** ❌ not READY — chromeSansP closer (no synthetic barX + softbox LINEAR) but still short of 1c6PD/Z53Ve planar oil-slick wet-mirror fidelity (residual vertical lime/gold slabs + hollow upper face risk); scriptProP silverRatio ~0.53 without pink + crest/flank variation but tubular elegance / round-pipe still lag ENj9B. Blender still unavailable. Loop stays armed.
+
 ## Iteration 29 (richer planar oil + continuous pipe)
 
 - HDRI bake: richer lime↔gold oil wash on silver softbox panels; wider lime/gold columns; cyan edge fringe only

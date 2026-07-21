@@ -66,8 +66,8 @@ export const chromeSansP: GlyphProfile = {
     drip: 0.98,
     viscosity: 0.94,
     dispersion: 1,
-    // Thin face film — richer planar oil-slick; shade pink0 + cyan crush
-    filmThickness: 0.28,
+    // Thin face film — planar oil-slick wet-mirror; shade pink0 + cyan crush
+    filmThickness: 0.38,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.18,

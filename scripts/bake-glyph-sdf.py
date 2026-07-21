@@ -51,8 +51,8 @@ GLYPHS = {
             Path(r"C:\Windows\Fonts\segoescb.ttf"),
         ],
         # Tubular thicken + smooth join — icy bowl / pipe elegance vs ENj9B
-        "dilate": 6.2,
-        "round": 2.8,
+        "dilate": 6.8,
+        "round": 3.2,
     },
 }
 

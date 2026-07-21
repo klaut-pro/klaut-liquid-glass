@@ -294,14 +294,14 @@ export class LiquidGlassEngine {
     // Never hide the live canvas — visibility toggles caused hard flicker.
     try {
       if (surface.fieldMode === "glyph") {
-        // Prefer baked knife-edge HDRI plate; fallback to procedural softbox canvas
+        // Prefer baked planar softbox HDRI; LINEAR filter (NEAREST = barcode)
         const shot =
           (await loadBakedStudioPlate()) ??
           createChromeStudioBackdrop(
             surface.canvas.width || 512,
             surface.canvas.height || 512,
           );
-        surface.renderer.setBackdrop(shot, true, true);
+        surface.renderer.setBackdrop(shot, true, false);
       } else {
         const shot = await captureBackdrop(surface.el, { exclude: surface.el });
         if (!surface.destroyed && surface.renderer) {
@@ -320,7 +320,7 @@ export class LiquidGlassEngine {
                 surface.canvas.width || 256,
                 surface.canvas.height || 256,
               );
-        surface.renderer.setBackdrop(fb, true, surface.fieldMode === "glyph");
+        surface.renderer.setBackdrop(fb, true, false);
       }
     } finally {
       surface.lastCapture = performance.now();
