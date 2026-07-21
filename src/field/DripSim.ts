@@ -12,7 +12,7 @@
  * no lateral chaos — clear pendant morphology for visual QA.
  */
 
-export const MAX_DRIP_BLOBS = 24;
+export const MAX_DRIP_BLOBS = 48;
 
 export type DripBlob = {
   /** Normalized field coords (same space as shader `p`). */
@@ -352,59 +352,67 @@ export class DripSim {
       if (!freeze) em.stretchT += dt / maps.stretchDuration;
       const t = clamp01(em.stretchT);
       // Freeze mid-stretch: elegant continuous filament (not fragmented / not lumpy)
-      const freezeNeckFloor = freeze ? 0.42 : 0.04;
+      const freezeNeckFloor = freeze ? 0.55 : 0.04;
       em.neckR = Math.max(
         freezeNeckFloor,
-        1 - t * maps.neckThinRate * (0.35 + 0.65 * t) * (freeze ? 0.62 : 1),
+        1 - t * maps.neckThinRate * (0.35 + 0.65 * t) * (freeze ? 0.48 : 1),
       );
       const stretch = t * maps.stretchLen * halfH * em.stretchScale;
       const tipY = bottomY - stretch;
       const tipR = maps.dropR * minDim * (0.78 + 0.38 * emDrip) * (1.05 - 0.12 * t);
       const neckY = mix(bottomY, tipY, 0.4);
       const neckR =
-        tipR * mix(0.12, 0.3, emVisc) * Math.max(em.neckR, freezeNeckFloor);
+        tipR * mix(0.16, 0.38, emVisc) * Math.max(em.neckR, freezeNeckFloor);
 
       // Lip anchor — blends into glyph stem (root sits inside letterform)
       blobs.push({
         x: em.x + wobble * 0.2,
         y: bottomY + minDim * 0.06,
-        r: tipR * mix(1.1, 1.28, emVisc),
-        w: emDrip * 1.2,
+        r: tipR * mix(1.15, 1.35, emVisc),
+        w: emDrip * 1.25,
       });
       blobs.push({
         x: em.x + wobble * 0.12,
         y: bottomY - stretch * 0.04,
-        r: tipR * mix(0.62, 0.82, emVisc),
-        w: emDrip * 1.0,
+        r: tipR * mix(0.72, 0.92, emVisc),
+        w: emDrip * 1.05,
+      });
+      // Stem–bulb junction bridge — kill void gap at neck
+      blobs.push({
+        x: em.x + wobble * 0.06,
+        y: mix(bottomY, tipY, 0.18),
+        r: tipR * mix(0.55, 0.72, emVisc) * Math.max(em.neckR, freezeNeckFloor),
+        w: emDrip * 1.15,
       });
       blobs.push({
         x: em.x + wobble * 0.08,
         y: neckY,
-        r: neckR * 0.62,
-        w: emDrip * Math.max(0.45, em.neckR),
+        r: neckR * 0.85,
+        w: emDrip * Math.max(0.55, em.neckR),
       });
 
       // Viscous filament — thick lip → elegant mid-filament → round bulb (ENj9B)
       {
-        const segments = freeze ? 18 : 5;
+        const segments = freeze ? 22 : 5;
         for (let si = 1; si < segments; si++) {
           const ft = si / segments;
           let profile: number;
-          if (ft < 0.38) {
-            profile = mix(0.55, 0.11, ft / 0.38);
-          } else if (ft < 0.76) {
-            // Mid-filament — thicker tubular elegance (anti-void at junction)
-            profile = mix(0.11, 0.095, (ft - 0.38) / 0.38);
+          if (ft < 0.32) {
+            profile = mix(0.62, 0.22, ft / 0.32);
+          } else if (ft < 0.72) {
+            // Mid-filament — thick tubular bridge (anti-void at stem–bulb junction)
+            profile = mix(0.22, 0.18, (ft - 0.32) / 0.4);
           } else {
-            profile = mix(0.095, 1.28, Math.pow((ft - 0.76) / 0.24, 1.2));
+            profile = mix(0.18, 1.32, Math.pow((ft - 0.72) / 0.28, 1.15));
           }
           const sy = mix(bottomY, tipY, ft);
           const sr = tipR * profile * Math.max(em.neckR, freezeNeckFloor);
           blobs.push({
-            x: em.x + wobble * 0.012,
+            x: em.x + wobble * 0.01,
             y: sy,
-            r: Math.max(sr, tipR * (freeze ? 0.055 : 0.04)),
-            w: emDrip * mix(1.12, 0.52, ft) * Math.max(0.42, em.neckR),
+            r: Math.max(sr, tipR * (freeze ? 0.085 : 0.04)),
+            // Keep mid-filament weight high so trim never drops the neck
+            w: emDrip * mix(1.25, 1.05, ft) * Math.max(0.65, em.neckR),
           });
         }
       }
@@ -412,23 +420,30 @@ export class DripSim {
       blobs.push({
         x: em.x,
         y: mix(bottomY, tipY, 0.55),
-        r: tipR * mix(0.055, 0.1, emVisc) * Math.max(em.neckR, freezeNeckFloor),
-        w: emDrip * 0.48 * Math.max(0.32, em.neckR),
+        r: tipR * mix(0.08, 0.14, emVisc) * Math.max(em.neckR, freezeNeckFloor),
+        w: emDrip * 0.58 * Math.max(0.4, em.neckR),
       });
       // Tip bulb — rounder elegant pendant
       blobs.push({
         x: em.x + wobble,
         y: tipY,
-        r: tipR * (freeze ? 1.18 : 1.0),
-        w: emDrip * 1.28,
+        r: tipR * (freeze ? 1.22 : 1.0),
+        w: emDrip * 1.32,
       });
       // Soft shoulder under bulb for spherical read
       if (freeze) {
         blobs.push({
           x: em.x,
-          y: tipY + tipR * 0.35,
-          r: tipR * 0.72,
-          w: emDrip * 0.85,
+          y: tipY + tipR * 0.38,
+          r: tipR * 0.78,
+          w: emDrip * 0.9,
+        });
+        // Upper bulb shoulder — continuous merge into filament
+        blobs.push({
+          x: em.x,
+          y: tipY - tipR * 0.42,
+          r: tipR * 0.55,
+          w: emDrip * 0.95,
         });
       }
 
@@ -545,9 +560,36 @@ export class DripSim {
 
   private trim(blobs: DripBlob[]): DripBlob[] {
     if (blobs.length <= MAX_DRIP_BLOBS) return blobs;
-    return blobs
-      .slice()
-      .sort((a, b) => b.w * b.r - a.w * a.r)
-      .slice(0, MAX_DRIP_BLOBS);
+    // Prefer spatial Y coverage so mid-filament survives (anti stem–bulb void)
+    const byY = blobs.slice().sort((a, b) => b.y - a.y);
+    const picked: DripBlob[] = [];
+    const used = new Set<number>();
+    const slots = Math.max(8, Math.floor(MAX_DRIP_BLOBS * 0.7));
+    for (let s = 0; s < slots; s++) {
+      const t = s / Math.max(slots - 1, 1);
+      const targetY = byY[0]!.y + (byY[byY.length - 1]!.y - byY[0]!.y) * t;
+      let bestI = -1;
+      let bestD = Infinity;
+      for (let i = 0; i < byY.length; i++) {
+        if (used.has(i)) continue;
+        const d = Math.abs(byY[i]!.y - targetY);
+        if (d < bestD) {
+          bestD = d;
+          bestI = i;
+        }
+      }
+      if (bestI >= 0) {
+        used.add(bestI);
+        picked.push(byY[bestI]!);
+      }
+    }
+    const rest = byY
+      .filter((_, i) => !used.has(i))
+      .sort((a, b) => b.w * b.r - a.w * a.r);
+    for (const b of rest) {
+      if (picked.length >= MAX_DRIP_BLOBS) break;
+      picked.push(b);
+    }
+    return picked.slice(0, MAX_DRIP_BLOBS);
   }
 }

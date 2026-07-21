@@ -195,17 +195,17 @@ export function createChromeStudioBackdrop(
   ctx.fillStyle = "#010103";
   ctx.fillRect(0, 0, w, h);
 
-  // Minimal colored ambient — midtones without milking knife bars
-  const ambL = ctx.createLinearGradient(w * 0.18, 0, w * 0.4, 0);
+  // Near-black ambient — wet chrome interstitial (not lavender fog)
+  const ambL = ctx.createLinearGradient(0, 0, w * 0.35, 0);
   ambL.addColorStop(0, "rgba(0,0,0,0)");
-  ambL.addColorStop(0.5, "rgba(70,110,170,0.06)");
+  ambL.addColorStop(0.5, "rgba(40,55,70,0.04)");
   ambL.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = ambL;
   ctx.fillRect(0, 0, w, h);
 
   const ambR = ctx.createLinearGradient(w * 0.66, 0, w * 0.9, 0);
   ambR.addColorStop(0, "rgba(0,0,0,0)");
-  ambR.addColorStop(0.5, "rgba(140,40,120,0.05)");
+  ambR.addColorStop(0.5, "rgba(60,40,55,0.03)");
   ambR.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = ambR;
   ctx.fillRect(0, 0, w, h);
@@ -218,8 +218,8 @@ export function createChromeStudioBackdrop(
     h * 0.06,
     Math.min(w, h) * 0.28,
   );
-  key.addColorStop(0, "rgba(160,200,255,0.18)");
-  key.addColorStop(0.4, "rgba(80,140,200,0.06)");
+  key.addColorStop(0, "rgba(180,200,220,0.14)");
+  key.addColorStop(0.4, "rgba(70,100,130,0.05)");
   key.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = key;
   ctx.fillRect(0, 0, w, h);
@@ -231,41 +231,26 @@ export function createChromeStudioBackdrop(
     ctx.fillRect(hx, 0, Math.max(1, Math.ceil(coreW)), h);
   };
 
-  /** Medium softbox panel — planar chrome mirror faces (1c6PD/Z53Ve). */
+  /** Wide softbox panel — planar chrome mirror faces (1c6PD/Z53Ve). */
   const panelV = (cx: number, halfW: number, rgb: string) => {
     const x0 = Math.floor(cx - halfW);
     ctx.fillStyle = `rgb(${rgb})`;
     ctx.fillRect(x0, 0, Math.max(2, Math.ceil(halfW * 2)), h);
   };
 
-  // Planar softbox panels first (mirrored environment bands)
-  panelV(w * 0.2, Math.max(4, w * 0.009), "210,235,255");
-  panelV(w * 0.32, Math.max(6, w * 0.014), "255,250,245");
-  panelV(w * 0.44, Math.max(3, w * 0.007), "120,240,255");
-  panelV(w * 0.52, Math.max(5, w * 0.011), "255,255,255");
-  panelV(w * 0.62, Math.max(4, w * 0.008), "255,160,230");
-  panelV(w * 0.74, Math.max(5, w * 0.012), "200,220,255");
-  panelV(w * 0.86, Math.max(3, w * 0.006), "255,200,255");
+  // Fewer, wider planar softbox panels (wet-mirror slabs — not dense pastel ribs)
+  panelV(w * 0.18, Math.max(10, w * 0.022), "220,235,250");
+  panelV(w * 0.36, Math.max(14, w * 0.032), "255,252,248");
+  panelV(w * 0.54, Math.max(8, w * 0.018), "160,230,255");
+  panelV(w * 0.7, Math.max(12, w * 0.028), "255,255,255");
+  panelV(w * 0.86, Math.max(7, w * 0.016), "230,210,245");
 
-  // Dense knife cores on top of panels (concept 1c6PD / Z53Ve)
-  knifeV(w * 0.18, Math.max(1, w * 0.001), "255,255,255");
-  knifeV(w * 0.22, Math.max(1, w * 0.0012), "255,255,255");
-  knifeV(w * 0.26, Math.max(1, w * 0.0009), "240,250,255");
-  knifeV(w * 0.3, Math.max(2, w * 0.0018), "255,252,248");
-  knifeV(w * 0.34, Math.max(1, w * 0.0009), "255,255,255");
-  knifeV(w * 0.38, Math.max(1, w * 0.0012), "255,255,255");
-  knifeV(w * 0.42, Math.max(1, w * 0.0008), "200,240,255");
-  knifeV(w * 0.46, Math.max(1, w * 0.0009), "140,255,255");
-  knifeV(w * 0.5, Math.max(1, w * 0.0008), "255,255,255");
-  knifeV(w * 0.54, Math.max(1, w * 0.0012), "255,255,230");
-  knifeV(w * 0.58, Math.max(1, w * 0.0008), "255,220,255");
-  knifeV(w * 0.62, Math.max(1, w * 0.0009), "255,200,255");
-  knifeV(w * 0.66, Math.max(1, w * 0.0008), "255,255,255");
-  knifeV(w * 0.71, Math.max(2, w * 0.0016), "220,235,255");
-  knifeV(w * 0.76, Math.max(1, w * 0.0009), "255,255,255");
-  knifeV(w * 0.8, Math.max(1, w * 0.0012), "255,255,255");
-  knifeV(w * 0.16, Math.max(1, w * 0.0008), "255,120,220");
-  knifeV(w * 0.86, Math.max(1, w * 0.0009), "180,220,255");
+  // Sparse knife cores on panel centers only
+  knifeV(w * 0.18, Math.max(2, w * 0.0015), "255,255,255");
+  knifeV(w * 0.36, Math.max(2, w * 0.002), "255,255,255");
+  knifeV(w * 0.54, Math.max(1, w * 0.001), "200,245,255");
+  knifeV(w * 0.7, Math.max(2, w * 0.0018), "255,255,255");
+  knifeV(w * 0.86, Math.max(1, w * 0.001), "255,240,255");
 
   // Horizontal strip — hard core only
   {

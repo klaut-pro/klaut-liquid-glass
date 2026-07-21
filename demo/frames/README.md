@@ -32,6 +32,15 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 20 (planar softbox slabs + filament X align + blob cap)
+
+- chromeSansP: near-flat normals (faceBend 0.06), aniso ribs gated, few wide softbox panels + charcoal interstitial, lavender desat, filmThickness 0.01; studio plate fewer/wider panels
+- scriptProP: silver-chrome luminous tube fill (pinkRatio 0.34→0.014), emitter x −0.08→−0.04 (stem–filament X align), stretchScale 1.85; MAX_DRIP_BLOBS 24→48 + Y-coverage trim; thicker pendant capsules; filmThickness 0.08
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: script pinkRatio 0.014, silverRatio ~0.51, junction gapRows 250–360: 94→3; filled loop held
+
+**Status:** ❌ not READY — chromeSansP still short of 1c6PD/Z53Ve wet-mirror planar fidelity (milky cyan face / residual ribs vs knife softbox contrast); scriptProP pink crushed + filament continuous but tubular elegance / residual junction notch still lag ENj9B. Blender still unavailable. Loop stays armed.
+
 ## Iteration 19 (planar softbox panels + tubular silver wrap)
 
 - Studio plate: medium-width softbox **panels** under knife cores (`bake-studio-env.py` + `createChromeStudioBackdrop`)

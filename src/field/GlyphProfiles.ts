@@ -42,14 +42,15 @@ const chromeEmitters: DripEmitterSpec[] = [
 
 const scriptEmitters: DripEmitterSpec[] = [
   {
-    x: -0.08,
+    // Align with Segoe Script stem (~field x -0.05); left offset caused junction void
+    x: -0.04,
     intensity: 1,
     viscosity: 0.98,
     phaseOffset: 0.1,
-    stretchScale: 2.15,
+    stretchScale: 1.85,
     locked: true,
     startInStretch: true,
-    stretchT: 0.7,
+    stretchT: 0.62,
   },
 ];
 
@@ -66,7 +67,7 @@ export const chromeSansP: GlyphProfile = {
     viscosity: 0.94,
     dispersion: 1,
     // Face film pastel-washes wet-mirror bars — keep on rim only via shader gate
-    filmThickness: 0.02,
+    filmThickness: 0.01,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.18,
@@ -99,7 +100,7 @@ export const scriptProP: GlyphProfile = {
     viscosity: 0.98,
     dispersion: 1,
     // Rim film only — face film washed tubular chrome (shader gates further)
-    filmThickness: 0.14,
+    filmThickness: 0.08,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.22,
