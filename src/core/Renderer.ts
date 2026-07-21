@@ -502,7 +502,8 @@ export class Renderer {
 
     const img = ctx.createImageData(w, h);
     // WebGL readPixels is bottom-up; flip Y and composite premultiplied over dark plate.
-    // SwiftShader sometimes returns opaque white for cleared texels — treat as empty.
+    // SwiftShader cleared texels often read as equal RGB≥248 with high alpha.
+    // Glyph chrome is tone-mapped + channel-tinted so it won't match exact equality.
     for (let y = 0; y < h; y++) {
       const srcRow = (h - 1 - y) * w * 4;
       const dstRow = y * w * 4;
@@ -513,8 +514,14 @@ export class Renderer {
         let pr = pixels[i] / 255;
         let pg = pixels[i + 1] / 255;
         let pb = pixels[i + 2] / 255;
-        const luma = 0.2126 * pr + 0.7152 * pg + 0.0722 * pb;
-        if (a > 0.98 && luma > 0.92) {
+        if (
+          pixels[i + 3] >= 248 &&
+          pixels[i] >= 248 &&
+          pixels[i + 1] >= 248 &&
+          pixels[i + 2] >= 248 &&
+          pixels[i] === pixels[i + 1] &&
+          pixels[i + 1] === pixels[i + 2]
+        ) {
           a = 0;
           pr = pg = pb = 0;
         }

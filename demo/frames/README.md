@@ -32,6 +32,16 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 12 (wet-mirror push)
+
+- Position-bent studio env + screen-space softbox plate on glyph faces
+- Pendant capsule SDF + freeze filament profile; removed stretchScale:0 detached emitters
+- Tone-map + channel tint so softboxes survive FB clamp
+- Glyph path draws opaque dark plate (SwiftShader white-clear workaround)
+- captureFrame: only strip exact equal near-white clears (never luma-kill chrome)
+
+**Status:** ❌ not READY — chromeSansP/scriptProP still soft vs concept wet-mirror; pendant necks improving but not concept-elegant; fringe still thin. Loop stays armed.
+
 ## Evidence (screenshots)
 
 - `demo/frames/glyph-qa-full.png` — full QA page with refs
