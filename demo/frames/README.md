@@ -26,7 +26,7 @@
 - Falling teardrop emitters, body spectrum tint, cursive script SDF
 - Thinner viscous necks, magenta scriptProP, interior iridescence
 
-**Status:** Both glyphs show chrome specular, prismatic fringe, viscous pendant necks + detached drops. Isolated letterform QA converged; full-word logo weight still out of scope for glyph harness.
+**Status:** ✅ READY — isolated glyph QA meets concept-art material targets (chrome body, viscous pendant necks, light-driven prismatic fringe, detached teardrops). Loop stopped.
 
 ## Engine changes
 
