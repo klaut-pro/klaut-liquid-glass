@@ -245,6 +245,7 @@ void main() {
   float ndotl = max(dot(N, L), 0.0);
 
   float refrStr = (0.04 + 0.12 * u_glass) * (1.0 + u_liquify * 0.45);
+  if (u_fieldMode > 0.5) refrStr *= 1.4;
   vec2 oR, oG, oB;
   float lightDisp;
   spectralOffsets(N, V, L, u_ior, u_dispersion, refrStr, oR, oG, oB, lightDisp);
@@ -271,7 +272,10 @@ void main() {
   vec3 color = mix(refracted, reflectTint, fres * chromeMix * u_glass * mix(1.15, 0.18, interior));
   if (u_fieldMode > 0.5) {
     color += reflectTint * edge * 0.55 * u_lightIntensity * u_specular;
-    color = mix(color * 0.72, color, edge); // darker chrome body, bright rims
+    color = mix(color * 0.68, color, edge); // darker chrome body, bright rims
+    // Concept-art vertical softbox stripe (1c6PD / Z53Ve)
+    float bar = smoothstep(0.32, 0.0, abs(p.x + 0.16)) * smoothstep(-0.55, 0.42, p.y);
+    color += vec3(1.0) * bar * 0.72 * u_lightIntensity * mix(0.35, 1.0, edge);
     if (u_glyphId > 0.5) {
       vec3 magenta = vec3(1.18, 0.52, 0.92);
       color = mix(color, color * magenta, 0.32 + 0.28 * edge);
@@ -310,8 +314,11 @@ void main() {
     color += fire * fireAmt * (0.2 + spec * 0.9);
   }
 
-  color = mix(refracted, color, u_glass);
+  if (u_fieldMode < 0.5) {
+    color = mix(refracted, color, u_glass);
+  }
   float alpha = mask * mix(0.55, 0.92, u_glass);
+  if (u_fieldMode > 0.5) alpha = mask * mix(0.62, 0.96, u_glass);
 
   // Premultiplied alpha output
   outColor = vec4(color * alpha, alpha);

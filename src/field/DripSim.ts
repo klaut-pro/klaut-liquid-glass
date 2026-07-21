@@ -382,7 +382,7 @@ export class DripSim {
             x: em.x + wobble * 0.05,
             y: sy,
             r: sr,
-            w: emDrip * mix(0.8, 0.22, ft) * Math.max(0.18, em.neckR),
+            w: emDrip * mix(0.95, 0.38, ft) * Math.max(0.22, em.neckR),
           });
         }
       }
