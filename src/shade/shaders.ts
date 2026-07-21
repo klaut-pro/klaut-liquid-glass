@@ -147,9 +147,9 @@ float fieldAt(vec2 p, vec2 halfSize, float radius) {
     }
     if (field > 1e-5) {
       float metaDist = 0.32 / max(sqrt(field + 1e-4), 1e-3) - 0.52;
-      // Glyph: softMin bridges lip→filament without flooding the frame
+      // Glyph: tight softMin — preserve hairline filament
       float k = u_fieldMode > 0.5
-        ? mix(0.02, 0.05, viscosity)
+        ? mix(0.012, 0.028, viscosity)
         : mix(0.03, 0.2, mix(liquify, viscosity, 0.55));
       pane = softMin(pane, metaDist, k);
 
@@ -169,10 +169,10 @@ float fieldAt(vec2 p, vec2 halfSize, float radius) {
           if (b.y < botY) { botY = b.y; botC = b.xy; botR = b.z; }
         }
         if (topY - botY > 0.03) {
-          vec2 lipC = topC + vec2(0.0, max(0.04, topR * 0.65));
-          float midR = mix(topR, botR, 0.55) * mix(0.24, 0.11, viscosity);
-          float cap = sdCapsule(p, lipC, botC, max(midR, 0.009));
-          pane = softMin(pane, cap, mix(0.018, 0.04, viscosity));
+          vec2 lipC = topC + vec2(0.0, max(0.035, topR * 0.55));
+          float midR = mix(topR, botR, 0.55) * mix(0.16, 0.07, viscosity);
+          float cap = sdCapsule(p, lipC, botC, max(midR, 0.0065));
+          pane = softMin(pane, cap, mix(0.012, 0.024, viscosity));
         }
       }
     }
@@ -225,14 +225,22 @@ vec3 thinFilm(float thickness, float ndotv, float ndotl, float strength) {
 vec3 studioEnv(vec3 R) {
   vec3 rn = normalize(R + 1e-5);
   vec2 e = rn.xy / (abs(rn.z) + 0.38);
-  // Vertical softboxes (concept wet-mirror signature)
-  float softV = smoothstep(0.07, 0.006, abs(e.x + 0.28));
+  // Vertical softboxes — sharper cores, keep shoulder fill for face coverage
+  float softV = mix(
+    smoothstep(0.07, 0.006, abs(e.x + 0.28)),
+    pow(smoothstep(0.045, 0.003, abs(e.x + 0.28)), 1.8),
+    0.55
+  );
   softV *= smoothstep(-1.15, -0.1, e.y) * smoothstep(1.1, 0.15, e.y);
-  float softV2 = smoothstep(0.055, 0.005, abs(e.x - 0.42)) * 0.75;
+  float softV2 = mix(
+    smoothstep(0.055, 0.005, abs(e.x - 0.42)) * 0.75,
+    pow(smoothstep(0.035, 0.0025, abs(e.x - 0.42)), 1.85) * 0.75,
+    0.5
+  );
   softV2 *= smoothstep(-1.0, -0.05, e.y) * smoothstep(1.0, 0.2, e.y);
-  float softV3 = smoothstep(0.04, 0.008, abs(e.x + 0.62)) * 0.4;
-  float softH = smoothstep(0.05, 0.008, abs(e.y - 0.32)) * 0.55;
-  float softH2 = smoothstep(0.06, 0.012, abs(e.y + 0.55)) * 0.3;
+  float softV3 = smoothstep(0.04, 0.006, abs(e.x + 0.62)) * 0.4;
+  float softH = smoothstep(0.05, 0.007, abs(e.y - 0.32)) * 0.55;
+  float softH2 = smoothstep(0.06, 0.01, abs(e.y + 0.55)) * 0.3;
   float key = pow(max(dot(rn, normalize(vec3(-0.55, 0.78, 0.42))), 0.0), 72.0);
   float fillM = pow(max(dot(rn, normalize(vec3(0.72, -0.15, 0.35))), 0.0), 28.0);
   float fillC = pow(max(dot(rn, normalize(vec3(0.05, 0.35, 0.9))), 0.0), 18.0);
@@ -240,8 +248,8 @@ vec3 studioEnv(vec3 R) {
   float fillL = pow(max(dot(rn, normalize(vec3(0.45, 0.6, 0.5))), 0.0), 22.0);
 
   vec3 col = vec3(0.004, 0.006, 0.01);
-  col += vec3(1.35, 1.22, 1.1) * softV * 2.8;
-  col += vec3(0.55, 0.95, 1.35) * softV2 * 1.9;
+  col += vec3(1.4, 1.26, 1.12) * softV * 3.15;
+  col += vec3(0.52, 0.95, 1.38) * softV2 * 2.1;
   col += vec3(1.2, 0.55, 1.1) * softV3 * 1.2;
   col += vec3(1.15, 1.05, 0.95) * softH * 1.35;
   col += vec3(0.35, 1.15, 1.25) * softH2 * 0.9;
@@ -281,7 +289,7 @@ void spectralOffsets(
   out float lightDisp
 ) {
   // Abbe: higher dispAmt → lower V_d → wider η spread
-  float halfSpread = (baseIor - 1.0) * 0.028 * dispAmt;
+  float halfSpread = (baseIor - 1.0) * 0.036 * dispAmt;
   float nR = max(1.01, baseIor - halfSpread); // red longer λ → lower n
   float nG = max(1.01, baseIor);
   float nB = max(1.01, baseIor + halfSpread);
@@ -356,9 +364,9 @@ void main() {
   float edge = smoothstep(0.08, 0.0, abs(d));
   float inside = max(-d, 0.0);
   // Glyph: chrome lip wide enough for rich edge fire (still thinner than pane)
-  float bevelW = u_fieldMode > 0.5 ? mix(0.018, 0.042, u_bevel) : mix(0.055, 0.11, u_bevel);
+  float bevelW = u_fieldMode > 0.5 ? mix(0.024, 0.055, u_bevel) : mix(0.055, 0.11, u_bevel);
   float rim = 1.0 - smoothstep(0.0, bevelW, inside);
-  float rimSharp = pow(rim, 1.55);
+  float rimSharp = pow(rim, 1.35);
   float z = u_bevel * edge * 0.85;
   vec3 N;
   if (u_fieldMode > 0.5) {
@@ -444,17 +452,18 @@ void main() {
     color += envFace * softGate * 0.25 * u_glass;
 
     vec2 e = Rlight.xy / (abs(Rlight.z) + 0.35);
-    float streak = smoothstep(0.08, 0.003, abs(e.x + 0.22));
-    streak += 0.75 * smoothstep(0.06, 0.003, abs(e.x - 0.38));
-    streak += 0.45 * smoothstep(0.055, 0.008, abs(e.x + 0.52));
-    streak *= mix(0.7, 1.2, 0.3 + 0.7 * rimSharp);
-    float screenBar = smoothstep(0.12, 0.01, abs(p.x + 0.08)) * smoothstep(-0.55, 0.45, p.y);
-    float screenBar2 = smoothstep(0.1, 0.015, abs(p.x - 0.16)) * smoothstep(-0.4, 0.5, p.y);
-    streak = max(streak, max(screenBar * 0.95, screenBar2 * 0.65));
-    color += vec3(1.5, 1.32, 1.15) * streak * 0.85 * u_glass;
-    color += vec3(1.35, 0.28, 1.1) * smoothstep(0.1, 0.012, abs(e.x - 0.15)) * 0.55 * mix(1.0, 0.4, rimSharp);
-    color += vec3(0.15, 1.25, 1.4) * smoothstep(0.11, 0.015, abs(e.x + 0.02)) * 0.6 * mix(1.0, 0.4, rimSharp);
-    color += vec3(1.2, 1.15, 0.25) * smoothstep(0.09, 0.02, abs(e.y - 0.25)) * 0.35 * mix(0.9, 0.3, rimSharp);
+    // Sharper wet-mirror softbox bars (narrow cores, higher peak)
+    float streak = pow(smoothstep(0.055, 0.002, abs(e.x + 0.22)), 1.9);
+    streak += 0.8 * pow(smoothstep(0.042, 0.0018, abs(e.x - 0.38)), 2.0);
+    streak += 0.48 * pow(smoothstep(0.04, 0.004, abs(e.x + 0.52)), 1.8);
+    streak *= mix(0.75, 1.25, 0.3 + 0.7 * rimSharp);
+    float screenBar = pow(smoothstep(0.09, 0.006, abs(p.x + 0.08)), 1.95) * smoothstep(-0.55, 0.45, p.y);
+    float screenBar2 = pow(smoothstep(0.075, 0.008, abs(p.x - 0.16)), 1.85) * smoothstep(-0.4, 0.5, p.y);
+    streak = max(streak, max(screenBar * 1.05, screenBar2 * 0.7));
+    color += vec3(1.58, 1.38, 1.18) * streak * 1.2 * u_glass;
+    color += vec3(1.4, 0.24, 1.12) * pow(smoothstep(0.075, 0.008, abs(e.x - 0.15)), 1.7) * 0.62 * mix(1.0, 0.4, rimSharp);
+    color += vec3(0.12, 1.3, 1.45) * pow(smoothstep(0.08, 0.01, abs(e.x + 0.02)), 1.7) * 0.68 * mix(1.0, 0.4, rimSharp);
+    color += vec3(1.22, 1.15, 0.22) * pow(smoothstep(0.07, 0.014, abs(e.y - 0.25)), 1.5) * 0.4 * mix(0.9, 0.3, rimSharp);
 
     // Never emit pure equal-RGB white (SwiftShader clear filter); keep chrome tinted
     color = max(color, vec3(0.0));
@@ -495,17 +504,19 @@ void main() {
     float envStar = pow(max(dot(N, normalize(vec3(-0.45, 0.8, 0.5))), 0.0), 300.0);
     color += vec3(1.5, 1.4, 1.55) * envStar * 2.8 * li * mix(0.55, 1.0, rimSharp);
 
-    float fireAmt = u_dispersion * (0.95 + 1.2 * fres) * mix(0.45, 1.75, rimSharp);
-    fireAmt *= clamp(u_lightIntensity * 0.55, 0.8, 2.6);
-    fireAmt *= (0.6 + 0.75 * lightDisp);
-    float fireBand = pow(rim, 0.95) * mix(0.7, 1.35, rimSharp);
-    float fireT = fract(ndotl * 2.4 + fres * 0.9 + length(p) * 1.2 + rimSharp * 0.45);
-    float lightSide = smoothstep(-0.15, 0.9, ndotl);
-    color += edgeFire(mix(0.88, 0.12, lightSide), fireAmt * fireBand * 1.55);
-    color += edgeFire(mix(0.18, 0.78, lightSide), fireAmt * fireBand * 0.85 * max(lightDisp, 0.45));
-    color += edgeFire(fireT, fireAmt * edge * 0.7);
-    float outerFire = smoothstep(bevelW * 2.2, -aa * 0.5, d) * (1.0 - smoothstep(-aa, bevelW * 0.6, -d));
-    color += edgeFire(0.3 + 0.4 * lightSide, outerFire * u_dispersion * 0.9 * u_lightIntensity);
+    float fireAmt = u_dispersion * (1.05 + 1.3 * fres) * mix(0.5, 1.95, rimSharp);
+    fireAmt *= clamp(u_lightIntensity * 0.58, 0.85, 2.7);
+    fireAmt *= (0.65 + 0.85 * lightDisp);
+    float fireBand = pow(rim, 0.8) * mix(0.8, 1.45, rimSharp);
+    float fireT = fract(ndotl * 2.5 + fres * 0.95 + length(p) * 1.25 + rimSharp * 0.48);
+    float lightSide = smoothstep(-0.16, 0.92, ndotl);
+    color += edgeFire(mix(0.9, 0.1, lightSide), fireAmt * fireBand * 1.8);
+    color += edgeFire(mix(0.16, 0.8, lightSide), fireAmt * fireBand * 1.05 * max(lightDisp, 0.48));
+    color += edgeFire(fireT, fireAmt * edge * 0.9);
+    float outerFire = smoothstep(bevelW * 2.9, -aa * 0.6, d) * (1.0 - smoothstep(-aa, bevelW * 0.9, -d));
+    color += edgeFire(0.28 + 0.45 * lightSide, outerFire * u_dispersion * 1.2 * u_lightIntensity);
+    float halo = smoothstep(bevelW * 1.55, 0.0, inside) * (1.0 - rimSharp * 0.3);
+    color += edgeFire(mix(0.18, 0.82, lightSide), halo * u_dispersion * 0.7 * (0.5 + 0.5 * lightDisp));
 
     float film = u_filmThickness;
     if (film > 0.001) {

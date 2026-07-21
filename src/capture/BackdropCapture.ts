@@ -192,20 +192,21 @@ export function createChromeStudioBackdrop(
   ctx.fillStyle = "#030306";
   ctx.fillRect(0, 0, w, h);
 
-  // Primary vertical softbox — narrow streak (not full-plate wash)
-  const soft = ctx.createLinearGradient(w * 0.26, 0, w * 0.34, 0);
+  // Primary vertical softbox — tighter core for wet-mirror bars
+  const soft = ctx.createLinearGradient(w * 0.275, 0, w * 0.325, 0);
   soft.addColorStop(0, "rgba(255,255,255,0)");
-  soft.addColorStop(0.4, "rgba(255,250,255,0.85)");
-  soft.addColorStop(0.5, "rgba(255,255,255,1)");
-  soft.addColorStop(0.6, "rgba(210,255,250,0.7)");
+  soft.addColorStop(0.35, "rgba(255,250,255,0.35)");
+  soft.addColorStop(0.48, "rgba(255,255,255,1)");
+  soft.addColorStop(0.52, "rgba(255,255,255,1)");
+  soft.addColorStop(0.65, "rgba(210,255,250,0.35)");
   soft.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = soft;
   ctx.fillRect(0, 0, w, h);
 
-  // Secondary softbox (right fill) — dimmer
-  const soft2 = ctx.createLinearGradient(w * 0.68, 0, w * 0.74, 0);
+  // Secondary softbox (right fill) — thinner
+  const soft2 = ctx.createLinearGradient(w * 0.69, 0, w * 0.73, 0);
   soft2.addColorStop(0, "rgba(255,255,255,0)");
-  soft2.addColorStop(0.5, "rgba(180,220,255,0.4)");
+  soft2.addColorStop(0.5, "rgba(180,220,255,0.45)");
   soft2.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = soft2;
   ctx.fillRect(0, 0, w, h);

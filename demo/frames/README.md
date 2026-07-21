@@ -32,6 +32,15 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 13 (wet-mirror bars + thin filament)
+
+- Sharper softbox streak cores (pow falloff) over 99ecc20 chrome face base
+- Wider light-tied cyan↔magenta edge fire (bevel + halo + Abbe spread)
+- Thinner freeze filament (neck floor 0.32, mid profile ~0.05) + tighter glyph softMin/capsule
+- Studio plate softbox gradients narrowed for harder bars
+
+**Status:** ❌ not READY — chromeSansP closer on bar contrast vs soft neon, but still short of concept wet-mirror faces; scriptProP filament/chrome coverage still lag ENj9B; edge fire wider but not concept-wide. Loop stays armed.
+
 ## Iteration 12 (wet-mirror push)
 
 - Position-bent studio env + screen-space softbox plate on glyph faces
