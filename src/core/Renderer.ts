@@ -503,7 +503,7 @@ export class Renderer {
     const img = ctx.createImageData(w, h);
     // WebGL readPixels is bottom-up; flip Y and composite premultiplied over dark plate.
     // SwiftShader cleared texels often read as equal RGB≥248 with high alpha.
-    // Glyph chrome is tone-mapped + channel-tinted so it won't match exact equality.
+    // Glyph peaks must stay chromatic (R≠G≠B) so knife/tube energy survives this filter.
     for (let y = 0; y < h; y++) {
       const srcRow = (h - 1 - y) * w * 4;
       const dstRow = y * w * 4;

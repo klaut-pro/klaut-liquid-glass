@@ -361,10 +361,12 @@ void main() {
   float radius = u_cornerRadius * min(halfSize.x, halfSize.y) * 2.0;
 
   float d = fieldAt(p, halfSize, radius);
-  float aa = fwidth(d) * 1.5;
+  // Glyph QA: cap fwidth — SwiftShader can return huge derivatives and soft-mask the
+  // whole canvas into chrome (pastel wash / false face fill outside the letter).
+  float aa = u_fieldMode > 0.5 ? min(fwidth(d) * 1.25, 0.012) : fwidth(d) * 1.5;
   float mask = 1.0 - smoothstep(-aa, aa, d);
 
-  if (mask < 0.001) {
+  if (mask < 0.001 || (u_fieldMode > 0.5 && d > 0.035)) {
     // Opaque dark plate — SwiftShader treats cleared alpha as white otherwise
     outColor = vec4(0.031, 0.031, 0.039, 1.0);
     return;
@@ -373,30 +375,31 @@ void main() {
   vec2 g = gradField(p, halfSize, radius);
   float edge = smoothstep(0.08, 0.0, abs(d));
   float inside = max(-d, 0.0);
-    // Glyph: chrome lip — script strokes are thin: keep rim razor-thin so face fills
+    // Glyph: chrome lip — script: razor rim only so tubular face stays luminous
     float bevelW = u_fieldMode > 0.5
-      ? (u_glyphId > 0.5 ? mix(0.0025, 0.007, u_bevel) : mix(0.014, 0.032, u_bevel))
+      ? (u_glyphId > 0.5 ? mix(0.0012, 0.0042, u_bevel) : mix(0.012, 0.028, u_bevel))
       : mix(0.055, 0.11, u_bevel);
     float rim = 1.0 - smoothstep(0.0, bevelW, inside);
-    // Script: pow↑ → only extreme lip is rim; face/mid-filament stay alive
-    float rimSharp = pow(rim, u_glyphId > 0.5 ? 2.8 : 1.55);
+    // Script: high pow → only extreme lip is rim; body reads as filled tube
+    float rimSharp = pow(rim, u_glyphId > 0.5 ? 4.4 : 1.45);
   float z = u_bevel * edge * 0.85;
   vec3 N;
   if (u_fieldMode > 0.5) {
-    // Mild pillow — curved chrome faces catch softbox streaks
-    float pillow = (u_glyphId > 0.5 ? 0.38 : 0.22) * (1.0 - rim) * u_bevel;
-    vec2 faceWarp = p * pillow * vec2(1.1, 0.9);
-    float gAmt = mix(0.12, 1.55, rimSharp) * (0.85 + 0.55 * u_bevel);
+    // Chrome: flatter pillow = knife softbox bars (concept wet-mirror faces)
+    // Script: mild tube pillow for molten pipe volume
+    float pillow = (u_glyphId > 0.5 ? 0.28 : 0.06) * (1.0 - rim) * u_bevel;
+    vec2 faceWarp = p * pillow * vec2(1.05, 0.88);
+    float gAmt = mix(0.08, 1.45, rimSharp) * (0.85 + 0.55 * u_bevel);
     vec3 dripN = dripNormalBias(p);
     N = normalize(vec3(
       g * gAmt + faceWarp + dripN.xy * 1.15,
-      mix(0.55, 1.0, 1.0 - rimSharp * 0.55) + dripN.z * 0.5
+      mix(0.62, 1.0, 1.0 - rimSharp * 0.5) + dripN.z * 0.5
     ));
     if (u_glyphId > 0.5) {
-      // Tubular script: stronger cylinder normals for molten pipe (ENj9B elegance)
-      float tube = mix(0.85, 2.85, rimSharp);
-      vec3 Ntube = normalize(vec3(g * tube, mix(0.48, 0.22, rimSharp)));
-      N = normalize(mix(N, Ntube, 0.88));
+      // Tubular script: high medial N.z = luminous facing body (not hollow rim shell)
+      float tube = mix(0.42, 2.55, rimSharp);
+      vec3 Ntube = normalize(vec3(g * tube, mix(0.78, 0.26, rimSharp)));
+      N = normalize(mix(N, Ntube, 0.7));
     }
   } else {
     N = normalize(vec3(g * (1.0 + z), 1.0));
@@ -441,9 +444,15 @@ void main() {
   vec3 color;
   if (u_fieldMode > 0.5) {
     // --- Wet mirror chrome: HDRI plate + razor streaks (knife bars, less pastel) ---
-    vec3 Ncurve = normalize(vec3(p * vec2(2.55, 2.05) * (0.75 + 0.55 * u_bevel), 0.32));
+    // Chrome: near-planar face normal → sharp softbox stripes (1c6PD/Z53Ve knife)
+    // Script: slightly curved for tubular volume catch
+    float faceBend = u_glyphId > 0.5 ? 1.35 : 0.55;
+    vec3 Ncurve = normalize(vec3(
+      p * vec2(faceBend, faceBend * 0.82) * (0.55 + 0.4 * u_bevel),
+      u_glyphId > 0.5 ? 0.55 : 0.92
+    ));
     vec3 Rface = reflect(-V, Ncurve);
-    vec3 Rlight = normalize(mix(Rface, reflect(-L, Ncurve), 0.42));
+    vec3 Rlight = normalize(mix(Rface, reflect(-L, Ncurve), 0.38));
     vec3 envFace = studioEnv(Rlight);
     vec3 envRim = studioEnv(R);
     vec3 env = mix(envFace, envRim, rimSharp * 0.55);
@@ -451,103 +460,129 @@ void main() {
     vec2 plateUv = studioPlateUv(Rlight);
     vec3 plate = texture(u_backdrop, plateUv).rgb;
     float platePeak = max(plate.r, max(plate.g, plate.b));
-    float hardBar = smoothstep(0.52, 0.9, platePeak);
-    float softGate = u_glyphId > 0.5 ? 0.72 : 0.28;
-    float softAmb = smoothstep(0.05, 0.32, platePeak) * (1.0 - hardBar * 0.9) * softGate;
-    // Body: deep chrome / magenta metal (never pastel lavender fog)
+    float hardBar = smoothstep(0.48, 0.86, platePeak);
+    float softGate = u_glyphId > 0.5 ? 0.78 : 0.18;
+    float softAmb = smoothstep(0.05, 0.28, platePeak) * (1.0 - hardBar * 0.94) * softGate;
+    // Body: deep chrome / luminous magenta metal (never pastel lavender fog)
     vec3 darkBody = u_glyphId > 0.5
-      ? vec3(0.36, 0.09, 0.3)
-      : vec3(0.06, 0.065, 0.09);
+      ? vec3(0.48, 0.12, 0.4)
+      : vec3(0.032, 0.034, 0.048);
     vec3 ambTint = u_glyphId > 0.5
-      ? vec3(0.82, 0.22, 0.68)
-      : vec3(0.18, 0.22, 0.34);
-    color = darkBody + ambTint * softAmb * 0.35;
-    color += envFace * softAmb * 0.14 * u_glass;
+      ? vec3(0.95, 0.28, 0.78)
+      : vec3(0.14, 0.18, 0.28);
+    color = darkBody + ambTint * softAmb * 0.28;
+    color += envFace * softAmb * 0.1 * u_glass;
     // Hard wet-mirror: knife cores + razor streaks
-    float hardMul = u_glyphId > 0.5 ? 3.4 : 4.8;
+    float hardMul = u_glyphId > 0.5 ? 3.6 : 6.2;
     color += plate * hardBar * hardMul * u_glass;
-    color += envFace * hardBar * (u_glyphId > 0.5 ? 1.4 : 1.85) * u_glass;
-    float faceReflect = mix(0.82, 1.0, fres) * u_glass;
-    color = mix(darkBody * 1.05, color, faceReflect);
+    color += envFace * hardBar * (u_glyphId > 0.5 ? 1.55 : 2.25) * u_glass;
+    float faceReflect = mix(0.88, 1.0, fres) * u_glass;
+    color = mix(darkBody * 1.02, color, faceReflect);
 
-    // Screen-space knife bars (independent of flat SDF normals)
-    vec2 facePlateUv = clamp(vec2(0.5) + p * vec2(1.05, 0.82) + Rlight.xy * 0.1, 0.0, 1.0);
+    // Planar face plate UV — wet-mirror stripes across letter faces
+    vec2 facePlateUv = clamp(
+      vec2(0.5) + p * vec2(u_glyphId > 0.5 ? 0.95 : 1.15, u_glyphId > 0.5 ? 0.75 : 0.88)
+        + Rlight.xy * (u_glyphId > 0.5 ? 0.12 : 0.045),
+      0.0, 1.0
+    );
     vec3 facePlate = texture(u_backdrop, facePlateUv).rgb;
     float facePeak = max(facePlate.r, max(facePlate.g, facePlate.b));
-    float faceHard = smoothstep(0.55, 0.92, facePeak);
-    color += facePlate * faceHard * (u_glyphId > 0.5 ? 2.6 : 3.6) * u_glass * (1.0 - rimSharp * 0.22);
-    // Face floor — deep midtone, not soft white chrome
+    float faceHard = smoothstep(0.5, 0.88, facePeak);
+    color += facePlate * faceHard * (u_glyphId > 0.5 ? 2.9 : 4.8) * u_glass * (1.0 - rimSharp * 0.18);
+    // Face floor — chrome: deep interstitial; script: luminous tube midtone
     float faceAlive = (1.0 - rimSharp) * u_glass;
-    color = max(color, (darkBody * 1.55 + ambTint * 0.28 + envFace * 0.06) * faceAlive);
+    color = max(color, (darkBody * (u_glyphId > 0.5 ? 1.85 : 1.35) + ambTint * 0.22 + envFace * 0.05) * faceAlive);
 
     if (u_glyphId > 0.5) {
-      // Tubular molten fill — always luminous magenta body (thin strokes ≠ rim-only)
-      vec3 tubeFill = vec3(0.78, 0.18, 0.64) + envFace * vec3(1.5, 0.6, 1.35) * 0.65;
-      tubeFill += facePlate * max(faceHard, 0.35) * vec3(1.6, 0.9, 1.45) * 1.2;
-      tubeFill += plate * hardBar * vec3(1.4, 0.8, 1.3) * 1.1;
-      float faceAmt = mix(0.92, 0.55, rimSharp) * u_glass;
+      // Luminous tubular body — filled magenta pipe, not white rim shell (ENj9B)
+      float tubeBody = smoothstep(0.0, max(bevelW * 0.85, 0.002), inside);
+      vec3 tubeFill = vec3(0.88, 0.22, 0.72) + envFace * vec3(1.35, 0.55, 1.25) * 0.7;
+      tubeFill += facePlate * max(faceHard, 0.45) * vec3(1.55, 0.85, 1.4) * 1.15;
+      tubeFill += plate * max(hardBar, 0.35) * vec3(1.35, 0.75, 1.25) * 1.05;
+      tubeFill += ambTint * 0.62;
+      float faceAmt = mix(0.96, 0.4, rimSharp) * u_glass * mix(0.78, 1.0, tubeBody);
       color = mix(color, max(color, tubeFill), faceAmt);
-      color = max(color, mix(darkBody, tubeFill, 0.92) * faceAmt);
-      // Guaranteed midtone floor so thin tubes aren't black outlines
-      color = max(color, vec3(0.45, 0.1, 0.38) * (1.0 - rimSharp * 0.5) * u_glass);
+      color = max(color, mix(darkBody, tubeFill, 0.94) * faceAmt);
+      // Magenta luminous floor — never black outline voids on thin AA strokes
+      color = max(color, vec3(0.72, 0.18, 0.58) * mix(1.0, 0.45, rimSharp) * u_glass);
+      color = max(color, tubeFill * 0.62 * tubeBody * u_glass);
     }
 
     vec2 e = Rlight.xy / (abs(Rlight.z) + 0.22);
     // Dense razor wet-mirror bars — white cores, minimal pastel shoulders
-    float streakCore = pow(smoothstep(0.012, 0.00008, abs(e.x + 0.18)), 6.0);
-    streakCore += 0.95 * pow(smoothstep(0.01, 0.00006, abs(e.x - 0.34)), 6.2);
-    streakCore += 0.55 * pow(smoothstep(0.011, 0.0002, abs(e.x + 0.48)), 5.4);
-    streakCore += 0.8 * pow(smoothstep(0.009, 0.00008, abs(e.x + 0.02)), 5.8);
-    streakCore += 0.7 * pow(smoothstep(0.009, 0.00007, abs(e.x - 0.16)), 5.9);
-    streakCore += 0.65 * pow(smoothstep(0.01, 0.0001, abs(e.x - 0.52)), 5.6);
-    float streakShoulder = smoothstep(0.035, 0.004, abs(e.x + 0.18)) * 0.06;
-    streakShoulder += 0.045 * smoothstep(0.03, 0.003, abs(e.x - 0.34));
+    float streakCore = pow(smoothstep(0.01, 0.00005, abs(e.x + 0.18)), 6.4);
+    streakCore += 0.95 * pow(smoothstep(0.009, 0.00004, abs(e.x - 0.34)), 6.5);
+    streakCore += 0.55 * pow(smoothstep(0.01, 0.00015, abs(e.x + 0.48)), 5.6);
+    streakCore += 0.85 * pow(smoothstep(0.008, 0.00005, abs(e.x + 0.02)), 6.0);
+    streakCore += 0.75 * pow(smoothstep(0.008, 0.00005, abs(e.x - 0.16)), 6.1);
+    streakCore += 0.7 * pow(smoothstep(0.009, 0.00008, abs(e.x - 0.52)), 5.8);
+    streakCore += 0.6 * pow(smoothstep(0.009, 0.00006, abs(e.x + 0.28)), 5.9);
+    float streakShoulder = smoothstep(0.028, 0.003, abs(e.x + 0.18)) * 0.04;
+    streakShoulder += 0.03 * smoothstep(0.025, 0.0025, abs(e.x - 0.34));
     float streak = (streakCore + streakShoulder) * mix(0.95, 1.55, 0.25 + 0.75 * rimSharp);
-    float screenBar = pow(smoothstep(0.016, 0.0002, abs(p.x + 0.06)), 5.5) * smoothstep(-0.55, 0.5, p.y);
-    float screenBar2 = pow(smoothstep(0.014, 0.00025, abs(p.x - 0.14)), 5.4) * smoothstep(-0.4, 0.55, p.y);
-    float screenBar3 = pow(smoothstep(0.013, 0.0003, abs(p.x + 0.18)), 5.2) * smoothstep(-0.35, 0.42, p.y) * 0.7;
-    float screenBar4 = pow(smoothstep(0.012, 0.0002, abs(p.x - 0.02)), 5.5) * smoothstep(-0.5, 0.45, p.y) * 0.85;
-    float screenBar5 = pow(smoothstep(0.011, 0.00018, abs(p.x + 0.22)), 5.3) * smoothstep(-0.45, 0.48, p.y) * 0.55;
-    streak = max(streak, max(screenBar * 2.1, max(screenBar2 * 1.4, max(screenBar3, max(screenBar4, screenBar5)))));
-    float barMul = u_glyphId > 0.5 ? 2.8 : 4.4;
-    color += vec3(2.55, 2.35, 2.15) * streakCore * barMul * u_glass;
-    color += vec3(1.1, 1.05, 1.0) * streakShoulder * 0.22 * u_glass;
+    // Screen-space knife bars — denser on chrome faces (planar wet-mirror)
+    float screenBar = pow(smoothstep(0.014, 0.00015, abs(p.x + 0.06)), 5.8) * smoothstep(-0.55, 0.5, p.y);
+    float screenBar2 = pow(smoothstep(0.012, 0.00018, abs(p.x - 0.14)), 5.6) * smoothstep(-0.4, 0.55, p.y);
+    float screenBar3 = pow(smoothstep(0.011, 0.00022, abs(p.x + 0.18)), 5.4) * smoothstep(-0.35, 0.42, p.y) * 0.75;
+    float screenBar4 = pow(smoothstep(0.01, 0.00015, abs(p.x - 0.02)), 5.7) * smoothstep(-0.5, 0.45, p.y) * 0.9;
+    float screenBar5 = pow(smoothstep(0.01, 0.00014, abs(p.x + 0.22)), 5.5) * smoothstep(-0.45, 0.48, p.y) * 0.6;
+    float screenBar6 = pow(smoothstep(0.011, 0.00016, abs(p.x - 0.08)), 5.5) * smoothstep(-0.5, 0.5, p.y) * 0.7;
+    streak = max(streak, max(screenBar * 2.4, max(screenBar2 * 1.6, max(screenBar3, max(screenBar4, max(screenBar5, screenBar6 * 1.3))))));
+    float barMul = u_glyphId > 0.5 ? 2.4 : 5.6;
+    // Chromatic knife cores — avoid equal-RGB clip (capture clear filter + fidelity)
+    color += vec3(2.55, 2.2, 2.05) * streakCore * barMul * u_glass;
+    color += vec3(1.05, 0.95, 0.9) * streakShoulder * 0.15 * u_glass;
+    // Extra planar face bars for chromeSansP knife contrast
+    if (u_glyphId < 0.5) {
+      float faceBar = pow(smoothstep(0.011, 0.00008, abs(p.x + 0.1)), 6.4);
+      faceBar += 0.9 * pow(smoothstep(0.01, 0.00007, abs(p.x - 0.05)), 6.4);
+      faceBar += 0.75 * pow(smoothstep(0.009, 0.00007, abs(p.x + 0.2)), 6.2);
+      faceBar += 0.7 * pow(smoothstep(0.009, 0.00008, abs(p.x - 0.18)), 6.2);
+      faceBar += 0.55 * pow(smoothstep(0.01, 0.0001, abs(p.x + 0.0)), 6.0);
+      faceBar *= smoothstep(-0.52, 0.48, p.y) * faceAlive;
+      color += vec3(2.55, 2.35, 2.15) * faceBar * 4.2 * u_glass;
+      // Darker interstitial between bars for wet-mirror knife read
+      float barMask = smoothstep(0.15, 0.55, faceBar);
+      color = mix(color * vec3(0.72, 0.75, 0.88), color, barMask);
+    }
     // Thin spectral accents on rims only — not face pastel wash
     color += vec3(1.85, 0.2, 1.45) * pow(smoothstep(0.016, 0.0003, abs(e.x - 0.1)), 5.0) * 0.55 * mix(0.15, 1.0, rimSharp);
     color += vec3(0.05, 1.7, 1.85) * pow(smoothstep(0.017, 0.00035, abs(e.x + 0.02)), 4.8) * 0.5 * mix(0.15, 1.0, rimSharp);
     color += vec3(1.6, 1.45, 0.25) * pow(smoothstep(0.014, 0.0006, abs(e.y - 0.2)), 4.2) * 0.4 * mix(0.2, 1.0, rimSharp);
 
     color = max(color, vec3(0.0));
-    // Contrast expand — crush pastel mids, keep knife peaks
+    // Contrast expand — crush pastel mids, keep knife peaks (no black-void crush)
     if (u_glyphId < 0.5) {
       float cl = dot(color, vec3(0.2126, 0.7152, 0.0722));
-      color = mix(color * 0.72, color * 1.18, smoothstep(0.35, 1.6, cl));
+      color = mix(color * 0.58, color * 1.38, smoothstep(0.3, 1.75, cl));
+      color = max(color, darkBody * 1.25 * faceAlive);
+      color = max(color, ambTint * 0.18 * faceAlive);
     }
 
     vec2 T = normalize(vec2(-g.y, g.x) + 1e-5);
     float aniso = pow(max(1.0 - abs(dot(normalize(R.xy + 1e-5), T)), 0.0), 3.8);
     color += env * aniso * (0.18 + 0.55 * rimSharp);
 
-    // Script stroke spine — silver mid-filament along tube medial (thin-stroke safe)
+    // Script stroke spine — bright tubular ridge on medial + filled magenta body
     if (u_glyphId > 0.5) {
-      // Peak near medial axis (inside≈0+) then fall toward rim
-      float spine = exp(-pow(inside / 0.028, 2.0) * 1.4) * (1.0 - rimSharp * 0.55);
-      color += vec3(2.35, 2.2, 2.3) * spine * 2.9 * u_glass;
-      color += vec3(1.85, 0.7, 1.6) * spine * aniso * 1.0;
-      color += vec3(1.95, 1.65, 1.8) * streakCore * (1.0 - rimSharp * 0.6) * 1.15 * u_glass;
-      color = max(color, darkBody * 2.8 * (1.0 - rimSharp * 0.3) * u_glass);
-      color = max(color, ambTint * 0.7 * (1.0 - rimSharp * 0.4) * u_glass);
+      float spine = exp(-pow(inside / 0.04, 2.0) * 0.9) * (1.0 - rimSharp * 0.3);
+      // Silver-magenta ridge (tube highlight), not equal-white
+      color += vec3(1.55, 0.95, 1.45) * spine * 2.1 * u_glass;
+      color += vec3(2.0, 0.55, 1.75) * spine * aniso * 1.35;
+      color += vec3(1.55, 0.85, 1.45) * streakCore * (1.0 - rimSharp * 0.4) * 0.95 * u_glass;
+      color = max(color, darkBody * 2.85 * (1.0 - rimSharp * 0.2) * u_glass);
+      color = max(color, ambTint * 1.1 * (1.0 - rimSharp * 0.28) * u_glass);
     }
 
     vec3 rimCol = mix(vec3(1.35, 1.4, 1.55), envRim * 3.1, 0.88);
-    color = mix(color, max(color, rimCol), rimSharp * (0.78 + 0.22 * fres));
+    color = mix(color, max(color, rimCol), rimSharp * (u_glyphId > 0.5 ? 0.72 : 0.55) * (0.78 + 0.22 * fres));
 
     if (u_glyphId > 0.5) {
-      color = mix(color, color * vec3(1.45, 0.58, 1.35), mix(0.08, 0.62, rimSharp));
+      color = mix(color, color * vec3(1.45, 0.58, 1.35), mix(0.08, 0.55, rimSharp));
     } else {
-      // chromeSansP: bright chrome lip (not thick black void) + cool bar tint
-      color = mix(color, max(color, rimCol * 1.15), rimSharp * 0.55);
-      color = mix(color, color * vec3(0.85, 1.02, 1.25), rimSharp * 0.28);
+      // chromeSansP: thin cool lip — not thick cream/beige void rim
+      color = mix(color, max(color, rimCol * vec3(0.9, 0.95, 1.1)), rimSharp * 0.38);
+      color = mix(color, color * vec3(0.82, 0.98, 1.22), rimSharp * 0.22);
     }
 
     float faceGate = 1.0 - rimSharp;
@@ -610,9 +645,34 @@ void main() {
 
     color = mix(color, color + refracted * 0.18, rimSharp * 0.14 * u_glass);
 
-    // Soft tone-map — preserve knife peaks; slightly less crush than prior
-    color = color / (1.0 + color * 0.14);
-    color *= u_glyphId > 0.5 ? vec3(1.12, 0.98, 1.14) : vec3(1.06, 1.02, 1.08);
+    // Soft tone-map — knife peaks stay chromatic (never equal-white; never cream wash)
+    float peak = max(color.r, max(color.g, color.b));
+    color = color / (1.0 + peak * (u_glyphId > 0.5 ? 0.2 : 0.16));
+    if (u_glyphId > 0.5) {
+      color *= vec3(1.2, 0.72, 1.12);
+      // Luminous magenta tube body floor
+      color = max(color, vec3(0.62, 0.14, 0.52) * (1.0 - rimSharp * 0.55) * u_glass);
+      // Peak clip with chroma — survive equal-white clear filter
+      float pk = max(color.r, max(color.g, color.b));
+      if (pk > 0.9) {
+        color *= vec3(0.98, 0.7, 0.92) / max(pk, 1e-3) * 0.92;
+      }
+      color = clamp(color, 0.0, 0.97);
+      color.g = min(color.g, color.r * 0.78);
+    } else {
+      color *= vec3(1.05, 1.0, 1.1);
+      // Deep face floor between knife bars (wet-mirror interstitial, not cream lip)
+      color = max(color, darkBody * 1.2 * (1.0 - rimSharp) * u_glass);
+      float pk = max(color.r, max(color.g, color.b));
+      if (pk > 1.05) {
+        color *= vec3(0.95, 0.98, 1.05) / pk * 0.98;
+      }
+      color = clamp(color, 0.0, 0.99);
+      // Force cool chroma on near-white knife cores
+      if (color.r > 0.9 && color.g > 0.9 && color.b > 0.9) {
+        color *= vec3(0.94, 0.97, 1.0);
+      }
+    }
   } else {
     // Pane path
     vec3 reflectTint = mix(vec3(0.9, 0.92, 0.96), vec3(1.0, 1.0, 1.0), ndotl);
@@ -645,9 +705,12 @@ void main() {
   if (u_fieldMode > 0.5) {
     // Glyph QA: opaque composite (no SwiftShader white holes in capture/live)
     alpha = 1.0;
-    // Soft edge into dark plate
+    // Soft edge into dark plate — keep AA thin; script holds body via cover curve
     vec3 plate = vec3(0.031, 0.031, 0.039);
-    color = mix(plate, color, mask);
+    float cover = u_glyphId > 0.5
+      ? smoothstep(0.15, 0.85, mask)
+      : smoothstep(0.05, 0.95, mask);
+    color = mix(plate, color, cover);
   }
 
   // Premultiplied alpha output

@@ -50,9 +50,9 @@ GLYPHS = {
             Path(r"C:\Windows\Fonts\segoepr.ttf"),
             Path(r"C:\Windows\Fonts\segoescb.ttf"),
         ],
-        # Mild tubular thicken for molten script (ENj9B) without blob junctions
-        "dilate": 2.0,
-        "round": 0.9,
+        # Tubular thicken — ENj9B luminous pipe body (not hairline rim outline)
+        "dilate": 4.2,
+        "round": 1.35,
     },
 }
 

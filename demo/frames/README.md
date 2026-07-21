@@ -32,6 +32,16 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 17 (knife face contrast + luminous tubular script)
+
+- Capped glyph `fwidth` AA + hard outside early-out (SwiftShader soft-mask pastel wash fix)
+- chromeSansP: flatter face normals, denser planar knife bars, harder contrast expand, cool chromatic peaks (no cream lip / equal-white clip)
+- scriptProP: thicker SDF dilate (4.2), razor rim pow, magenta tubeFill floor, medial ridge, AA cover holds body (no black outline voids)
+- Capture: keep equal-white SwiftShader clear strip; peaks forced chromatic so fill survives
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+
+**Status:** ❌ not READY — chromeSansP knife bars + midtone faces improved vs iter 16 (no cream wash / no void regression) but still short of 1c6PD/Z53Ve wet-mirror sharpness; scriptProP upper loop now magenta-filled (not hollow rim) but tubular chrome elegance still lags ENj9B. Blender still unavailable. Loop stays armed.
+
 ## Iteration 16 (harder knife plate + script face/filament)
 
 - Re-baked `studio-softbox.png` at 2k: near-black ambient, 1–3px absolute hard cores (no soft shoulders), denser bar set
