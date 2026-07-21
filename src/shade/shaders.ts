@@ -84,11 +84,11 @@ float glyphChromeSansP(vec2 p) {
 /** Thin molten script p (ENj9B ".pro" descender). */
 float glyphScriptProP(vec2 p) {
   vec2 q = p * 1.02;
-  float s1 = sdCapsule(q, vec2(-0.06, -0.36), vec2(-0.12, 0.0), 0.038);
-  float s2 = sdCapsule(q, vec2(-0.12, 0.0), vec2(-0.04, 0.18), 0.036);
-  float s3 = sdCapsule(q, vec2(-0.04, 0.18), vec2(0.12, 0.10), 0.034);
-  float s4 = sdCapsule(q, vec2(0.12, 0.10), vec2(0.10, -0.06), 0.032);
-  float s5 = sdCapsule(q, vec2(0.10, -0.06), vec2(-0.02, -0.34), 0.028);
+  float s1 = sdCapsule(q, vec2(-0.06, -0.36), vec2(-0.12, 0.0), 0.044);
+  float s2 = sdCapsule(q, vec2(-0.12, 0.0), vec2(-0.04, 0.18), 0.042);
+  float s3 = sdCapsule(q, vec2(-0.04, 0.18), vec2(0.12, 0.10), 0.04);
+  float s4 = sdCapsule(q, vec2(0.12, 0.10), vec2(0.10, -0.06), 0.038);
+  float s5 = sdCapsule(q, vec2(0.10, -0.06), vec2(-0.02, -0.34), 0.034);
   float g = softMin(s1, s2, 0.028);
   g = softMin(g, s3, 0.026);
   g = softMin(g, s4, 0.024);
@@ -268,9 +268,10 @@ void main() {
   vec3 reflectTint = mix(vec3(0.9, 0.92, 0.96), vec3(1.0, 1.0, 1.0), ndotl);
   float interior = smoothstep(0.0, 0.14, abs(d));
   float chromeMix = u_fieldMode > 0.5 ? 0.78 : 0.55;
-  vec3 color = mix(refracted, reflectTint, fres * chromeMix * u_glass * mix(1.15, 0.28, interior));
+  vec3 color = mix(refracted, reflectTint, fres * chromeMix * u_glass * mix(1.15, 0.18, interior));
   if (u_fieldMode > 0.5) {
-    color += reflectTint * edge * 0.48 * u_lightIntensity * u_specular;
+    color += reflectTint * edge * 0.55 * u_lightIntensity * u_specular;
+    color = mix(color * 0.72, color, edge); // darker chrome body, bright rims
     if (u_glyphId > 0.5) {
       vec3 magenta = vec3(1.18, 0.52, 0.92);
       color = mix(color, color * magenta, 0.32 + 0.28 * edge);
@@ -302,8 +303,9 @@ void main() {
   }
 
   // Spectral fire on lit rim: cyan↔magenta (concept art), not purple bloom wash
-  if (u_dispersion > 0.01 && (spec > 0.015 || fres > 0.08)) {
-    float fireAmt = u_dispersion * lightDisp * (0.25 + 0.75 * fres) * u_lightIntensity;
+  if (u_dispersion > 0.01 && (spec > 0.01 || fres > 0.06 || u_fieldMode > 0.5)) {
+    float fireAmt = u_dispersion * lightDisp * (0.35 + 0.65 * fres) * u_lightIntensity;
+    if (u_fieldMode > 0.5) fireAmt *= mix(0.85, 1.35, edge);
     vec3 fire = mix(vec3(0.35, 1.15, 1.25), vec3(1.2, 0.45, 0.95), 0.5 + 0.5 * sin(ndotl * 6.0));
     color += fire * fireAmt * (0.2 + spec * 0.9);
   }
