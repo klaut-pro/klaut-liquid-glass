@@ -84,11 +84,11 @@ float glyphChromeSansP(vec2 p) {
 /** Molten script p (ENj9B ".pro" — cursive loop + descender). */
 float glyphScriptProP(vec2 p) {
   vec2 q = p * 1.0;
-  float desc = sdCapsule(q, vec2(-0.02, -0.36), vec2(-0.10, -0.08), 0.038);
-  float left = sdCapsule(q, vec2(-0.10, -0.08), vec2(-0.12, 0.12), 0.042);
-  float top = sdCapsule(q, vec2(-0.12, 0.12), vec2(0.04, 0.22), 0.04);
-  float right = sdCapsule(q, vec2(0.04, 0.22), vec2(0.14, 0.06), 0.038);
-  float close = sdCapsule(q, vec2(0.14, 0.06), vec2(0.02, -0.12), 0.036);
+  float desc = sdCapsule(q, vec2(-0.02, -0.36), vec2(-0.10, -0.08), 0.042);
+  float left = sdCapsule(q, vec2(-0.10, -0.08), vec2(-0.12, 0.12), 0.046);
+  float top = sdCapsule(q, vec2(-0.12, 0.12), vec2(0.04, 0.22), 0.044);
+  float right = sdCapsule(q, vec2(0.04, 0.22), vec2(0.14, 0.06), 0.042);
+  float close = sdCapsule(q, vec2(0.14, 0.06), vec2(0.02, -0.12), 0.04);
   float g = softMin(desc, left, 0.03);
   g = softMin(g, top, 0.028);
   g = softMin(g, right, 0.026);
@@ -286,6 +286,8 @@ void main() {
     } else {
       vec3 chrome = vec3(0.92, 0.96, 1.08);
       color = mix(color, color * chrome, 0.18 + 0.22 * (1.0 - interior));
+      vec3 bodySpec = 0.5 + 0.5 * cos(vec3(p.y * 9.0, p.y * 9.0 + 2.1, p.y * 9.0 + 4.2));
+      color += bodySpec * (1.0 - interior) * 0.14 * u_dispersion;
     }
   }
 

@@ -43,6 +43,16 @@ const chromeEmitters: DripEmitterSpec[] = [
     startInStretch: true,
     stretchT: 0.92,
   },
+  {
+    x: -0.11,
+    intensity: 0.45,
+    viscosity: 0.65,
+    phaseOffset: 0.7,
+    stretchScale: 0.0,
+    locked: true,
+    startInStretch: true,
+    stretchT: 0.98,
+  },
 ];
 
 const scriptEmitters: DripEmitterSpec[] = [
@@ -65,6 +75,16 @@ const scriptEmitters: DripEmitterSpec[] = [
     locked: true,
     startInStretch: true,
     stretchT: 0.95,
+  },
+  {
+    x: -0.02,
+    intensity: 0.45,
+    viscosity: 0.65,
+    phaseOffset: 0.72,
+    stretchScale: 0.0,
+    locked: true,
+    startInStretch: true,
+    stretchT: 0.98,
   },
 ];
 

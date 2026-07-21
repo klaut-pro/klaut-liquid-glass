@@ -338,7 +338,7 @@ export class DripSim {
       if (em.stretchScale < 0.05) {
         // Detached pendant drop (QA freeze — second emitter)
         const hang = clamp01(em.stretchT);
-        const dropY = bottomY - halfH * hang * 0.28;
+        const dropY = bottomY - halfH * (0.2 + hang * 0.26);
         const dropR = maps.dropR * minDim * (0.65 + 0.25 * (1 - hang));
         blobs.push({
           x: em.x + wobble * 0.15,
