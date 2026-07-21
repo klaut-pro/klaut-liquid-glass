@@ -32,6 +32,16 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 29 (richer planar oil + continuous pipe)
+
+- HDRI bake: richer lime↔gold oil wash on silver softbox panels; wider lime/gold columns; cyan edge fringe only
+- chromeSansP: oilFire (lime/gold only); luminance-preserving planar oil wash + filmThickness 0.28; pink0; cream crushed; cyan~0
+- scriptProP: wrap-lobe ribbons → continuous cylindrical pipe shade (soft ramp silCover); thicker softMin joins; silverRatio ~0.56; pinkRatio 0
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: script pinkRatio 0; silverRatio ~0.56; chrome limeRatio ~0.21, goldRatio ~0.15, cyanRatio ~0.01, creamRatio 0
+
+**Status:** ❌ not READY — chromeSansP planar oil richer (lime/gold up, no cyan/pink flood) but still short of 1c6PD/Z53Ve wet-mirror softbox fidelity (residual barcode panels vs concept oil-slick faces); scriptProP continuous cylinder + silverRatio ~0.56 without pink but tubular elegance / pipe roundness still lag ENj9B. Blender still unavailable. Loop stays armed.
+
 ## Iteration 28 (iridescent planar knife + wrap-lobe tubular)
 
 - HDRI bake: silver softbox + sparse oil-slick lime/gold streaks; cyan milk crushed; no magenta
