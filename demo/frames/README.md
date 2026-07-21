@@ -32,6 +32,17 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 35 (richer midtone oil + tubular silver↑)
+
+- **Root cause:** iter-34 midtone oil started (lime~0.14) but still weak vs 1c6PD/Z53Ve; script silverRatio ~0.545 short of ENj9B tubular elegance
+- HDRI bake: denser mid-plate gold-led oil puddles + more concept harvest stamps; softbox peaks still oil-suppressed
+- chromeSansP: stronger oilFire/film (0.62) + wider midtone gate + boundary fringe; cream→neutral silver (anti cyan push); pink0; no barcode; faces filled
+- scriptProP: crest bodyT/0.102 pow 0.44 + silCover↑ + junction fill; silverRatio ~0.561; pinkRatio 0; voidInside held
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome pink0 cyan~0 cream~0.055; limeRatio ~0.11 goldRatio ~0.13 (gold-led mid oil, softbox silver held); script pink0 silverRatio ~0.561
+
+**Status:** ❌ not READY — chromeSansP oil puddles richer than iter-34 but still short of 1c6PD/Z53Ve planar wet-mirror fidelity (cream residual / accents still weak vs concept); scriptProP silverRatio 0.545→~0.561 without pink/icy flood but tubular elegance still lags ENj9B. Blender still unavailable. Loop stays armed.
+
 ## Iteration 34 (midtone gold/lime oil + tubular silver↑)
 
 - **Root cause:** iter-33 charcoal/softbox OK but oil accents too weak; naive oil enrichment → mint softbox flood (limeRatio ~0.70)

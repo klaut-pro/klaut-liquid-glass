@@ -66,8 +66,8 @@ export const chromeSansP: GlyphProfile = {
     drip: 0.98,
     viscosity: 0.94,
     dispersion: 1,
-    // Face film — midtone oil accents (anti mint peak flood)
-    filmThickness: 0.52,
+    // Face film — richer midtone oil accents (anti mint peak flood)
+    filmThickness: 0.62,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.18,
@@ -107,7 +107,7 @@ export const scriptProP: GlyphProfile = {
     specular: 1,
     ior: 1.72,
     lightPosition: { x: -0.48, y: 0.92, z: 1.22 },
-    lightIntensity: 5.85,
+    lightIntensity: 6.2,
   },
   dripControl: {
     mode: "controlled",
