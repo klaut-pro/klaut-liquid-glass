@@ -1,0 +1,82 @@
+[
+  {
+    "name": "chromeDrip",
+    "verdict": "good: concept-like viscosity",
+    "bytes": 118594
+  },
+  {
+    "name": "watery",
+    "verdict": "ok: fast thin drips",
+    "bytes": 118682
+  },
+  {
+    "name": "chromeDrip",
+    "verdict": "good: concept-like viscosity",
+    "bytes": 115878
+  },
+  {
+    "name": "syrup",
+    "verdict": "good: concept-like viscosity",
+    "bytes": 108226
+  },
+  {
+    "name": "watery",
+    "verdict": "ok: fast thin drips",
+    "bytes": 128186
+  },
+  {
+    "name": "muddy_overdisp",
+    "verdict": "bad: washout — lower film+disp",
+    "bytes": 115718
+  },
+  {
+    "name": "syrup",
+    "verdict": "good: concept-like viscosity",
+    "bytes": 70678
+  },
+  {
+    "name": "clean_pane",
+    "verdict": "good: UI pane, no drip",
+    "bytes": 128338
+  },
+  {
+    "name": "muddy_overdisp",
+    "verdict": "bad: washout — lower film+disp",
+    "bytes": 114254
+  },
+  {
+    "name": "orb_film",
+    "verdict": "ok",
+    "bytes": 70722
+  },
+  {
+    "name": "clean_pane",
+    "verdict": "good: UI pane, no drip",
+    "bytes": 116642
+  },
+  {
+    "name": "light_right",
+    "verdict": "good: fringe follows light",
+    "bytes": 114726
+  },
+  {
+    "name": "orb_film",
+    "verdict": "ok",
+    "bytes": 118922
+  },
+  {
+    "name": "light_left",
+    "verdict": "good: fringe follows light",
+    "bytes": 116478
+  },
+  {
+    "name": "light_right",
+    "verdict": "good: fringe follows light",
+    "bytes": 116566
+  },
+  {
+    "name": "light_left",
+    "verdict": "good: fringe follows light",
+    "bytes": 118646
+  }
+]

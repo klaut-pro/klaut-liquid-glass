@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>liquid-glass glyph QA</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #0a0a0c;
+        color: #eef3ff;
+      }
+      header {
+        padding: 20px 24px 8px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+      header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+      header p { margin: 6px 0 0; opacity: 0.6; font-size: 13px; }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        padding: 20px 24px 80px;
+        max-width: 1280px;
+        margin: 0 auto;
+      }
+      @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+      .card {
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 14px;
+        overflow: hidden;
+        background: #111114;
+      }
+      .card h2 {
+        margin: 0;
+        padding: 12px 14px;
+        font-size: 14px;
+        font-weight: 600;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: baseline;
+      }
+      .card h2 span { opacity: 0.5; font-weight: 400; font-size: 11px; }
+      .pair {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        min-height: 320px;
+      }
+      .pair > div {
+        position: relative;
+        min-height: 320px;
+        background:
+          radial-gradient(ellipse at 30% 20%, #1a3048 0%, transparent 55%),
+          radial-gradient(ellipse at 70% 80%, #3a1838 0%, transparent 50%),
+          #08080a;
+      }
+      .pair img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+        background: #050506;
+      }
+      .glyph-stage {
+        width: 100%;
+        height: 100%;
+        min-height: 320px;
+        position: relative;
+      }
+      .glyph-label {
+        position: absolute;
+        left: 10px;
+        top: 8px;
+        z-index: 2;
+        font-size: 10px;
+        opacity: 0.45;
+        pointer-events: none;
+      }
+      .sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+      }
+      .toolbar {
+        position: fixed;
+        right: 12px;
+        bottom: 12px;
+        z-index: 30;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        width: 220px;
+        padding: 10px;
+        border-radius: 10px;
+        background: rgba(8,10,16,0.92);
+        border: 1px solid rgba(255,255,255,0.12);
+        font: 11px ui-monospace, Menlo, monospace;
+      }
+      .toolbar button {
+        font: inherit;
+        color: inherit;
+        background: rgba(120,200,255,0.18);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 6px;
+        padding: 6px 8px;
+        cursor: pointer;
+      }
+      #status { opacity: 0.7; white-space: pre-wrap; min-height: 2.5em; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Glyph QA — concept art vs live liquid glass</h1>
+      <p>
+        Targets: <strong>chromeSansP</strong> (1c6PD/Z53Ve block chrome) ·
+        <strong>scriptProP</strong> (ENj9B molten script). Controlled drip, isolate=true.
+      </p>
+    </header>
+
+    <div class="grid">
+      <article class="card" data-glyph="chromeSansP">
+        <h2>chromeSansP <span>ref 1c6PD · geometric chrome p</span></h2>
+        <div class="pair">
+          <div>
+            <img src="./qa-refs/1c6PD.jpg" alt="Concept art 1c6PD klaut.pro chrome letterforms" />
+          </div>
+          <div>
+            <span class="glyph-label">live</span>
+            <div class="glyph-stage" id="stage-chromeSansP">
+              <span class="sr">p</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card" data-glyph="scriptProP">
+        <h2>scriptProP <span>ref ENj9B · molten script p</span></h2>
+        <div class="pair">
+          <div>
+            <img src="./qa-refs/ENj9B.jpg" alt="Concept art ENj9B script .pro drip" />
+          </div>
+          <div>
+            <span class="glyph-label">live</span>
+            <div class="glyph-stage" id="stage-scriptProP">
+              <span class="sr">p</span>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div class="toolbar">
+      <button type="button" id="snap">capture both glyphs</button>
+      <button type="button" id="toggle">toggle refs</button>
+      <div id="status">waiting…</div>
+    </div>
+
+    <script type="module">
+      import { LiquidGlass } from "../dist/index.js";
+
+      const engine = LiquidGlass.create({ maxSurfaces: 3 });
+      const surfaces = {};
+
+      for (const id of ["chromeSansP", "scriptProP"]) {
+        const profile = LiquidGlass.getGlyphProfile(id);
+        const el = document.getElementById(`stage-${id}`);
+        surfaces[id] = engine.glassify(el, {
+          ...profile.material,
+          fieldMode: "glyph",
+          glyphId: profile.id,
+          dripControl: profile.dripControl,
+          captureIntervalMs: 0,
+        });
+      }
+      engine.start();
+
+      const status = document.getElementById("status");
+      status.textContent = "running · controlled drips isolated";
+
+      document.getElementById("toggle").onclick = () => {
+        document.querySelectorAll(".pair > div:first-child").forEach((el) => {
+          el.style.display = el.style.display === "none" ? "" : "none";
+        });
+      };
+
+      window.__lgGlyphCapture = async () => {
+        const out = {};
+        for (const id of Object.keys(surfaces)) {
+          out[id] = surfaces[id].captureFrame();
+        }
+        window.__lgGlyphFrames = out;
+        status.textContent = Object.keys(out)
+          .map((k) => `${k}: ${out[k] ? Math.round(out[k].length / 1024) + "kb" : "fail"}`)
+          .join("\n");
+        return out;
+      };
+
+      document.getElementById("snap").onclick = async () => {
+        const frames = await window.__lgGlyphCapture();
+        for (const [id, url] of Object.entries(frames)) {
+          if (!url) continue;
+          const a = document.createElement("a");
+          a.download = `glyph-qa-${id}.png`;
+          a.href = url;
+          a.click();
+        }
+      };
+
+      // Settle then auto-capture into window for Playwright
+      setTimeout(() => window.__lgGlyphCapture(), 2200);
+    </script>
+  </body>
+</html>

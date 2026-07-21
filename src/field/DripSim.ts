@@ -6,10 +6,10 @@
  * - Stretch phase forms a neck; viscosity lengthens the neck and slows pinch
  * - Detach when neck thins below threshold → free drops under gravity + drag
  * - Nearby free drops remerge (surface-tension proxy); softMin in the shader
- *   blends them with the pane field
+ *   blends them with the pane/glyph field
  *
- * Viscosity (0–1): low = watery/fast/short necks; high = thick/slow/long necks.
- * Inspired by pendant-drop / Plateau–Rayleigh pinch literature + Codrops smoothMin metaballs.
+ * Controlled mode: explicit per-emitter anchors (per-glyph), deterministic necks,
+ * no lateral chaos — clear pendant morphology for visual QA.
  */
 
 export const MAX_DRIP_BLOBS = 24;
@@ -22,6 +22,56 @@ export type DripBlob = {
   w: number;
 };
 
+/** Per-emitter artist/agent knobs (glyph bottoms, icon lips, etc.). */
+export type DripEmitterSpec = {
+  /**
+   * Emitter x. When `normalized` is true (default), range is -1…1 across halfW.
+   * When false, value is already in field space.
+   */
+  x: number;
+  normalized?: boolean;
+  /** 0–1 intensity multiplier (scales drip for this emitter only). */
+  intensity?: number;
+  /** Optional viscosity override for this emitter. */
+  viscosity?: number;
+  /** 0–1 phase offset into the fill→stretch cycle. */
+  phaseOffset?: number;
+  /** Stretch length multiplier (long syrup stems). */
+  stretchScale?: number;
+  /** Disable lateral wobble for this emitter. */
+  locked?: boolean;
+  /** Soft on/off without removing the slot. */
+  enabled?: boolean;
+  /**
+   * Start mid-stretch with a clear pendant neck (for visual QA frames).
+   * stretchT in 0–1 when startInStretch is true.
+   */
+  startInStretch?: boolean;
+  stretchT?: number;
+};
+
+export type DripControl = {
+  /** auto = evenly spaced; controlled = only explicit emitters. */
+  mode: "auto" | "controlled";
+  emitters?: DripEmitterSpec[];
+  /**
+   * When true, skip liquify bottom-bulge blobs so drip necks read cleanly
+   * (isolate drip sim from muddy full-scene melt).
+   */
+  isolate?: boolean;
+  /** Global: no sin wobble on any emitter. */
+  deterministic?: boolean;
+  /** Auto-mode emitter count (1–8). Ignored in controlled mode. */
+  emitterCount?: number;
+  /**
+   * Field-space Y where pendants attach (default: pane bottom ≈ -halfH*0.92).
+   * Glyph QA sets this to the letterform stem lip.
+   */
+  attachY?: number;
+  /** Hold emitters in current phase (no fill/stretch advance) — QA freeze-frame. */
+  freeze?: boolean;
+};
+
 export type DripSimParams = {
   drip: number;
   liquify: number;
@@ -29,6 +79,7 @@ export type DripSimParams = {
   halfW: number;
   halfH: number;
   reducedMotion: boolean;
+  control?: DripControl;
 };
 
 type Phase = "fill" | "stretch" | "cooldown";
@@ -41,6 +92,13 @@ type Emitter = {
   stretchT: number;
   cooldown: number;
   neckR: number;
+  intensity: number;
+  viscosity: number | null;
+  stretchScale: number;
+  locked: boolean;
+  enabled: boolean;
+  /** Raw spec for re-layout. */
+  spec: DripEmitterSpec | null;
 };
 
 type FreeDrop = {
@@ -65,25 +123,15 @@ function viscosityMaps(viscosity: number, drip: number) {
   const v = clamp01(viscosity);
   const d = Math.max(drip, 0.02);
   return {
-    /** Seconds to fill critical mass (scaled by drip intensity). */
     fillPeriod: mix(0.55, 2.6, v) / d,
-    /** Critical mass before stretch begins. */
     criticalMass: mix(0.35, 0.85, v),
-    /** How far the pendant stretches before pinch (in halfH units). Concept: long syrup stems. */
     stretchLen: mix(0.28, 0.95, v),
-    /** Stretch duration (s) — viscous = slow melt. */
     stretchDuration: mix(0.35, 1.85, v),
-    /** Neck thin rate during stretch (higher = faster pinch). */
     neckThinRate: mix(2.8, 0.42, v),
-    /** Free-drop radius scale — bulbous teardrop tips like concept art. */
     dropR: mix(0.055, 0.14, v),
-    /** Linear drag on free drops. */
     drag: mix(0.1, 0.78, v),
-    /** Gravity (field units / s²), slightly damped when viscous. */
     gravity: mix(1.25, 0.42, v),
-    /** softMin merge width hint (shader also uses viscosity). */
     mergeK: mix(0.04, 0.24, v),
-    /** Cooldown after detach before refill. */
     cooldown: mix(0.15, 0.7, v),
   };
 }
@@ -92,10 +140,69 @@ export class DripSim {
   private emitters: Emitter[] = [];
   private frees: FreeDrop[] = [];
   private emitterCount: number;
+  private control: DripControl = { mode: "auto", deterministic: false, isolate: false };
 
   constructor(emitterCount = 5) {
     this.emitterCount = Math.max(1, Math.min(8, emitterCount));
     this.resetEmitters(0.48);
+  }
+
+  /** Replace control (per-glyph emitters, isolate, deterministic). */
+  setControl(control: DripControl | undefined): void {
+    this.control = {
+      mode: control?.mode ?? "auto",
+      emitters: control?.emitters,
+      isolate: control?.isolate ?? false,
+      deterministic: control?.deterministic ?? false,
+      emitterCount: control?.emitterCount,
+      attachY: control?.attachY,
+      freeze: control?.freeze ?? false,
+    };
+    if (typeof this.control.emitterCount === "number") {
+      this.emitterCount = Math.max(1, Math.min(8, this.control.emitterCount));
+    }
+    this.rebuildFromControl(0.48);
+  }
+
+  getControl(): DripControl {
+    return { ...this.control, emitters: this.control.emitters?.map((e) => ({ ...e })) };
+  }
+
+  private resolveX(spec: DripEmitterSpec, halfW: number): number {
+    const norm = spec.normalized !== false;
+    return norm ? spec.x * halfW : spec.x;
+  }
+
+  private rebuildFromControl(halfW: number): void {
+    const specs =
+      this.control.mode === "controlled" && this.control.emitters?.length
+        ? this.control.emitters
+        : null;
+
+    if (specs) {
+      this.emitters = specs.map((spec, i) => {
+        const phaseOffset = clamp01(spec.phaseOffset ?? i * 0.17);
+        const startStretch = spec.startInStretch === true;
+        return {
+          x: this.resolveX(spec, halfW),
+          seed: phaseOffset,
+          mass: startStretch ? 1 : phaseOffset * 0.35,
+          phase: (startStretch ? "stretch" : "fill") as Phase,
+          stretchT: startStretch ? clamp01(spec.stretchT ?? 0.55) : 0,
+          cooldown: startStretch ? 0 : phaseOffset * 0.2,
+          neckR: startStretch ? Math.max(0.2, 1 - clamp01(spec.stretchT ?? 0.55) * 0.7) : 1,
+          intensity: clamp01(spec.intensity ?? 1),
+          viscosity: spec.viscosity ?? null,
+          stretchScale: Math.max(0.2, spec.stretchScale ?? 1),
+          locked: spec.locked ?? this.control.deterministic ?? false,
+          enabled: spec.enabled !== false,
+          spec,
+        };
+      });
+      return;
+    }
+
+    this.resetEmitters(halfW);
   }
 
   private resetEmitters(halfW: number): void {
@@ -104,19 +211,25 @@ export class DripSim {
       const nx = (i - (this.emitterCount - 1) / 2) / Math.max(this.emitterCount / 2, 1);
       this.emitters.push({
         x: nx * halfW * 0.72,
-        seed: (i * 17 + 3) % 10 / 10,
+        seed: ((i * 17 + 3) % 10) / 10,
         mass: (i * 0.13) % 0.4,
         phase: "fill",
         stretchT: 0,
         cooldown: i * 0.15,
         neckR: 1,
+        intensity: 1,
+        viscosity: null,
+        stretchScale: 1,
+        locked: this.control.deterministic ?? false,
+        enabled: true,
+        spec: null,
       });
     }
   }
 
   reset(): void {
     this.frees = [];
-    this.resetEmitters(0.48);
+    this.rebuildFromControl(0.48);
   }
 
   /**
@@ -126,45 +239,65 @@ export class DripSim {
   step(dt: number, p: DripSimParams): DripBlob[] {
     const blobs: DripBlob[] = [];
     const { drip, liquify, viscosity, halfW, halfH, reducedMotion } = p;
+    if (p.control) this.setControl(p.control);
+
     if (reducedMotion || (drip < 0.001 && liquify < 0.001)) {
       return blobs;
     }
 
-    // Keep emitter x layout in sync with aspect
-    for (let i = 0; i < this.emitters.length; i++) {
-      const nx = (i - (this.emitterCount - 1) / 2) / Math.max(this.emitterCount / 2, 1);
-      this.emitters[i].x = nx * halfW * 0.72;
+    // Keep emitter x layout in sync with aspect / specs
+    if (this.control.mode === "controlled" && this.control.emitters?.length) {
+      for (let i = 0; i < this.emitters.length; i++) {
+        const spec = this.emitters[i].spec ?? this.control.emitters[i];
+        if (spec) this.emitters[i].x = this.resolveX(spec, halfW);
+      }
+    } else {
+      for (let i = 0; i < this.emitters.length; i++) {
+        const nx = (i - (this.emitterCount - 1) / 2) / Math.max(this.emitterCount / 2, 1);
+        this.emitters[i].x = nx * halfW * 0.72;
+      }
     }
 
-    const maps = viscosityMaps(viscosity, drip);
+    const isolate = this.control.isolate === true;
+    const globalDeterministic = this.control.deterministic === true;
     const minDim = Math.min(halfW, halfH);
-    const bottomY = -halfH * 0.92;
+    const bottomY =
+      typeof this.control.attachY === "number" ? this.control.attachY : -halfH * 0.92;
     const sag = liquify * halfH * 0.18;
 
-    // --- Liquify body: soft accumulation bulges along bottom ---
-    if (liquify > 0.001) {
+    // --- Liquify body: soft accumulation bulges (skipped when isolating drips) ---
+    if (liquify > 0.001 && !isolate) {
       for (const em of this.emitters) {
+        if (!em.enabled) continue;
         const bulge = 0.55 + 0.45 * em.mass;
         blobs.push({
-          x: em.x + Math.sin(em.seed * 12.0) * 0.01,
+          x: em.x + (em.locked || globalDeterministic ? 0 : Math.sin(em.seed * 12.0) * 0.01),
           y: bottomY + sag * 0.35,
           r: mix(0.07, 0.16, liquify) * minDim * bulge,
-          w: liquify * (0.55 + 0.45 * em.mass),
+          w: liquify * (0.55 + 0.45 * em.mass) * em.intensity,
         });
       }
     }
 
     if (drip < 0.001) {
+      const maps = viscosityMaps(viscosity, Math.max(drip, 0.02));
       this.mergeFrees(dt, maps.mergeK, halfH);
-      this.integrateFrees(dt, maps, halfH, halfW, blobs, minDim);
+      this.integrateFrees(dt, maps, halfH, halfW, blobs, minDim, bottomY);
       return this.trim(blobs);
     }
 
     // --- Emitters: fill → stretch → pinch → detach ---
     for (const em of this.emitters) {
-      const wobble = Math.sin(em.seed * 40 + em.mass * 8) * 0.012 * halfW;
+      if (!em.enabled || em.intensity < 0.001) continue;
 
-      if (em.phase === "cooldown") {
+      const emVisc = em.viscosity != null ? clamp01(em.viscosity) : viscosity;
+      const emDrip = drip * em.intensity;
+      const maps = viscosityMaps(emVisc, emDrip);
+      const locked = em.locked || globalDeterministic;
+      const wobble = locked ? 0 : Math.sin(em.seed * 40 + em.mass * 8) * 0.012 * halfW;
+      const freeze = this.control.freeze === true;
+
+      if (em.phase === "cooldown" && !freeze) {
         em.cooldown -= dt;
         if (em.cooldown <= 0) {
           em.phase = "fill";
@@ -176,26 +309,24 @@ export class DripSim {
       }
 
       if (em.phase === "fill") {
-        em.mass += dt / maps.fillPeriod;
-        // Growing pendant attached to bottom
+        if (!freeze) em.mass += dt / maps.fillPeriod;
         const grow = clamp01(em.mass / maps.criticalMass);
-        const pendR = maps.dropR * minDim * (0.45 + 0.55 * grow) * (0.5 + 0.5 * drip);
-        const pendY = bottomY - grow * halfH * 0.12 * (0.4 + drip);
+        const pendR = maps.dropR * minDim * (0.45 + 0.55 * grow) * (0.5 + 0.5 * emDrip);
+        const pendY = bottomY - grow * halfH * 0.12 * (0.4 + emDrip);
         blobs.push({
           x: em.x + wobble,
           y: pendY,
           r: pendR,
-          w: drip * (0.35 + 0.65 * grow),
+          w: emDrip * (0.35 + 0.65 * grow),
         });
-        // Short neck bridge
         blobs.push({
-          x: em.x + wobble * 0.5,
-          y: mix(bottomY, pendY, 0.45),
-          r: pendR * mix(0.55, 0.85, viscosity),
-          w: drip * grow * 0.7,
+          x: em.x + wobble * 0.35,
+          y: mix(bottomY, pendY, 0.42),
+          r: pendR * mix(0.42, 0.72, emVisc),
+          w: emDrip * grow * 0.75,
         });
 
-        if (em.mass >= maps.criticalMass) {
+        if (!freeze && em.mass >= maps.criticalMass) {
           em.phase = "stretch";
           em.stretchT = 0;
           em.neckR = 1;
@@ -203,59 +334,61 @@ export class DripSim {
         continue;
       }
 
-      // stretch
-      em.stretchT += dt / maps.stretchDuration;
+      // stretch — long viscous filament then pinch
+      if (!freeze) em.stretchT += dt / maps.stretchDuration;
       const t = clamp01(em.stretchT);
-      // Neck thins (viscous fluids keep neck longer — slower thin rate)
       em.neckR = Math.max(0, 1 - t * maps.neckThinRate * (0.35 + 0.65 * t));
-      const stretch = t * maps.stretchLen * halfH;
+      const stretch = t * maps.stretchLen * halfH * em.stretchScale;
       const tipY = bottomY - stretch;
-      const tipR = maps.dropR * minDim * (0.75 + 0.35 * drip) * (1.05 - 0.2 * t);
-      const neckY = mix(bottomY, tipY, 0.42);
-      const neckR = tipR * mix(0.25, 0.7, viscosity) * Math.max(em.neckR, 0.05);
+      const tipR = maps.dropR * minDim * (0.75 + 0.35 * emDrip) * (1.05 - 0.2 * t);
+      const neckY = mix(bottomY, tipY, 0.4);
+      const neckR = tipR * mix(0.18, 0.55, emVisc) * Math.max(em.neckR, 0.04);
 
-      // Body residual at attachment
-      blobs.push({
-        x: em.x + wobble * 0.3,
-        y: bottomY - stretch * 0.08,
-        r: tipR * 0.85,
-        w: drip * 0.85,
-      });
-      // Viscous filament / neck
       blobs.push({
         x: em.x + wobble * 0.2,
+        y: bottomY - stretch * 0.06,
+        r: tipR * 0.8,
+        w: emDrip * 0.85,
+      });
+      blobs.push({
+        x: em.x + wobble * 0.1,
         y: neckY,
         r: neckR,
-        w: drip * Math.max(0.15, em.neckR),
+        w: emDrip * Math.max(0.2, em.neckR),
       });
-      // Pendant tip
+      blobs.push({
+        x: em.x,
+        y: mix(bottomY, tipY, 0.68),
+        r: tipR * mix(0.22, 0.48, emVisc) * Math.max(em.neckR, 0.06),
+        w: emDrip * 0.55 * Math.max(0.15, em.neckR),
+      });
       blobs.push({
         x: em.x + wobble,
         y: tipY,
         r: tipR,
-        w: drip,
+        w: emDrip,
       });
 
-      // Detach when neck collapses (Rayleigh–Plateau proxy)
-      if (em.neckR < 0.12 || t >= 1) {
+      if (!freeze && (em.neckR < 0.12 || t >= 1)) {
         this.frees.push({
           x: em.x + wobble,
           y: tipY,
-          vx: (em.seed - 0.5) * 0.08 * halfW,
-          vy: -maps.gravity * 0.15, // initial downward kick
+          vx: locked ? 0 : (em.seed - 0.5) * 0.08 * halfW,
+          vy: -maps.gravity * 0.15,
           r: tipR,
           mass: tipR,
         });
         em.phase = "cooldown";
-        em.cooldown = maps.cooldown * (0.8 + em.seed * 0.4);
+        em.cooldown = maps.cooldown * (0.85 + em.seed * 0.3);
         em.mass = 0;
         em.stretchT = 0;
         em.neckR = 1;
       }
     }
 
-    this.mergeFrees(dt, maps.mergeK, halfH);
-    this.integrateFrees(dt, maps, halfH, halfW, blobs, minDim);
+    const mapsMerge = viscosityMaps(viscosity, drip);
+    this.mergeFrees(dt, mapsMerge.mergeK, halfH);
+    this.integrateFrees(dt, mapsMerge, halfH, halfW, blobs, minDim, bottomY);
     return this.trim(blobs);
   }
 
@@ -266,8 +399,9 @@ export class DripSim {
     halfW: number,
     blobs: DripBlob[],
     minDim: number,
+    attachY: number,
   ): void {
-    const bottomY = -halfH * 0.92;
+    const bottomY = attachY;
     const next: FreeDrop[] = [];
     for (const drop of this.frees) {
       drop.vy -= maps.gravity * dt;
@@ -276,27 +410,25 @@ export class DripSim {
       drop.x += drop.vx * dt;
       drop.y += drop.vy * dt;
 
-      // Soft remerge into pane when rising back / contacting bottom lip
       const nearLip =
         drop.y > bottomY - halfH * 0.05 &&
         drop.y < bottomY + halfH * 0.12 &&
         Math.abs(drop.vy) < 0.25;
       if (nearLip && drop.vy >= -0.05) {
-        // Absorb into nearest emitter mass
         let best = this.emitters[0];
         let bestD = Infinity;
         for (const em of this.emitters) {
+          if (!em.enabled) continue;
           const d = Math.abs(em.x - drop.x);
           if (d < bestD) {
             bestD = d;
             best = em;
           }
         }
-        if (best.phase === "fill") best.mass = Math.min(1, best.mass + drop.mass * 0.5);
+        if (best?.phase === "fill") best.mass = Math.min(1, best.mass + drop.mass * 0.5);
         continue;
       }
 
-      // Cull far below / outside
       if (drop.y < -halfH * 2.4 || Math.abs(drop.x) > halfW * 1.6) continue;
 
       blobs.push({
@@ -310,7 +442,6 @@ export class DripSim {
     this.frees = next;
   }
 
-  /** Surface-tension proxy: coalesce overlapping free drops. */
   private mergeFrees(dt: number, mergeK: number, halfH: number): void {
     void dt;
     void halfH;
@@ -346,7 +477,6 @@ export class DripSim {
 
   private trim(blobs: DripBlob[]): DripBlob[] {
     if (blobs.length <= MAX_DRIP_BLOBS) return blobs;
-    // Prefer free/pendant (higher |y| downward) + heaviest
     return blobs
       .slice()
       .sort((a, b) => b.w * b.r - a.w * a.r)

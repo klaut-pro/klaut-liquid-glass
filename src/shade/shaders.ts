@@ -38,6 +38,8 @@ uniform vec3 u_lightPos;
 uniform float u_lightIntensity;
 uniform int u_blobCount;
 uniform vec4 u_blobs[24]; // xy center, z radius, w weight
+uniform float u_fieldMode; // 0 = pane, 1 = glyph
+uniform float u_glyphId;   // 0 = chromeSansP, 1 = scriptProP
 
 // --- SDF helpers (Inigo Quilez style) ---
 float sdRoundBox(vec2 p, vec2 b, float r) {
@@ -61,13 +63,52 @@ float metaball(vec2 p, vec2 c, float r) {
   return r * r / max(d * d, 1e-4);
 }
 
+float sdCapsule(vec2 p, vec2 a, vec2 b, float r) {
+  vec2 pa = p - a;
+  vec2 ba = b - a;
+  float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0);
+  return length(pa - ba * h) - r;
+}
+
+/** Block geometric lowercase p (1c6PD / Z53Ve). */
+float glyphChromeSansP(vec2 p) {
+  vec2 q = p * 1.08;
+  float stem = sdRoundBox(q - vec2(-0.12, -0.02), vec2(0.09, 0.28), 0.08);
+  float bowl = length(q - vec2(0.09, 0.05)) - 0.155;
+  float hole = length(q - vec2(0.09, 0.05)) - 0.065;
+  float body = softMin(stem, bowl, 0.04);
+  // Counter (open bowl) — soft subtract
+  body = max(body, -hole);
+  return body;
+}
+
+/** Tubular script p stroke (ENj9B ".pro"). */
+float glyphScriptProP(vec2 p) {
+  vec2 q = p * 1.05;
+  float stem = sdCapsule(q, vec2(-0.15, -0.24), vec2(-0.14, 0.3), 0.1);
+  float loop = sdCapsule(q, vec2(-0.13, 0.16), vec2(0.12, 0.08), 0.09);
+  float tail = sdCapsule(q, vec2(0.12, 0.08), vec2(0.04, -0.2), 0.075);
+  float tip = sdCapsule(q, vec2(0.04, -0.2), vec2(-0.02, -0.32), 0.055);
+  float g = softMin(stem, loop, 0.05);
+  g = softMin(g, tail, 0.045);
+  g = softMin(g, tip, 0.035);
+  return g;
+}
+
+float glyphField(vec2 p) {
+  if (u_glyphId < 0.5) return glyphChromeSansP(p);
+  return glyphScriptProP(p);
+}
+
 float fieldAt(vec2 p, vec2 halfSize, float radius) {
-  float pane = sdRoundBox(p, halfSize, radius);
+  float pane = u_fieldMode > 0.5
+    ? glyphField(p)
+    : sdRoundBox(p, halfSize, radius);
   float liquify = u_liquify;
   float viscosity = u_viscosity;
 
-  // Soft bottom sag (stable — no hash/time noise)
-  if (liquify > 0.001) {
+  // Soft bottom sag (pane only — glyph QA isolates drip on letterform)
+  if (liquify > 0.001 && u_fieldMode < 0.5) {
     float bottom = -halfSize.y;
     float nearBottom = smoothstep(halfSize.y * 0.35, -halfSize.y * 0.95, p.y);
     float sag = liquify * 0.06 * nearBottom * (1.0 - abs(p.x) / max(halfSize.x, 1e-3));
@@ -208,6 +249,7 @@ void main() {
   spectralOffsets(N, V, L, u_ior, u_dispersion, refrStr, oR, oG, oB, lightDisp);
 
   float blurAmt = u_blur * (0.4 + 0.6 * u_glass);
+  if (u_fieldMode > 0.5) blurAmt *= 0.35; // sharper glyph chrome
   // Premultiply dispersion offsets by lightDisp so dark-side fringe stays quiet
   float dispMix = clamp(u_dispersion * lightDisp, 0.0, 1.5);
   oR *= mix(0.15, 1.0, clamp(dispMix, 0.0, 1.0));

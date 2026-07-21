@@ -12,6 +12,8 @@ export type SurfaceUniforms = Material & {
   time: number;
   reducedMotion: number;
   blobs?: DripBlob[];
+  fieldMode?: "pane" | "glyph";
+  glyphId?: "chromeSansP" | "scriptProP";
 };
 
 export class Renderer {
@@ -79,6 +81,8 @@ export class Renderer {
       "u_lightPos",
       "u_lightIntensity",
       "u_blobCount",
+      "u_fieldMode",
+      "u_glyphId",
     ];
     const out: Record<string, WebGLUniformLocation | null> = {};
     for (const n of names) out[n] = gl.getUniformLocation(this.program, n);
@@ -147,6 +151,8 @@ export class Renderer {
     const blobs = u.blobs ?? [];
     const count = Math.min(blobs.length, SHADER_MAX_BLOBS);
     gl.uniform1i(this.locs.u_blobCount, count);
+    gl.uniform1f(this.locs.u_fieldMode, u.fieldMode === "glyph" ? 1 : 0);
+    gl.uniform1f(this.locs.u_glyphId, u.glyphId === "scriptProP" ? 1 : 0);
     for (let i = 0; i < SHADER_MAX_BLOBS; i++) {
       const loc = this.blobLocs[i];
       if (!loc) continue;

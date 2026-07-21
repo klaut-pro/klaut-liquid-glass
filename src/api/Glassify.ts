@@ -9,9 +9,12 @@ import { supportsWebGL2 } from "../core/gl.js";
 import {
   captureBackdrop,
   createFallbackBackdrop,
+  createChromeStudioBackdrop,
 } from "../capture/BackdropCapture.js";
 import { applyCssFallback } from "../fallback/CssFallback.js";
-import { DripSim, type DripBlob } from "../field/DripSim.js";
+import { DripSim, type DripBlob, type DripControl } from "../field/DripSim.js";
+import type { FieldMode, GlyphOptions } from "./GlyphOptions.js";
+import type { GlyphId } from "../field/GlyphProfiles.js";
 
 let idCounter = 0;
 
@@ -20,17 +23,18 @@ export type GlassSurface = {
   readonly canvas: HTMLCanvasElement | null;
   readonly mode: "webgl" | "css";
   get(): Material;
-  set(partial: MaterialPartial): void;
+  set(partial: MaterialPartial & GlyphOptions): void;
   refreshBackdrop(): Promise<void>;
   /** Capture current WebGL frame as PNG data URL (analysis / hyperframes). */
   captureFrame(): string | null;
   destroy(): void;
 };
 
-export type GlassifyOptions = MaterialPartial & {
-  /** How often to recapture backdrop (ms). 0 = only on resize/scroll settle. */
-  captureIntervalMs?: number;
-};
+export type GlassifyOptions = MaterialPartial &
+  GlyphOptions & {
+    /** How often to recapture backdrop (ms). 0 = only on resize/scroll settle. */
+    captureIntervalMs?: number;
+  };
 
 export type EngineOptions = {
   root?: HTMLElement | Document;
@@ -56,6 +60,9 @@ type InternalSurface = {
   capturing: boolean;
   lastW: number;
   lastH: number;
+  fieldMode: FieldMode;
+  glyphId: GlyphId | null;
+  dripControl: DripControl | undefined;
 };
 
 /**
@@ -93,6 +100,9 @@ export class LiquidGlassEngine {
     // 0 = no periodic recapture. Periodic texture swaps (~1–4s) caused visible flicker.
     // Recapture only on mount + debounced scroll/resize.
     const captureIntervalMs = material?.captureIntervalMs ?? 0;
+    const fieldMode = material?.fieldMode ?? "pane";
+    const glyphId = material?.glyphId ?? null;
+    const dripControl = material?.dripControl;
 
     const surface: InternalSurface = {
       id,
@@ -106,12 +116,17 @@ export class LiquidGlassEngine {
       captureIntervalMs,
       lastCapture: 0,
       destroyed: false,
-      dripSim: new DripSim(5),
+      dripSim: new DripSim(dripControl?.emitters?.length ?? 5),
       smoothBlobs: [],
       capturing: false,
       lastW: 0,
       lastH: 0,
+      fieldMode,
+      glyphId,
+      dripControl,
     };
+
+    if (dripControl) surface.dripSim.setControl(dripControl);
 
     if (!supportsWebGL2()) {
       surface.mode = "css";
@@ -145,6 +160,12 @@ export class LiquidGlassEngine {
           },
         };
         surface.material = clampMaterial(next);
+        if (partial.fieldMode !== undefined) surface.fieldMode = partial.fieldMode;
+        if (partial.glyphId !== undefined) surface.glyphId = partial.glyphId ?? null;
+        if (partial.dripControl !== undefined) {
+          surface.dripControl = partial.dripControl;
+          surface.dripSim.setControl(partial.dripControl);
+        }
         if (surface.mode === "css") {
           surface.disposeFallback?.();
           surface.disposeFallback = applyCssFallback(el, surface.material);
@@ -235,16 +256,31 @@ export class LiquidGlassEngine {
 
     // Never hide the live canvas — visibility toggles caused hard flicker.
     try {
-      const shot = await captureBackdrop(surface.el, { exclude: surface.el });
-      if (!surface.destroyed && surface.renderer) {
+      if (surface.fieldMode === "glyph") {
+        // Glyph QA: studio chrome plate — no muddy DOM capture wash
+        const shot = createChromeStudioBackdrop(
+          surface.canvas.width || 512,
+          surface.canvas.height || 512,
+        );
         surface.renderer.setBackdrop(shot, true);
+      } else {
+        const shot = await captureBackdrop(surface.el, { exclude: surface.el });
+        if (!surface.destroyed && surface.renderer) {
+          surface.renderer.setBackdrop(shot, true);
+        }
       }
     } catch {
       if (!surface.destroyed && surface.renderer && surface.canvas) {
-        const fb = createFallbackBackdrop(
-          surface.canvas.width || 256,
-          surface.canvas.height || 256,
-        );
+        const fb =
+          surface.fieldMode === "glyph"
+            ? createChromeStudioBackdrop(
+                surface.canvas.width || 256,
+                surface.canvas.height || 256,
+              )
+            : createFallbackBackdrop(
+                surface.canvas.width || 256,
+                surface.canvas.height || 256,
+              );
         surface.renderer.setBackdrop(fb, true);
       }
     } finally {
@@ -353,6 +389,7 @@ export class LiquidGlassEngine {
                 halfW,
                 halfH,
                 reducedMotion,
+                control: s.dripControl,
               });
 
         // Temporal smooth (~12–18Hz effective for blob topology changes)
@@ -364,6 +401,8 @@ export class LiquidGlassEngine {
           time: reducedMotion ? 0 : t,
           reducedMotion: reducedFlag,
           blobs: s.smoothBlobs,
+          fieldMode: s.fieldMode,
+          glyphId: s.glyphId ?? undefined,
         });
       }
       this.raf = requestAnimationFrame(tick);

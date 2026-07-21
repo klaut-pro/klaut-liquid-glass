@@ -3,11 +3,14 @@ import type { Material, MaterialPartial } from "./Material.js";
 import { DEFAULT_MATERIAL, resolveMaterial, clampMaterial } from "./Material.js";
 import { lightFromOrbit, orbitFromLight, presets, type PresetName } from "../presets/index.js";
 import { supportsWebGL2, prefersReducedMotion } from "../core/gl.js";
+import { GLYPH_PROFILES, getGlyphProfile } from "../field/GlyphProfiles.js";
 
 export type { Material, MaterialPartial, GlassSurface, GlassifyOptions, EngineOptions, PresetName };
 
 export const LiquidGlass = {
   presets,
+  glyphs: GLYPH_PROFILES,
+  getGlyphProfile,
   DEFAULT_MATERIAL,
   resolveMaterial,
   clampMaterial,

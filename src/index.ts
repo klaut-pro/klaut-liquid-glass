@@ -13,4 +13,19 @@ export {
 export { DEFAULT_MATERIAL, resolveMaterial, clampMaterial, DEFAULT_LIGHT, type Vec3 } from "./api/Material.js";
 export { presets, lightFromOrbit, orbitFromLight } from "./presets/index.js";
 export { supportsWebGL2, prefersReducedMotion } from "./core/gl.js";
-export { DripSim, MAX_DRIP_BLOBS, type DripBlob } from "./field/DripSim.js";
+export {
+  DripSim,
+  MAX_DRIP_BLOBS,
+  type DripBlob,
+  type DripControl,
+  type DripEmitterSpec,
+} from "./field/DripSim.js";
+export {
+  GLYPH_PROFILES,
+  getGlyphProfile,
+  chromeSansP,
+  scriptProP,
+  type GlyphId,
+  type GlyphProfile,
+} from "./field/GlyphProfiles.js";
+export type { FieldMode, GlyphOptions } from "./api/GlyphOptions.js";
