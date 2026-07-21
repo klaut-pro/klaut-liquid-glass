@@ -32,6 +32,16 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 26 (wide-panel concept HDRI + Fresnel tubular silver)
+
+- HDRI bake: contiguous wide softbox panels from concept metal harvest (no barcode columns / patch mosaic shred); cream+pink crushed
+- chromeSansP: flatter face normals; stable frontal plate UV + H-blur face sample; panel/void contrast; cyan-wash + pink crush; filmThickness 0.14
+- scriptProP: charcoal tube body + grazing-Fresnel silver wrap only (no face-wide tubeCatch flood); unequal silver (survives capture equal-white strip); pinkRatio 0
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: script pinkRatio 0; silverRatio ~0.036 (still low); chrome stem still cyan-mid
+
+**Status:** ❌ not READY — chromeSansP still short of 1c6PD/Z53Ve planar knife wet-mirror (cyan-washed panel faces vs concept softbox fidelity); scriptProP regained spatial metal contrast vs icy flood but tubular silverRatio still far below ENj9B elegance. Blender still unavailable. Loop stays armed.
+
 ## Iteration 25 (concept HDRI harvest + MSDF height bevel)
 
 - **Bold pivot** off softbox-column plateau: harvest metallic chrome pixels from `1c6PD`/`Z53Ve`/`ENj9B` → frontal reflection plate (`bake-concept-env.py`); atlas G channel height bevel (planar plateau / tubular crest); shade path reflection-maps concept plate instead of painted slab columns; continuous cos wrap for script (anti band sparkle); cream+pink crush in env bake + shade
