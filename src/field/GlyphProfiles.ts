@@ -66,8 +66,8 @@ export const chromeSansP: GlyphProfile = {
     drip: 0.98,
     viscosity: 0.94,
     dispersion: 1,
-    // Face film pastel-washes wet-mirror bars — keep on rim only via shader gate
-    filmThickness: 0.01,
+    // Face film = milky cyan wash — zero for planar knife softbox
+    filmThickness: 0,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.18,
@@ -99,8 +99,8 @@ export const scriptProP: GlyphProfile = {
     drip: 1,
     viscosity: 0.98,
     dispersion: 1,
-    // Rim film only — face film washed tubular chrome (shader gates further)
-    filmThickness: 0.08,
+    // Rim film only — keep pink low; tubular silver from wrap, not film wash
+    filmThickness: 0.04,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.22,

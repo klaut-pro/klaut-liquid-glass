@@ -50,9 +50,9 @@ GLYPHS = {
             Path(r"C:\Windows\Fonts\segoepr.ttf"),
             Path(r"C:\Windows\Fonts\segoescb.ttf"),
         ],
-        # Tubular thicken — ENj9B luminous pipe body (not hairline rim outline)
-        "dilate": 4.2,
-        "round": 1.35,
+        # Tubular thicken + junction round — fill stem–bowl V-notch (ENj9B elegance)
+        "dilate": 4.8,
+        "round": 1.85,
     },
 }
 

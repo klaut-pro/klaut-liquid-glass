@@ -391,28 +391,28 @@ export class DripSim {
         w: emDrip * Math.max(0.55, em.neckR),
       });
 
-      // Viscous filament — thick lip → elegant mid-filament → round bulb (ENj9B)
+      // Viscous filament — thick lip → elegant tubular mid → round bulb (ENj9B)
       {
-        const segments = freeze ? 22 : 5;
+        const segments = freeze ? 24 : 5;
         for (let si = 1; si < segments; si++) {
           const ft = si / segments;
           let profile: number;
-          if (ft < 0.32) {
-            profile = mix(0.62, 0.22, ft / 0.32);
-          } else if (ft < 0.72) {
-            // Mid-filament — thick tubular bridge (anti-void at stem–bulb junction)
-            profile = mix(0.22, 0.18, (ft - 0.32) / 0.4);
+          if (ft < 0.28) {
+            profile = mix(0.68, 0.26, ft / 0.28);
+          } else if (ft < 0.7) {
+            // Mid-filament — continuous tubular elegance (no junction notch void)
+            profile = mix(0.26, 0.22, (ft - 0.28) / 0.42);
           } else {
-            profile = mix(0.18, 1.32, Math.pow((ft - 0.72) / 0.28, 1.15));
+            profile = mix(0.22, 1.35, Math.pow((ft - 0.7) / 0.3, 1.1));
           }
           const sy = mix(bottomY, tipY, ft);
           const sr = tipR * profile * Math.max(em.neckR, freezeNeckFloor);
           blobs.push({
             x: em.x + wobble * 0.01,
             y: sy,
-            r: Math.max(sr, tipR * (freeze ? 0.085 : 0.04)),
+            r: Math.max(sr, tipR * (freeze ? 0.1 : 0.04)),
             // Keep mid-filament weight high so trim never drops the neck
-            w: emDrip * mix(1.25, 1.05, ft) * Math.max(0.65, em.neckR),
+            w: emDrip * mix(1.3, 1.08, ft) * Math.max(0.7, em.neckR),
           });
         }
       }

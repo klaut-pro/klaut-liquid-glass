@@ -32,6 +32,15 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 21 (dark-first planar softbox + junction softMin)
+
+- chromeSansP: dark-first charcoal body + 2 wide softbox slabs (no plate flood / cyan milk); face fire/spec gated to rim; filmThickness 0; neutral studio plate (3 white slabs on black)
+- scriptProP: softMin junction fill (exterior dent + stem–bowl V); broader cylindrical wrap bands; thicker freeze filament; atlas dilate 4.8 / round 1.85; pinkRatio 0.001
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome stem dark [32,26,31]; script left-notch rows 0; pinkRatio 0.001; silverRatio ~0.50
+
+**Status:** ❌ not READY — chromeSansP charcoal+slab contrast improved vs milky cyan flood but still short of 1c6PD/Z53Ve planar knife softbox wet-mirror (bowl cream / residual slab ribs); scriptProP pink crushed + left-notch metric cleared but tubular elegance / join still lag ENj9B. Blender still unavailable. Loop stays armed.
+
 ## Iteration 20 (planar softbox slabs + filament X align + blob cap)
 
 - chromeSansP: near-flat normals (faceBend 0.06), aniso ribs gated, few wide softbox panels + charcoal interstitial, lavender desat, filmThickness 0.01; studio plate fewer/wider panels

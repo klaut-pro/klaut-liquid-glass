@@ -192,36 +192,8 @@ export function createChromeStudioBackdrop(
   const w = c.width;
   const h = c.height;
 
-  ctx.fillStyle = "#010103";
-  ctx.fillRect(0, 0, w, h);
-
-  // Near-black ambient — wet chrome interstitial (not lavender fog)
-  const ambL = ctx.createLinearGradient(0, 0, w * 0.35, 0);
-  ambL.addColorStop(0, "rgba(0,0,0,0)");
-  ambL.addColorStop(0.5, "rgba(40,55,70,0.04)");
-  ambL.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = ambL;
-  ctx.fillRect(0, 0, w, h);
-
-  const ambR = ctx.createLinearGradient(w * 0.66, 0, w * 0.9, 0);
-  ambR.addColorStop(0, "rgba(0,0,0,0)");
-  ambR.addColorStop(0.5, "rgba(60,40,55,0.03)");
-  ambR.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = ambR;
-  ctx.fillRect(0, 0, w, h);
-
-  const key = ctx.createRadialGradient(
-    w * 0.12,
-    h * 0.06,
-    0,
-    w * 0.12,
-    h * 0.06,
-    Math.min(w, h) * 0.28,
-  );
-  key.addColorStop(0, "rgba(180,200,220,0.14)");
-  key.addColorStop(0.4, "rgba(70,100,130,0.05)");
-  key.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = key;
+  // Charcoal void — planar wet-mirror interstitial (no cyan/lavender fog)
+  ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, w, h);
 
   /** Absolute hard core only — knife-edge wet-mirror bars (no soft shoulder wash). */
@@ -238,23 +210,18 @@ export function createChromeStudioBackdrop(
     ctx.fillRect(x0, 0, Math.max(2, Math.ceil(halfW * 2)), h);
   };
 
-  // Fewer, wider planar softbox panels (wet-mirror slabs — not dense pastel ribs)
-  panelV(w * 0.18, Math.max(10, w * 0.022), "220,235,250");
-  panelV(w * 0.36, Math.max(14, w * 0.032), "255,252,248");
-  panelV(w * 0.54, Math.max(8, w * 0.018), "160,230,255");
-  panelV(w * 0.7, Math.max(12, w * 0.028), "255,255,255");
-  panelV(w * 0.86, Math.max(7, w * 0.016), "230,210,245");
+  // 3 wide neutral softbox slabs + knife cores (no cyan/magenta tint milk)
+  panelV(w * 0.22, Math.max(18, w * 0.04), "235,235,232");
+  panelV(w * 0.48, Math.max(22, w * 0.048), "255,255,255");
+  panelV(w * 0.74, Math.max(16, w * 0.036), "240,238,235");
 
-  // Sparse knife cores on panel centers only
-  knifeV(w * 0.18, Math.max(2, w * 0.0015), "255,255,255");
-  knifeV(w * 0.36, Math.max(2, w * 0.002), "255,255,255");
-  knifeV(w * 0.54, Math.max(1, w * 0.001), "200,245,255");
-  knifeV(w * 0.7, Math.max(2, w * 0.0018), "255,255,255");
-  knifeV(w * 0.86, Math.max(1, w * 0.001), "255,240,255");
+  knifeV(w * 0.22, Math.max(2, w * 0.002), "255,255,255");
+  knifeV(w * 0.48, Math.max(3, w * 0.0025), "255,255,255");
+  knifeV(w * 0.74, Math.max(2, w * 0.0018), "255,255,255");
 
   // Horizontal strip — hard core only
   {
-    const cy = h * 0.24;
+    const cy = h * 0.22;
     const coreH = Math.max(2, h * 0.0015);
     ctx.fillStyle = "rgb(255,255,255)";
     ctx.fillRect(0, Math.floor(cy - coreH / 2), w, Math.max(1, Math.ceil(coreH)));
