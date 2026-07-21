@@ -50,9 +50,9 @@ GLYPHS = {
             Path(r"C:\Windows\Fonts\segoepr.ttf"),
             Path(r"C:\Windows\Fonts\segoescb.ttf"),
         ],
-        # Tubular thicken + junction round — fill stem–bowl V-notch (ENj9B elegance)
-        "dilate": 4.8,
-        "round": 1.85,
+        # Tubular thicken + junction round — chrome tube join vs ENj9B
+        "dilate": 5.2,
+        "round": 2.05,
     },
 }
 

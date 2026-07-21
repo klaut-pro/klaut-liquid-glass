@@ -99,8 +99,7 @@ export const scriptProP: GlyphProfile = {
     drip: 1,
     viscosity: 0.98,
     dispersion: 1,
-    // Rim film only — keep pink low; tubular silver from wrap, not film wash
-    filmThickness: 0.04,
+    filmThickness: 0.02,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.22,

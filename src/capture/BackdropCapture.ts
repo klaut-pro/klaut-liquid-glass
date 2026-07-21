@@ -192,7 +192,7 @@ export function createChromeStudioBackdrop(
   const w = c.width;
   const h = c.height;
 
-  // Charcoal void — planar wet-mirror interstitial (no cyan/lavender fog)
+  // Charcoal void — planar wet-mirror interstitial (no cyan/lavender/cream fog)
   ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, w, h);
 
@@ -203,25 +203,25 @@ export function createChromeStudioBackdrop(
     ctx.fillRect(hx, 0, Math.max(1, Math.ceil(coreW)), h);
   };
 
-  /** Wide softbox panel — planar chrome mirror faces (1c6PD/Z53Ve). */
+  /** Hard rectangular softbox slab — planar knife wet-mirror (1c6PD/Z53Ve). */
   const panelV = (cx: number, halfW: number, rgb: string) => {
     const x0 = Math.floor(cx - halfW);
     ctx.fillStyle = `rgb(${rgb})`;
     ctx.fillRect(x0, 0, Math.max(2, Math.ceil(halfW * 2)), h);
   };
 
-  // 3 wide neutral softbox slabs + knife cores (no cyan/magenta tint milk)
-  panelV(w * 0.22, Math.max(18, w * 0.04), "235,235,232");
-  panelV(w * 0.48, Math.max(22, w * 0.048), "255,255,255");
-  panelV(w * 0.74, Math.max(16, w * 0.036), "240,238,235");
+  // Cool planar slabs (not warm cream) — charcoal interstitial dominates bowls
+  panelV(w * 0.28, Math.max(12, w * 0.026), "210,214,222");
+  panelV(w * 0.52, Math.max(14, w * 0.03), "236,240,248");
+  panelV(w * 0.76, Math.max(10, w * 0.022), "200,206,216");
 
-  knifeV(w * 0.22, Math.max(2, w * 0.002), "255,255,255");
-  knifeV(w * 0.48, Math.max(3, w * 0.0025), "255,255,255");
-  knifeV(w * 0.74, Math.max(2, w * 0.0018), "255,255,255");
+  knifeV(w * 0.28, Math.max(1, w * 0.0015), "255,255,255");
+  knifeV(w * 0.52, Math.max(2, w * 0.002), "255,255,255");
+  knifeV(w * 0.76, Math.max(1, w * 0.0015), "255,255,255");
 
   // Horizontal strip — hard core only
   {
-    const cy = h * 0.22;
+    const cy = h * 0.18;
     const coreH = Math.max(2, h * 0.0015);
     ctx.fillStyle = "rgb(255,255,255)";
     ctx.fillRect(0, Math.floor(cy - coreH / 2), w, Math.max(1, Math.ceil(coreH)));

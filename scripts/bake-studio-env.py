@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Bake studio softbox plate for wet-mirror glyph QA (Blender unavailable).
 
-Iteration 21: few wide *neutral* softbox slabs + knife cores on charcoal.
-No cyan/magenta tinted panels (those milk chromeSansP faces).
+Iteration 22: cool planar knife softbox — hard rectangular slabs + razor cores
+on charcoal. No warm cream panels (those cream-flood chromeSansP bowls).
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def panel_v(
     rgb: tuple[int, int, int],
     alpha: int = 255,
 ) -> None:
-    """Wide softbox panel — planar chrome mirror faces (1c6PD/Z53Ve)."""
+    """Hard rectangular softbox slab — planar knife wet-mirror (1c6PD/Z53Ve)."""
     x0 = max(0, int(round(cx - half_w)))
     x1 = min(w - 1, int(round(cx + half_w)))
     draw.rectangle([x0, 0, x1, h - 1], fill=(*rgb, alpha))
@@ -48,18 +48,19 @@ def main() -> None:
     im = Image.new("RGBA", (w, h), (0, 0, 0, 255))
     draw = ImageDraw.Draw(im, "RGBA")
 
-    # Three wide neutral softbox slabs (planar knife softbox — not cyan milk ribs)
-    panel_v(draw, w, h, w * 0.22, 42, (230, 230, 228))
-    panel_v(draw, w, h, w * 0.48, 52, (255, 255, 255))
-    panel_v(draw, w, h, w * 0.74, 38, (238, 236, 232))
+    # Cool planar slabs (not warm cream 238,236,232) — knife wet-mirror faces
+    # Narrower than iter 21 so charcoal interstitial dominates bowl faces
+    panel_v(draw, w, h, w * 0.28, 28, (210, 214, 222))
+    panel_v(draw, w, h, w * 0.52, 34, (236, 240, 248))
+    panel_v(draw, w, h, w * 0.76, 24, (200, 206, 216))
 
-    # Knife cores on panel centers only
-    knife_v(draw, w, h, w * 0.22, 3, (255, 255, 255))
-    knife_v(draw, w, h, w * 0.48, 4, (255, 255, 255))
-    knife_v(draw, w, h, w * 0.74, 3, (255, 255, 255))
+    # Razor knife cores on panel centers
+    knife_v(draw, w, h, w * 0.28, 2, (255, 255, 255))
+    knife_v(draw, w, h, w * 0.52, 3, (255, 255, 255))
+    knife_v(draw, w, h, w * 0.76, 2, (255, 255, 255))
 
     # Horizontal strip — 2px hard core
-    cy = int(h * 0.22)
+    cy = int(h * 0.18)
     draw.rectangle([0, cy - 1, w - 1, cy + 1], fill=(255, 255, 255, 255))
 
     OUT.parent.mkdir(parents=True, exist_ok=True)

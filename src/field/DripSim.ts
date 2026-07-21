@@ -352,7 +352,7 @@ export class DripSim {
       if (!freeze) em.stretchT += dt / maps.stretchDuration;
       const t = clamp01(em.stretchT);
       // Freeze mid-stretch: elegant continuous filament (not fragmented / not lumpy)
-      const freezeNeckFloor = freeze ? 0.55 : 0.04;
+      const freezeNeckFloor = freeze ? 0.62 : 0.04;
       em.neckR = Math.max(
         freezeNeckFloor,
         1 - t * maps.neckThinRate * (0.35 + 0.65 * t) * (freeze ? 0.48 : 1),
@@ -400,10 +400,10 @@ export class DripSim {
           if (ft < 0.28) {
             profile = mix(0.68, 0.26, ft / 0.28);
           } else if (ft < 0.7) {
-            // Mid-filament — continuous tubular elegance (no junction notch void)
-            profile = mix(0.26, 0.22, (ft - 0.28) / 0.42);
+            // Mid-filament — continuous tubular chrome elegance (ENj9B join)
+            profile = mix(0.32, 0.28, (ft - 0.28) / 0.42);
           } else {
-            profile = mix(0.22, 1.35, Math.pow((ft - 0.7) / 0.3, 1.1));
+            profile = mix(0.28, 1.35, Math.pow((ft - 0.7) / 0.3, 1.1));
           }
           const sy = mix(bottomY, tipY, ft);
           const sr = tipR * profile * Math.max(em.neckR, freezeNeckFloor);
