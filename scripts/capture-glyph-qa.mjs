@@ -47,7 +47,11 @@ async function main() {
   page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
 
   await page.goto(`${base}/demo/qa.html`, { waitUntil: "networkidle", timeout: 60000 });
-  await page.waitForTimeout(3500);
+  await page.waitForFunction(
+    () => typeof window.__lgGlyphCapture === "function",
+    { timeout: 30000 },
+  );
+  await page.waitForTimeout(1500);
 
   const probe = await page.evaluate(() => {
     const c = document.querySelector("#stage-chromeSansP canvas");

@@ -1,9 +1,13 @@
 /**
  * Concept-art letterform profiles for isolated glyph QA.
  *
- * Targets (iteration 1):
- * - chromeSansP — block geometric "p" (refs: 1c6PD.jpg, Z53Ve.jpg)
- * - scriptProP  — molten script "p" (ref: ENj9B.jpg ".pro" stroke)
+ * Glyph silhouettes come from font-baked EDT SDF atlases
+ * (`scripts/bake-glyph-sdf.py` → `src/field/glyphAtlases.ts`):
+ * - chromeSansP — Arial Black geometric "p" (refs: 1c6PD.jpg, Z53Ve.jpg)
+ * - scriptProP  — Segoe Script molten "p" (ref: ENj9B.jpg ".pro" stroke)
+ *
+ * Blender was not on PATH at bake time; atlas PNGs are the WebGL-consumable
+ * stand-in (same R8 SDF encoding a Blender heightfield bake would export).
  */
 
 import type { DripControl, DripEmitterSpec } from "./DripSim.js";
@@ -24,9 +28,9 @@ export type GlyphProfile = {
 
 const chromeEmitters: DripEmitterSpec[] = [
   {
-    x: -0.11,
+    x: -0.14,
     intensity: 1,
-    viscosity: 0.82,
+    viscosity: 0.84,
     phaseOffset: 0.05,
     stretchScale: 1.55,
     locked: true,
@@ -34,9 +38,9 @@ const chromeEmitters: DripEmitterSpec[] = [
     stretchT: 0.82,
   },
   {
-    x: -0.11,
-    intensity: 0.72,
-    viscosity: 0.75,
+    x: -0.14,
+    intensity: 0.7,
+    viscosity: 0.76,
     phaseOffset: 0.42,
     stretchScale: 0.0,
     locked: true,
@@ -44,9 +48,9 @@ const chromeEmitters: DripEmitterSpec[] = [
     stretchT: 0.92,
   },
   {
-    x: -0.11,
-    intensity: 0.45,
-    viscosity: 0.65,
+    x: -0.14,
+    intensity: 0.42,
+    viscosity: 0.66,
     phaseOffset: 0.7,
     stretchScale: 0.0,
     locked: true,
@@ -57,7 +61,7 @@ const chromeEmitters: DripEmitterSpec[] = [
 
 const scriptEmitters: DripEmitterSpec[] = [
   {
-    x: -0.02,
+    x: -0.06,
     intensity: 1,
     viscosity: 0.9,
     phaseOffset: 0.1,
@@ -67,9 +71,9 @@ const scriptEmitters: DripEmitterSpec[] = [
     stretchT: 0.88,
   },
   {
-    x: -0.02,
-    intensity: 0.65,
-    viscosity: 0.7,
+    x: -0.06,
+    intensity: 0.62,
+    viscosity: 0.72,
     phaseOffset: 0.55,
     stretchScale: 0.0,
     locked: true,
@@ -77,8 +81,8 @@ const scriptEmitters: DripEmitterSpec[] = [
     stretchT: 0.95,
   },
   {
-    x: -0.02,
-    intensity: 0.45,
+    x: -0.06,
+    intensity: 0.42,
     viscosity: 0.65,
     phaseOffset: 0.72,
     stretchScale: 0.0,
@@ -96,25 +100,25 @@ export const chromeSansP: GlyphProfile = {
   refCaption: "1c6PD / Z53Ve — geometric chrome melt",
   material: {
     ...presets.chromeDrip,
-    liquify: 0.28,
-    drip: 0.9,
-    viscosity: 0.82,
-    dispersion: 0.94,
-    filmThickness: 0.28,
-    bevel: 0.92,
-    blur: 0.03,
-    cornerRadius: 0.22,
+    liquify: 0.12,
+    drip: 0.88,
+    viscosity: 0.84,
+    dispersion: 0.9,
+    filmThickness: 0.16,
+    bevel: 0.96,
+    blur: 0.012,
+    cornerRadius: 0.18,
     specular: 1,
-    ior: 1.62,
-    lightPosition: { x: -0.58, y: 0.78, z: 0.92 },
-    lightIntensity: 2.35,
+    ior: 1.68,
+    lightPosition: { x: -0.62, y: 0.82, z: 0.95 },
+    lightIntensity: 2.55,
   },
   dripControl: {
     mode: "controlled",
     isolate: true,
     deterministic: true,
     freeze: true,
-    attachY: -0.3,
+    attachY: -0.28,
     emitters: chromeEmitters,
   },
 };
@@ -127,25 +131,25 @@ export const scriptProP: GlyphProfile = {
   refCaption: "ENj9B — molten magenta script drip",
   material: {
     ...presets.chromeDrip,
-    liquify: 0.32,
-    drip: 0.95,
+    liquify: 0.18,
+    drip: 0.92,
     viscosity: 0.9,
-    dispersion: 0.96,
-    filmThickness: 0.3,
-    bevel: 0.88,
-    blur: 0.025,
-    cornerRadius: 0.28,
+    dispersion: 0.92,
+    filmThickness: 0.18,
+    bevel: 0.9,
+    blur: 0.014,
+    cornerRadius: 0.22,
     specular: 1,
-    ior: 1.58,
-    lightPosition: { x: -0.52, y: 0.72, z: 0.9 },
-    lightIntensity: 2.2,
+    ior: 1.6,
+    lightPosition: { x: -0.55, y: 0.74, z: 0.92 },
+    lightIntensity: 2.35,
   },
   dripControl: {
     mode: "controlled",
     isolate: true,
     deterministic: true,
     freeze: true,
-    attachY: -0.34,
+    attachY: -0.32,
     emitters: scriptEmitters,
   },
 };

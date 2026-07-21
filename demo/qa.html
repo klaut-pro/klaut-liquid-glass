@@ -122,8 +122,8 @@
     <header>
       <h1>Glyph QA — concept art vs live liquid glass</h1>
       <p>
-        Targets: <strong>chromeSansP</strong> (1c6PD/Z53Ve block chrome) ·
-        <strong>scriptProP</strong> (ENj9B molten script). Controlled drip, isolate=true.
+        Targets: <strong>chromeSansP</strong> (Arial Black SDF · 1c6PD/Z53Ve) ·
+        <strong>scriptProP</strong> (Segoe Script SDF · ENj9B). Font-baked EDT atlases + controlled drip.
       </p>
     </header>
 
@@ -185,7 +185,12 @@
       engine.start();
 
       const status = document.getElementById("status");
-      status.textContent = "running · controlled drips isolated";
+      status.textContent = "loading font SDF atlases…";
+
+      await Promise.all(Object.values(surfaces).map((s) => s.whenReady()));
+      // One more paint after atlases bind
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      status.textContent = "running · font-baked SDF · controlled drips";
 
       document.getElementById("toggle").onclick = () => {
         document.querySelectorAll(".pair > div:first-child").forEach((el) => {
@@ -194,6 +199,7 @@
       };
 
       window.__lgGlyphCapture = async () => {
+        await Promise.all(Object.values(surfaces).map((s) => s.whenReady()));
         const out = {};
         for (const id of Object.keys(surfaces)) {
           out[id] = surfaces[id].captureFrame();
@@ -217,7 +223,7 @@
       };
 
       // Settle then auto-capture into window for Playwright
-      setTimeout(() => window.__lgGlyphCapture(), 2200);
+      setTimeout(() => window.__lgGlyphCapture(), 800);
     </script>
   </body>
 </html>

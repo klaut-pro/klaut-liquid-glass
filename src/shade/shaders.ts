@@ -20,6 +20,7 @@ in vec2 v_uv;
 out vec4 outColor;
 
 uniform sampler2D u_backdrop;
+uniform sampler2D u_glyphSdf;
 uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_glass;
@@ -40,6 +41,9 @@ uniform int u_blobCount;
 uniform vec4 u_blobs[24]; // xy center, z radius, w weight
 uniform float u_fieldMode; // 0 = pane, 1 = glyph
 uniform float u_glyphId;   // 0 = chromeSansP, 1 = scriptProP
+uniform float u_useGlyphAtlas; // 1 = sample font-baked SDF texture
+uniform float u_glyphSdfScale; // field-space |d| at encode extremes
+uniform float u_glyphExtent;   // atlas covers [-extent, +extent]
 
 // --- SDF helpers (Inigo Quilez style) ---
 float sdRoundBox(vec2 p, vec2 b, float r) {
@@ -70,18 +74,33 @@ float sdCapsule(vec2 p, vec2 a, vec2 b, float r) {
   return length(pa - ba * h) - r;
 }
 
-/** Block geometric lowercase p (1c6PD / Z53Ve). */
+/**
+ * Font-baked EDT SDF (scripts/bake-glyph-sdf.py).
+ * Encode: R = 0.5 - 0.5*(signedPx/maxDistPx); decode to Quilez signed field.
+ */
+float glyphAtlasField(vec2 p) {
+  float ext = max(u_glyphExtent, 1e-4);
+  vec2 uv = vec2(p.x / (2.0 * ext) + 0.5, p.y / (2.0 * ext) + 0.5);
+  vec2 uvClamped = clamp(uv, 0.0, 1.0);
+  float t = texture(u_glyphSdf, uvClamped).r;
+  float d = (0.5 - t) * (2.0 * u_glyphSdfScale);
+  // Outside atlas bounds: push positive distance
+  vec2 over = max(abs(uv - 0.5) - 0.5, 0.0);
+  d += length(over) * (2.0 * ext);
+  return d;
+}
+
+/** Procedural fallbacks (only if atlas not ready). */
 float glyphChromeSansP(vec2 p) {
   vec2 q = p * 1.06;
-  float stem = sdRoundBox(q - vec2(-0.11, -0.04), vec2(0.085, 0.26), 0.075);
+  float stem = sdRoundBox(q - vec2(-0.11, -0.04), vec2(0.085, 0.26), 0.045);
   float bowl = length(q - vec2(0.085, 0.04)) - 0.148;
-  float hole = length(q - vec2(0.085, 0.04)) - 0.062;
-  float body = softMin(stem, bowl, 0.038);
+  float hole = length(q - vec2(0.085, 0.04)) - 0.072;
+  float body = softMin(stem, bowl, 0.018);
   body = max(body, -hole);
   return body;
 }
 
-/** Molten script p (ENj9B ".pro" — cursive loop + descender). */
 float glyphScriptProP(vec2 p) {
   vec2 q = p * 1.0;
   float desc = sdCapsule(q, vec2(-0.02, -0.36), vec2(-0.10, -0.08), 0.042);
@@ -89,14 +108,15 @@ float glyphScriptProP(vec2 p) {
   float top = sdCapsule(q, vec2(-0.12, 0.12), vec2(0.04, 0.22), 0.044);
   float right = sdCapsule(q, vec2(0.04, 0.22), vec2(0.14, 0.06), 0.042);
   float close = sdCapsule(q, vec2(0.14, 0.06), vec2(0.02, -0.12), 0.04);
-  float g = softMin(desc, left, 0.038);
-  g = softMin(g, top, 0.036);
-  g = softMin(g, right, 0.034);
-  g = softMin(g, close, 0.032);
+  float g = softMin(desc, left, 0.022);
+  g = softMin(g, top, 0.02);
+  g = softMin(g, right, 0.018);
+  g = softMin(g, close, 0.016);
   return g;
 }
 
 float glyphField(vec2 p) {
+  if (u_useGlyphAtlas > 0.5) return glyphAtlasField(p);
   if (u_glyphId < 0.5) return glyphChromeSansP(p);
   return glyphScriptProP(p);
 }
@@ -127,7 +147,10 @@ float fieldAt(vec2 p, vec2 halfSize, float radius) {
     }
     if (field > 1e-5) {
       float metaDist = 0.32 / max(sqrt(field + 1e-4), 1e-3) - 0.52;
-      float k = mix(0.03, 0.2, mix(liquify, viscosity, 0.55));
+      // Glyph QA: hard-ish union so font silhouettes stay crisp
+      float k = u_fieldMode > 0.5
+        ? mix(0.008, 0.028, viscosity)
+        : mix(0.03, 0.2, mix(liquify, viscosity, 0.55));
       pane = softMin(pane, metaDist, k);
     }
   }
@@ -234,8 +257,19 @@ void main() {
 
   vec2 g = gradField(p, halfSize, radius);
   float edge = smoothstep(0.08, 0.0, abs(d));
+  // Glyph letters: flat front face (kills medial-axis SDF ridges), bevel only at rim
+  float inside = max(-d, 0.0);
+  // Thin rim only — thick bevel made whole stem milky (medial axis wash)
+  float bevelW = u_fieldMode > 0.5 ? mix(0.014, 0.032, u_bevel) : mix(0.055, 0.11, u_bevel);
+  float rim = 1.0 - smoothstep(0.0, bevelW, inside);
   float z = u_bevel * edge * 0.85;
-  vec3 N = normalize(vec3(g * (1.0 + z), 1.0));
+  vec3 N;
+  if (u_fieldMode > 0.5) {
+    float gAmt = rim * (0.65 + 0.9 * u_bevel);
+    N = normalize(vec3(g * gAmt, mix(0.55, 1.0, 1.0 - rim * 0.75)));
+  } else {
+    N = normalize(vec3(g * (1.0 + z), 1.0));
+  }
   vec3 V = vec3(0.0, 0.0, 1.0);
   float ndotv = max(dot(N, V), 0.0);
 
@@ -245,13 +279,13 @@ void main() {
   float ndotl = max(dot(N, L), 0.0);
 
   float refrStr = (0.04 + 0.12 * u_glass) * (1.0 + u_liquify * 0.45);
-  if (u_fieldMode > 0.5) refrStr *= 1.4;
+  if (u_fieldMode > 0.5) refrStr *= 0.55; // less milky refraction through face
   vec2 oR, oG, oB;
   float lightDisp;
   spectralOffsets(N, V, L, u_ior, u_dispersion, refrStr, oR, oG, oB, lightDisp);
 
   float blurAmt = u_blur * (0.4 + 0.6 * u_glass);
-  if (u_fieldMode > 0.5) blurAmt *= 0.22; // sharper glyph chrome
+  if (u_fieldMode > 0.5) blurAmt *= 0.12; // sharper glyph chrome
   // Premultiply dispersion offsets by lightDisp so dark-side fringe stays quiet
   float dispMix = clamp(u_dispersion * lightDisp, 0.0, 1.5);
   oR *= mix(0.15, 1.0, clamp(dispMix, 0.0, 1.0));
@@ -268,27 +302,26 @@ void main() {
   // Light-tinted reflection (cool on lit rim)
   vec3 reflectTint = mix(vec3(0.9, 0.92, 0.96), vec3(1.0, 1.0, 1.0), ndotl);
   float interior = smoothstep(0.0, 0.14, abs(d));
-  float chromeMix = u_fieldMode > 0.5 ? 0.78 : 0.55;
-  vec3 color = mix(refracted, reflectTint, fres * chromeMix * u_glass * mix(1.15, 0.18, interior));
+  float chromeMix = u_fieldMode > 0.5 ? 0.92 : 0.55;
+  vec3 color = mix(refracted, reflectTint, fres * chromeMix * u_glass * mix(1.25, 0.08, interior));
   if (u_fieldMode > 0.5) {
-    color += reflectTint * edge * 0.55 * u_lightIntensity * u_specular;
-    color = mix(color * 0.62, color, edge); // darker chrome body, bright rims
-    // Environment reflection (chrome reads backdrop softbox)
-    vec2 envUv = clamp(uv + N.xy * refrStr * 2.8, 0.0, 1.0);
-    vec3 env = sampleBlur(envUv, blurAmt * 0.35);
-    color = mix(color, env, mix(0.28, 0.72, 1.0 - interior) * 1.05);
-    // Concept-art vertical softbox stripe (1c6PD / Z53Ve)
-    float bar = smoothstep(0.32, 0.0, abs(p.x + 0.16)) * smoothstep(-0.55, 0.42, p.y);
-    color += vec3(1.0) * bar * 0.52 * u_lightIntensity * mix(0.35, 1.0, edge);
+    // Obsidian face + prismatic rim (concept Z53Ve / 1c6PD)
+    vec3 darkFace = vec3(0.028, 0.03, 0.038);
+    float faceAmt = clamp(1.0 - rim, 0.0, 1.0);
+    color = mix(color, darkFace, faceAmt * 0.92);
+    color *= mix(1.0, 0.7, faceAmt);
+    vec2 envUv = clamp(uv + N.xy * refrStr * 2.2 * rim, 0.0, 1.0);
+    vec3 env = sampleBlur(envUv, blurAmt * 0.15);
+    env = pow(max(env, 0.0), vec3(1.65));
+    color = mix(color, env, rim * (0.45 + 0.45 * fres));
+    float bar = smoothstep(0.18, 0.0, abs(p.x + 0.12)) * smoothstep(-0.48, 0.38, p.y);
+    color += vec3(1.15, 1.08, 1.0) * bar * 0.7 * u_lightIntensity * rim;
     if (u_glyphId > 0.5) {
-      vec3 magenta = vec3(1.18, 0.52, 0.92);
-      color = mix(color, color * magenta, 0.48 + 0.32 * edge);
+      color = mix(color, color * vec3(1.2, 0.38, 0.9), rim * 0.62);
     } else {
-      vec3 chrome = vec3(0.92, 0.96, 1.08);
-      color = mix(color, color * chrome, 0.18 + 0.22 * (1.0 - interior));
-      vec3 bodySpec = 0.5 + 0.5 * cos(vec3((p.x + p.y) * 7.5, (p.x - p.y) * 7.5 + 2.1, p.y * 6.0 + 4.2));
-      color += bodySpec * (1.0 - interior) * 0.12 * u_dispersion;
+      color = mix(color, color * vec3(0.65, 0.85, 1.08), rim * 0.45);
     }
+    color += vec3(0.05, 0.055, 0.065) * faceAmt * ndotl * u_specular;
   }
 
   // Thin-film: spatial hash is static (floor only) — no per-frame sparkle
@@ -296,10 +329,11 @@ void main() {
   if (film > 0.001) {
     float thick = film * (0.55 + 0.45 * edge + 0.2 * u_liquify * hash21(floor(p * 28.0)));
     float filmStr = film * (0.3 + 0.45 * edge) * (0.5 + 0.5 * ndotl * u_lightIntensity);
-    if (u_fieldMode > 0.5) filmStr *= mix(0.72, 1.0, edge);
+    if (u_fieldMode > 0.5) filmStr *= mix(0.35, 1.15, edge);
     vec3 filmTint = thinFilm(thick, ndotv, ndotl, filmStr);
     if (u_fieldMode > 0.5) {
-      color += (filmTint - 0.5) * filmStr * 0.42;
+      // Iridescent fringe on edges only — avoid milky body wash
+      color += (filmTint - 0.5) * filmStr * mix(0.08, 0.55, edge);
     } else {
       color *= filmTint;
       color += (filmTint - 0.5) * film * fres * 0.28 * u_lightIntensity;
@@ -308,27 +342,29 @@ void main() {
 
   // Specular from material light — tight hot spot (concept-art star glints)
   vec3 H = normalize(L + V);
-  float specTight = pow(max(dot(N, H), 0.0), mix(72.0, 128.0, step(0.5, u_fieldMode)));
-  float specWide = pow(max(dot(N, H), 0.0), mix(24.0, 36.0, step(0.5, u_fieldMode)));
-  float spec = (specTight * 1.35 + specWide * 0.28) * u_specular * u_lightIntensity;
+  float specTight = pow(max(dot(N, H), 0.0), mix(72.0, 180.0, step(0.5, u_fieldMode)));
+  float specWide = pow(max(dot(N, H), 0.0), mix(24.0, 48.0, step(0.5, u_fieldMode)));
+  float specGate = u_fieldMode > 0.5 ? mix(0.15, 1.0, rim) : 1.0;
+  float spec = (specTight * 1.45 + specWide * 0.22) * u_specular * u_lightIntensity * specGate;
   color += vec3(spec);
-  if (u_fieldMode > 0.5 && specTight > 0.35) {
-    color += vec3(1.0) * specTight * 0.55 * u_lightIntensity;
+  if (u_fieldMode > 0.5 && specTight > 0.4) {
+    color += vec3(1.0) * specTight * 0.65 * u_lightIntensity * rim;
   }
 
   // Spectral fire on lit rim: cyan↔magenta (concept art), not purple bloom wash
   if (u_dispersion > 0.01 && (spec > 0.01 || fres > 0.06 || u_fieldMode > 0.5)) {
     float fireAmt = u_dispersion * lightDisp * (0.35 + 0.65 * fres) * u_lightIntensity;
-    if (u_fieldMode > 0.5) fireAmt *= mix(0.85, 1.35, edge);
+    if (u_fieldMode > 0.5) fireAmt *= mix(0.55, 1.45, edge);
     vec3 fire = mix(vec3(0.35, 1.15, 1.25), vec3(1.2, 0.45, 0.95), 0.5 + 0.5 * sin(ndotl * 6.0));
-    color += fire * fireAmt * (0.2 + spec * 0.9);
+    color += fire * fireAmt * (0.12 + spec * 0.95) * mix(0.25, 1.0, edge);
     if (u_fieldMode > 0.5 && p.y < -0.08) {
       float dripLift = smoothstep(-0.06, -0.42, p.y) * edge;
-      color += refracted * dripLift * 0.45;
-      color += fire * dripLift * 0.22;
+      color += refracted * dripLift * 0.35;
+      color += fire * dripLift * 0.28;
     }
-    if (u_fieldMode > 0.5) {
-      color += fire * (1.0 - edge) * 0.24; // interior iridescence
+    // No interior fire wash — milky glow was the failure mode vs concept art
+    if (u_fieldMode < 0.5) {
+      color += fire * (1.0 - edge) * 0.12;
     }
   }
 

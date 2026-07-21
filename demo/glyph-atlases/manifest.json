@@ -1,0 +1,20 @@
+{
+  "pipeline": "font-outline->EDT-SDF",
+  "blender": false,
+  "glyphs": {
+    "chromeSansP": {
+      "font": "C:\\Windows\\Fonts\\ariblk.ttf",
+      "png": "demo/glyph-atlases/chromeSansP.png",
+      "maxDistPx": 48.0,
+      "fieldExtent": 0.55,
+      "inkPx": 32218
+    },
+    "scriptProP": {
+      "font": "C:\\Windows\\Fonts\\segoesc.ttf",
+      "png": "demo/glyph-atlases/scriptProP.png",
+      "maxDistPx": 48.0,
+      "fieldExtent": 0.55,
+      "inkPx": 18392
+    }
+  }
+}

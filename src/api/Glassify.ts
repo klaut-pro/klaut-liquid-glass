@@ -25,6 +25,8 @@ export type GlassSurface = {
   get(): Material;
   set(partial: MaterialPartial & GlyphOptions): void;
   refreshBackdrop(): Promise<void>;
+  /** Resolves when font-baked glyph SDF atlases are on the GPU (no-op for pane). */
+  whenReady(): Promise<void>;
   /** Capture current WebGL frame as PNG data URL (analysis / hyperframes). */
   captureFrame(): string | null;
   destroy(): void;
@@ -172,6 +174,7 @@ export class LiquidGlassEngine {
         }
       },
       refreshBackdrop: () => this.refreshSurface(surface, true),
+      whenReady: () => surface.renderer?.whenAtlasesReady() ?? Promise.resolve(),
       captureFrame: () => surface.renderer?.captureFrame() ?? null,
       destroy: () => this.destroySurface(surface),
     };

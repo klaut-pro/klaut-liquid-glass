@@ -28,4 +28,11 @@ export {
   type GlyphId,
   type GlyphProfile,
 } from "./field/GlyphProfiles.js";
+export {
+  GLYPH_ATLASES,
+  glyphAtlasDataUrl,
+  type GlyphAtlas,
+  type GlyphAtlasId,
+} from "./field/glyphAtlases.js";
+export { preloadGlyphAtlases, getGlyphAtlasMeta } from "./field/GlyphAtlasRuntime.js";
 export type { FieldMode, GlyphOptions } from "./api/GlyphOptions.js";

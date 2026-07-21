@@ -192,35 +192,35 @@ export function createChromeStudioBackdrop(
   ctx.fillStyle = "#050508";
   ctx.fillRect(0, 0, w, h);
 
-  // Vertical softbox (concept long specular bar)
-  const soft = ctx.createLinearGradient(w * 0.12, 0, w * 0.48, 0);
+  // Vertical softbox (concept long specular bar) — narrow, not full wash
+  const soft = ctx.createLinearGradient(w * 0.18, 0, w * 0.42, 0);
   soft.addColorStop(0, "rgba(255,255,255,0)");
-  soft.addColorStop(0.38, "rgba(245,252,255,1.0)");
-  soft.addColorStop(0.5, "rgba(255,235,250,0.95)");
-  soft.addColorStop(0.62, "rgba(200,255,245,0.7)");
+  soft.addColorStop(0.42, "rgba(245,252,255,0.55)");
+  soft.addColorStop(0.5, "rgba(255,235,250,0.5)");
+  soft.addColorStop(0.58, "rgba(200,255,245,0.35)");
   soft.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = soft;
   ctx.fillRect(0, 0, w, h);
 
-  // Top-left cool key (stronger for chrome reads)
-  const key = ctx.createRadialGradient(w * 0.18, h * 0.12, 0, w * 0.18, h * 0.12, Math.min(w, h) * 0.6);
-  key.addColorStop(0, "rgba(200,240,255,1.0)");
-  key.addColorStop(0.35, "rgba(100,180,255,0.45)");
+  // Top-left cool key
+  const key = ctx.createRadialGradient(w * 0.18, h * 0.12, 0, w * 0.18, h * 0.12, Math.min(w, h) * 0.55);
+  key.addColorStop(0, "rgba(200,240,255,0.65)");
+  key.addColorStop(0.35, "rgba(100,180,255,0.22)");
   key.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = key;
   ctx.fillRect(0, 0, w, h);
 
   // Magenta fill (concept fire)
   const fill = ctx.createRadialGradient(w * 0.85, h * 0.7, 0, w * 0.85, h * 0.7, Math.min(w, h) * 0.5);
-  fill.addColorStop(0, "rgba(255,80,180,0.55)");
-  fill.addColorStop(0.55, "rgba(120,40,160,0.2)");
+  fill.addColorStop(0, "rgba(255,80,180,0.32)");
+  fill.addColorStop(0.55, "rgba(120,40,160,0.12)");
   fill.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = fill;
   ctx.fillRect(0, 0, w, h);
 
   // Cyan rim
   const rim = ctx.createRadialGradient(w * 0.55, h * 0.4, 0, w * 0.55, h * 0.4, Math.min(w, h) * 0.4);
-  rim.addColorStop(0, "rgba(80,255,230,0.35)");
+  rim.addColorStop(0, "rgba(80,255,230,0.18)");
   rim.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = rim;
   ctx.fillRect(0, 0, w, h);
