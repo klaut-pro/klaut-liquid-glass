@@ -20,6 +20,16 @@
 - `demo/frames/glyph-scriptProP.png` — live script p
 - `demo/frames/glyph-qa-meta.json`
 
+## Iteration 2 (in progress)
+
+- Sharper glyph specular (128-power tight hotspot)
+- Interior vs edge chrome mix (less milky center)
+- scriptProP magenta tint + thinner cursive SDF
+- Viscous filament segments + detached drop emitters
+- Stronger studio backdrop softbox for chrome reads
+
+**Status:** structural + drip morphology improved; full concept-art chrome fidelity still iterating.
+
 ## Engine changes
 
 - Per-emitter `DripControl` (controlled mode, isolate, deterministic, attachY, freeze)

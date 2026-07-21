@@ -335,6 +335,20 @@ export class DripSim {
       }
 
       // stretch — long viscous filament then pinch
+      if (em.stretchScale < 0.05) {
+        // Detached pendant drop (QA freeze — second emitter)
+        const hang = clamp01(em.stretchT);
+        const dropY = bottomY - halfH * hang * 0.28;
+        const dropR = maps.dropR * minDim * (0.65 + 0.25 * (1 - hang));
+        blobs.push({
+          x: em.x + wobble * 0.15,
+          y: dropY,
+          r: dropR,
+          w: emDrip * 0.8,
+        });
+        continue;
+      }
+
       if (!freeze) em.stretchT += dt / maps.stretchDuration;
       const t = clamp01(em.stretchT);
       em.neckR = Math.max(0, 1 - t * maps.neckThinRate * (0.35 + 0.65 * t));
@@ -356,6 +370,23 @@ export class DripSim {
         r: neckR,
         w: emDrip * Math.max(0.2, em.neckR),
       });
+
+      // Viscous filament segments along neck (frozen QA — readable pendant)
+      if (freeze) {
+        const segments = 7;
+        for (let si = 1; si < segments; si++) {
+          const ft = si / segments;
+          const sy = mix(bottomY, tipY, ft);
+          const sr = tipR * mix(0.62, 0.12, ft) * Math.max(em.neckR, 0.08);
+          blobs.push({
+            x: em.x + wobble * 0.05,
+            y: sy,
+            r: sr,
+            w: emDrip * mix(0.8, 0.22, ft) * Math.max(0.18, em.neckR),
+          });
+        }
+      }
+
       blobs.push({
         x: em.x,
         y: mix(bottomY, tipY, 0.68),

@@ -72,26 +72,27 @@ float sdCapsule(vec2 p, vec2 a, vec2 b, float r) {
 
 /** Block geometric lowercase p (1c6PD / Z53Ve). */
 float glyphChromeSansP(vec2 p) {
-  vec2 q = p * 1.08;
-  float stem = sdRoundBox(q - vec2(-0.12, -0.02), vec2(0.09, 0.28), 0.08);
-  float bowl = length(q - vec2(0.09, 0.05)) - 0.155;
-  float hole = length(q - vec2(0.09, 0.05)) - 0.065;
-  float body = softMin(stem, bowl, 0.04);
-  // Counter (open bowl) — soft subtract
+  vec2 q = p * 1.06;
+  float stem = sdRoundBox(q - vec2(-0.11, -0.04), vec2(0.085, 0.26), 0.075);
+  float bowl = length(q - vec2(0.085, 0.04)) - 0.148;
+  float hole = length(q - vec2(0.085, 0.04)) - 0.062;
+  float body = softMin(stem, bowl, 0.038);
   body = max(body, -hole);
   return body;
 }
 
-/** Tubular script p stroke (ENj9B ".pro"). */
+/** Thin molten script p (ENj9B ".pro" descender). */
 float glyphScriptProP(vec2 p) {
-  vec2 q = p * 1.05;
-  float stem = sdCapsule(q, vec2(-0.15, -0.24), vec2(-0.14, 0.3), 0.1);
-  float loop = sdCapsule(q, vec2(-0.13, 0.16), vec2(0.12, 0.08), 0.09);
-  float tail = sdCapsule(q, vec2(0.12, 0.08), vec2(0.04, -0.2), 0.075);
-  float tip = sdCapsule(q, vec2(0.04, -0.2), vec2(-0.02, -0.32), 0.055);
-  float g = softMin(stem, loop, 0.05);
-  g = softMin(g, tail, 0.045);
-  g = softMin(g, tip, 0.035);
+  vec2 q = p * 1.02;
+  float s1 = sdCapsule(q, vec2(-0.06, -0.36), vec2(-0.12, 0.0), 0.038);
+  float s2 = sdCapsule(q, vec2(-0.12, 0.0), vec2(-0.04, 0.18), 0.036);
+  float s3 = sdCapsule(q, vec2(-0.04, 0.18), vec2(0.12, 0.10), 0.034);
+  float s4 = sdCapsule(q, vec2(0.12, 0.10), vec2(0.10, -0.06), 0.032);
+  float s5 = sdCapsule(q, vec2(0.10, -0.06), vec2(-0.02, -0.34), 0.028);
+  float g = softMin(s1, s2, 0.028);
+  g = softMin(g, s3, 0.026);
+  g = softMin(g, s4, 0.024);
+  g = softMin(g, s5, 0.022);
   return g;
 }
 
@@ -249,7 +250,7 @@ void main() {
   spectralOffsets(N, V, L, u_ior, u_dispersion, refrStr, oR, oG, oB, lightDisp);
 
   float blurAmt = u_blur * (0.4 + 0.6 * u_glass);
-  if (u_fieldMode > 0.5) blurAmt *= 0.35; // sharper glyph chrome
+  if (u_fieldMode > 0.5) blurAmt *= 0.22; // sharper glyph chrome
   // Premultiply dispersion offsets by lightDisp so dark-side fringe stays quiet
   float dispMix = clamp(u_dispersion * lightDisp, 0.0, 1.5);
   oR *= mix(0.15, 1.0, clamp(dispMix, 0.0, 1.0));
@@ -264,14 +265,27 @@ void main() {
   float F0 = pow((1.0 - u_ior) / (1.0 + u_ior), 2.0);
   float fres = F0 + (1.0 - F0) * pow(1.0 - ndotv, 5.0);
   // Light-tinted reflection (cool on lit rim)
-  vec3 reflectTint = mix(vec3(0.88, 0.9, 0.95), vec3(0.95, 0.97, 1.0), ndotl);
-  vec3 color = mix(refracted, reflectTint, fres * 0.55 * u_glass);
+  vec3 reflectTint = mix(vec3(0.9, 0.92, 0.96), vec3(1.0, 1.0, 1.0), ndotl);
+  float interior = smoothstep(0.0, 0.14, abs(d));
+  float chromeMix = u_fieldMode > 0.5 ? 0.78 : 0.55;
+  vec3 color = mix(refracted, reflectTint, fres * chromeMix * u_glass * mix(1.15, 0.28, interior));
+  if (u_fieldMode > 0.5) {
+    color += reflectTint * edge * 0.48 * u_lightIntensity * u_specular;
+    if (u_glyphId > 0.5) {
+      vec3 magenta = vec3(1.18, 0.52, 0.92);
+      color = mix(color, color * magenta, 0.32 + 0.28 * edge);
+    } else {
+      vec3 chrome = vec3(0.92, 0.96, 1.08);
+      color = mix(color, color * chrome, 0.18 + 0.22 * (1.0 - interior));
+    }
+  }
 
   // Thin-film: spatial hash is static (floor only) — no per-frame sparkle
   float film = u_filmThickness;
   if (film > 0.001) {
     float thick = film * (0.55 + 0.45 * edge + 0.2 * u_liquify * hash21(floor(p * 28.0)));
     float filmStr = film * (0.3 + 0.45 * edge) * (0.5 + 0.5 * ndotl * u_lightIntensity);
+    if (u_fieldMode > 0.5) filmStr *= mix(0.55, 1.0, edge);
     vec3 filmTint = thinFilm(thick, ndotv, ndotl, filmStr);
     color *= filmTint;
     color += (filmTint - 0.5) * film * fres * 0.28 * u_lightIntensity;
@@ -279,10 +293,13 @@ void main() {
 
   // Specular from material light — tight hot spot (concept-art star glints)
   vec3 H = normalize(L + V);
-  float specTight = pow(max(dot(N, H), 0.0), 72.0);
-  float specWide = pow(max(dot(N, H), 0.0), 24.0);
-  float spec = (specTight * 1.15 + specWide * 0.35) * u_specular * u_lightIntensity;
+  float specTight = pow(max(dot(N, H), 0.0), mix(72.0, 128.0, step(0.5, u_fieldMode)));
+  float specWide = pow(max(dot(N, H), 0.0), mix(24.0, 36.0, step(0.5, u_fieldMode)));
+  float spec = (specTight * 1.35 + specWide * 0.28) * u_specular * u_lightIntensity;
   color += vec3(spec);
+  if (u_fieldMode > 0.5 && specTight > 0.35) {
+    color += vec3(1.0) * specTight * 0.55 * u_lightIntensity;
+  }
 
   // Spectral fire on lit rim: cyan↔magenta (concept art), not purple bloom wash
   if (u_dispersion > 0.01 && (spec > 0.015 || fres > 0.08)) {

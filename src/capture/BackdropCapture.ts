@@ -192,19 +192,20 @@ export function createChromeStudioBackdrop(
   ctx.fillStyle = "#050508";
   ctx.fillRect(0, 0, w, h);
 
-  // Vertical softbox (concept long specular)
-  const soft = ctx.createLinearGradient(w * 0.15, 0, w * 0.55, 0);
+  // Vertical softbox (concept long specular bar)
+  const soft = ctx.createLinearGradient(w * 0.12, 0, w * 0.48, 0);
   soft.addColorStop(0, "rgba(255,255,255,0)");
-  soft.addColorStop(0.45, "rgba(230,245,255,0.95)");
-  soft.addColorStop(0.55, "rgba(255,220,240,0.85)");
+  soft.addColorStop(0.38, "rgba(245,252,255,1.0)");
+  soft.addColorStop(0.5, "rgba(255,235,250,0.95)");
+  soft.addColorStop(0.62, "rgba(200,255,245,0.7)");
   soft.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = soft;
   ctx.fillRect(0, 0, w, h);
 
-  // Top-left cool key
-  const key = ctx.createRadialGradient(w * 0.2, h * 0.15, 0, w * 0.2, h * 0.15, Math.min(w, h) * 0.55);
-  key.addColorStop(0, "rgba(160,220,255,0.85)");
-  key.addColorStop(0.5, "rgba(80,140,220,0.25)");
+  // Top-left cool key (stronger for chrome reads)
+  const key = ctx.createRadialGradient(w * 0.18, h * 0.12, 0, w * 0.18, h * 0.12, Math.min(w, h) * 0.6);
+  key.addColorStop(0, "rgba(200,240,255,1.0)");
+  key.addColorStop(0.35, "rgba(100,180,255,0.45)");
   key.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = key;
   ctx.fillRect(0, 0, w, h);
