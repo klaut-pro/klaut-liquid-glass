@@ -343,8 +343,8 @@ export class DripSim {
         blobs.push({
           x: em.x + wobble * 0.15,
           y: dropY,
-          r: dropR,
-          w: emDrip * 0.8,
+          r: dropR * 1.08,
+          w: emDrip * 1.0,
         });
         continue;
       }

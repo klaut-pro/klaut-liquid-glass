@@ -81,18 +81,18 @@ float glyphChromeSansP(vec2 p) {
   return body;
 }
 
-/** Thin molten script p (ENj9B ".pro" descender). */
+/** Molten script p (ENj9B ".pro" — fluid loop + descender). */
 float glyphScriptProP(vec2 p) {
-  vec2 q = p * 1.02;
-  float s1 = sdCapsule(q, vec2(-0.06, -0.36), vec2(-0.12, 0.0), 0.044);
-  float s2 = sdCapsule(q, vec2(-0.12, 0.0), vec2(-0.04, 0.18), 0.042);
-  float s3 = sdCapsule(q, vec2(-0.04, 0.18), vec2(0.12, 0.10), 0.04);
-  float s4 = sdCapsule(q, vec2(0.12, 0.10), vec2(0.10, -0.06), 0.038);
-  float s5 = sdCapsule(q, vec2(0.10, -0.06), vec2(-0.02, -0.34), 0.034);
-  float g = softMin(s1, s2, 0.028);
-  g = softMin(g, s3, 0.026);
-  g = softMin(g, s4, 0.024);
-  g = softMin(g, s5, 0.022);
+  vec2 q = p * 1.01;
+  float up = sdCapsule(q, vec2(-0.04, -0.35), vec2(-0.11, 0.02), 0.046);
+  float arch = sdCapsule(q, vec2(-0.11, 0.02), vec2(0.02, 0.20), 0.044);
+  float loop = sdCapsule(q, vec2(0.02, 0.20), vec2(0.15, 0.04), 0.042);
+  float join = sdCapsule(q, vec2(0.15, 0.04), vec2(0.06, -0.08), 0.04);
+  float desc = sdCapsule(q, vec2(0.06, -0.08), vec2(-0.01, -0.36), 0.036);
+  float g = softMin(up, arch, 0.032);
+  g = softMin(g, loop, 0.03);
+  g = softMin(g, join, 0.028);
+  g = softMin(g, desc, 0.026);
   return g;
 }
 
@@ -272,7 +272,11 @@ void main() {
   vec3 color = mix(refracted, reflectTint, fres * chromeMix * u_glass * mix(1.15, 0.18, interior));
   if (u_fieldMode > 0.5) {
     color += reflectTint * edge * 0.55 * u_lightIntensity * u_specular;
-    color = mix(color * 0.68, color, edge); // darker chrome body, bright rims
+    color = mix(color * 0.78, color, edge); // darker chrome body, bright rims
+    // Environment reflection (chrome reads backdrop softbox)
+    vec2 envUv = clamp(uv + N.xy * refrStr * 2.4, 0.0, 1.0);
+    vec3 env = sampleBlur(envUv, blurAmt * 0.4);
+    color = mix(color, env, mix(0.22, 0.62, 1.0 - interior) * 0.9);
     // Concept-art vertical softbox stripe (1c6PD / Z53Ve)
     float bar = smoothstep(0.32, 0.0, abs(p.x + 0.16)) * smoothstep(-0.55, 0.42, p.y);
     color += vec3(1.0) * bar * 0.72 * u_lightIntensity * mix(0.35, 1.0, edge);
@@ -312,6 +316,11 @@ void main() {
     if (u_fieldMode > 0.5) fireAmt *= mix(0.85, 1.35, edge);
     vec3 fire = mix(vec3(0.35, 1.15, 1.25), vec3(1.2, 0.45, 0.95), 0.5 + 0.5 * sin(ndotl * 6.0));
     color += fire * fireAmt * (0.2 + spec * 0.9);
+    if (u_fieldMode > 0.5 && p.y < -0.08) {
+      float dripLift = smoothstep(-0.06, -0.42, p.y) * edge;
+      color += refracted * dripLift * 0.45;
+      color += fire * dripLift * 0.22;
+    }
   }
 
   if (u_fieldMode < 0.5) {
