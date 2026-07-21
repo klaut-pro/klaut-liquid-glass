@@ -24,9 +24,9 @@ import {
 
 } from "../field/GlyphAtlasRuntime.js";
 
+import { loadConceptFaceImage } from "../field/ConceptFaceRuntime.js";
+
 import type { GlyphId } from "../field/GlyphProfiles.js";
-
-
 
 export type SurfaceUniforms = Material & {
 
@@ -41,8 +41,6 @@ export type SurfaceUniforms = Material & {
   glyphId?: GlyphId;
 
 };
-
-
 
 export class Renderer {
 
@@ -60,7 +58,13 @@ export class Renderer {
 
   private glyphTexScript: WebGLTexture;
 
+  private conceptFaceTexChrome: WebGLTexture;
+
+  private conceptFaceTexScript: WebGLTexture;
+
   private glyphReady = { chromeSansP: false, scriptProP: false };
+
+  private conceptFaceReady = { chromeSansP: false, scriptProP: false };
 
   private locs: Record<string, WebGLUniformLocation | null>;
 
@@ -69,8 +73,6 @@ export class Renderer {
   private disposed = false;
 
   private atlasLoad: Promise<void>;
-
-
 
   constructor(canvas: HTMLCanvasElement) {
 
@@ -102,13 +104,15 @@ export class Renderer {
 
     this.glyphTexScript = createTexture(gl);
 
+    this.conceptFaceTexChrome = createTexture(gl);
+
+    this.conceptFaceTexScript = createTexture(gl);
+
     this.locs = this.cacheLocations();
 
     this.atlasLoad = this.warmGlyphAtlases();
 
   }
-
-
 
   /** Promise that resolves once font-baked SDF atlases are on the GPU. */
 
@@ -117,8 +121,6 @@ export class Renderer {
     return this.atlasLoad;
 
   }
-
-
 
   private async warmGlyphAtlases(): Promise<void> {
 
@@ -148,9 +150,33 @@ export class Renderer {
 
     }
 
+    try {
+
+      const [cfChrome, cfScript] = await Promise.all([
+
+        loadConceptFaceImage("chromeSansP"),
+
+        loadConceptFaceImage("scriptProP"),
+
+      ]);
+
+      if (this.disposed) return;
+
+      this.uploadGlyphAtlas(this.conceptFaceTexChrome, cfChrome);
+
+      this.uploadGlyphAtlas(this.conceptFaceTexScript, cfScript);
+
+      this.conceptFaceReady.chromeSansP = true;
+
+      this.conceptFaceReady.scriptProP = true;
+
+    } catch (err) {
+
+      console.warn("[liquid-glass] concept faceplate load failed; softbox-only", err);
+
+    }
+
   }
-
-
 
   private uploadGlyphAtlas(tex: WebGLTexture, source: TexImageSource): void {
 
@@ -173,8 +199,6 @@ export class Renderer {
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
 
   }
-
-
 
   private createQuad(): WebGLVertexArrayObject {
 
@@ -209,8 +233,6 @@ export class Renderer {
     return vao;
 
   }
-
-
 
   private cacheLocations(): Record<string, WebGLUniformLocation | null> {
 
@@ -266,6 +288,10 @@ export class Renderer {
 
       "u_glyphExtent",
 
+      "u_conceptFace",
+
+      "u_useConceptFace",
+
     ];
 
     const out: Record<string, WebGLUniformLocation | null> = {};
@@ -283,8 +309,6 @@ export class Renderer {
     return out;
 
   }
-
-
 
   resize(cssWidth: number, cssHeight: number, dpr = Math.min(devicePixelRatio || 1, 2)): void {
 
@@ -306,8 +330,6 @@ export class Renderer {
 
   }
 
-
-
   /**
 
    * Upload backdrop only when dimensions change or caller forces.
@@ -324,8 +346,6 @@ export class Renderer {
 
   }
 
-
-
   draw(u: SurfaceUniforms): void {
 
     if (this.disposed) return;
@@ -335,8 +355,6 @@ export class Renderer {
     const { width, height } = this.canvas;
 
     if (width < 1 || height < 1) return;
-
-
 
     gl.viewport(0, 0, width, height);
 
@@ -348,8 +366,6 @@ export class Renderer {
 
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
-
-
     gl.useProgram(this.program);
 
     gl.bindVertexArray(this.vao);
@@ -359,8 +375,6 @@ export class Renderer {
     gl.bindTexture(gl.TEXTURE_2D, this.backdropTex);
 
     gl.uniform1i(this.locs.u_backdrop, 0);
-
-
 
     const glyphId = u.glyphId ?? "chromeSansP";
 
@@ -380,7 +394,27 @@ export class Renderer {
 
     gl.uniform1i(this.locs.u_glyphSdf, 1);
 
+    const conceptReady =
 
+      u.fieldMode === "glyph" &&
+
+      (glyphId === "scriptProP"
+
+        ? this.conceptFaceReady.scriptProP
+
+        : this.conceptFaceReady.chromeSansP);
+
+    const conceptTex =
+
+      glyphId === "scriptProP" ? this.conceptFaceTexScript : this.conceptFaceTexChrome;
+
+    gl.activeTexture(gl.TEXTURE2);
+
+    gl.bindTexture(gl.TEXTURE_2D, conceptTex);
+
+    gl.uniform1i(this.locs.u_conceptFace, 2);
+
+    gl.uniform1f(this.locs.u_useConceptFace, conceptReady ? 1 : 0);
 
     if (atlasReady) {
 
@@ -401,8 +435,6 @@ export class Renderer {
       gl.uniform1f(this.locs.u_glyphExtent, 0.55);
 
     }
-
-
 
     gl.uniform2f(this.locs.u_resolution, width, height);
 
@@ -438,8 +470,6 @@ export class Renderer {
 
     gl.uniform1f(this.locs.u_lightIntensity, u.lightIntensity);
 
-
-
     const blobs = u.blobs ?? [];
 
     const count = Math.min(blobs.length, SHADER_MAX_BLOBS);
@@ -470,75 +500,117 @@ export class Renderer {
 
     }
 
-
-
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     gl.bindVertexArray(null);
 
   }
 
-
-
   /** PNG data URL of current framebuffer (composited on dark studio plate). */
+
   captureFrame(): string {
+
     const gl = this.gl;
+
     const w = this.canvas.width;
+
     const h = this.canvas.height;
+
     if (w < 1 || h < 1) return this.canvas.toDataURL("image/png");
 
     const pixels = new Uint8Array(w * h * 4);
+
     gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
     const off = document.createElement("canvas");
+
     off.width = w;
+
     off.height = h;
+
     const ctx = off.getContext("2d");
+
     if (!ctx) return this.canvas.toDataURL("image/png");
 
     // Dark studio plate (matches glyph QA stage)
+
     ctx.fillStyle = "#08080a";
+
     ctx.fillRect(0, 0, w, h);
 
     const img = ctx.createImageData(w, h);
+
     // WebGL readPixels is bottom-up; flip Y and composite premultiplied over dark plate.
+
     // SwiftShader cleared texels often read as equal RGB≥248 with high alpha.
+
     // Glyph peaks must stay chromatic (R≠G≠B) so knife/tube energy survives this filter.
+
     for (let y = 0; y < h; y++) {
+
       const srcRow = (h - 1 - y) * w * 4;
+
       const dstRow = y * w * 4;
+
       for (let x = 0; x < w; x++) {
+
         const i = srcRow + x * 4;
+
         const j = dstRow + x * 4;
+
         let a = pixels[i + 3] / 255;
+
         let pr = pixels[i] / 255;
+
         let pg = pixels[i + 1] / 255;
+
         let pb = pixels[i + 2] / 255;
+
         if (
+
           pixels[i + 3] >= 248 &&
+
           pixels[i] >= 248 &&
+
           pixels[i + 1] >= 248 &&
+
           pixels[i + 2] >= 248 &&
+
           pixels[i] === pixels[i + 1] &&
+
           pixels[i + 1] === pixels[i + 2]
+
         ) {
+
           a = 0;
+
           pr = pg = pb = 0;
+
         }
+
         const br = 8 / 255;
+
         const bg = 8 / 255;
+
         const bb = 10 / 255;
+
         img.data[j] = Math.min(255, Math.round((pr + br * (1 - a)) * 255));
+
         img.data[j + 1] = Math.min(255, Math.round((pg + bg * (1 - a)) * 255));
+
         img.data[j + 2] = Math.min(255, Math.round((pb + bb * (1 - a)) * 255));
+
         img.data[j + 3] = 255;
+
       }
+
     }
+
     ctx.putImageData(img, 0, 0);
+
     return off.toDataURL("image/png");
+
   }
-
-
 
   dispose(): void {
 
@@ -556,18 +628,18 @@ export class Renderer {
 
     gl.deleteTexture(this.glyphTexScript);
 
+    gl.deleteTexture(this.conceptFaceTexChrome);
+
+    gl.deleteTexture(this.conceptFaceTexScript);
+
     gl.deleteVertexArray(this.vao);
 
   }
 
 }
 
-
-
 export function motionFrozen(): boolean {
 
   return prefersReducedMotion();
 
 }
-
-

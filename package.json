@@ -35,6 +35,7 @@
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "bake:glyphs": "python scripts/bake-glyph-sdf.py",
     "bake:env": "python scripts/bake-concept-env.py",
+    "bake:faces": "python scripts/bake-concept-faceplates.py",
     "capture:glyph-qa": "node scripts/capture-glyph-qa.mjs",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build"

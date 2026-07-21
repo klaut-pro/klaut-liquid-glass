@@ -5,10 +5,8 @@ Bake concept-art-derived studio HDRI / reflection plate.
 Blender unavailable — frontal softbox plate for reflection sampling
 (planar wet-mirror + tubular wrap).
 
-Iteration 35: push planar oil-slick wet-mirror fidelity —
-dark charcoal base + distinct softbox whites + denser midtone
-gold/lime oil puddles (cyan whisper only). No neon lime flood, no cream
-matte wash, no pink, no barcode columns.
+Iteration 36: hybrid photo-plate — atlas-UV concept crops
+(Z53Ve/1c6PD/ENj9B) stamped as large oil puddles + faceplate textures.
 """
 from __future__ import annotations
 
@@ -242,6 +240,18 @@ def build_plate() -> Image.Image:
         stamped += 1
 
     plate = plate + planar_oil_field(OUT_H, OUT_W)
+
+    # Large atlas-projected faceplate stamps (hybrid photo-plate chrome)
+    for face_name, stamps in (
+        ("face-chromeSansP.png", [(0.42, 0.38, 0.28, 0.32, 0.85), (0.55, 0.62, 0.22, 0.26, 0.7)]),
+        ("face-scriptProP.png", [(0.48, 0.48, 0.24, 0.28, 0.65)]),
+    ):
+        face_path = OUT.parent / "env" / face_name if False else ROOT / "demo" / "env" / face_name
+        if not face_path.exists():
+            continue
+        face = crush_cream_pink(np.asarray(Image.open(face_path).convert("RGB"), dtype=np.float32))
+        for cy, cx, ry, rx, gain in stamps:
+            stamp_soft_patch(plate, face, cy, cx, ry, rx, gain)
 
     vignette = soft_ellipse(yy, xx, 0.48, 0.5, 0.84, 0.9)
     plate = plate * (0.1 + 0.9 * vignette[..., None])

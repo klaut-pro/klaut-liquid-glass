@@ -32,6 +32,17 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 36 (hybrid photo-plate concept crops on SDF)
+
+- **Bold pivot** off oil-multiplier plateau: atlas-UV concept faceplates from `1c6PD`/`Z53Ve`/`ENj9B` (`bake-concept-faceplates.py` → `demo/env/face-*.png`); `u_conceptFace` shader sample + softbox plate stamps
+- Blender: portable 4.2 zip downloaded to `%LOCALAPPDATA%\Programs\blender-portable` (no UAC) — not yet wired into bake path
+- chromeSansP: concept midtone oil blend + cream crush (cream ~0.038); pink0; charcoal voids; faces filled; no barcode; lime/gold still short of 1c6PD/Z53Ve wet-mirror fidelity
+- scriptProP: concept luma crest/flank map + narrower pipe crest (bodyT/0.118 pow 0.58); silverRatio ~0.56; dark flanks ~0.10; pink0; tubular elegance still lags ENj9B
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome pink0 cream~0.038 lime~0.28 gold~0.01; script pink0 silverRatio ~0.563 dark~0.10
+
+**Status:** ❌ not READY — hybrid photo-plate is a real architecture shift (concept crops on glyph UV) but chromeSansP planar oil still short of 1c6PD/Z53Ve wet-mirror (residual cream/lime blotch vs concept iridescence); scriptProP regained crest/flank contrast (~0.56 silver) without pink/icy flood but tubular elegance still lags ENj9B. Loop stays armed.
+
 ## Iteration 35 (richer midtone oil + tubular silver↑)
 
 - **Root cause:** iter-34 midtone oil started (lime~0.14) but still weak vs 1c6PD/Z53Ve; script silverRatio ~0.545 short of ENj9B tubular elegance
