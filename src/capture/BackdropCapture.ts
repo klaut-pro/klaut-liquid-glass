@@ -175,15 +175,15 @@ export function createFallbackBackdrop(
 
 /**
  * Knife-edge studio HDRI plate for glyph QA (Blender bake unavailable).
- * Hard softbox cores as fillRect strips — wet-mirror bars survive LINEAR filter
- * + tone-map; soft colored ambient is separate so faces don't crush to black.
+ * Hard softbox cores as fillRect strips — wet-mirror bars for NEAREST sampling;
+ * soft colored ambient is separate so faces don't crush to black / milk bars.
  */
 export function createChromeStudioBackdrop(
   width: number,
   height: number,
 ): HTMLCanvasElement {
-  // Upsize plate so knife-edge cores stay sharp after LINEAR sampling
-  const scale = 2;
+  // Upsize plate so knife-edge cores stay sharp
+  const scale = 3;
   const c = document.createElement("canvas");
   c.width = Math.max(2, Math.round(width * scale));
   c.height = Math.max(2, Math.round(height * scale));
@@ -192,113 +192,61 @@ export function createChromeStudioBackdrop(
   const w = c.width;
   const h = c.height;
 
-  ctx.fillStyle = "#020206";
+  ctx.fillStyle = "#010103";
   ctx.fillRect(0, 0, w, h);
 
-  // Soft colored ambient ONLY (no white) — midtone fill without milking bars
-  const ambL = ctx.createLinearGradient(w * 0.18, 0, w * 0.42, 0);
+  // Minimal colored ambient — midtones without milking knife bars
+  const ambL = ctx.createLinearGradient(w * 0.18, 0, w * 0.4, 0);
   ambL.addColorStop(0, "rgba(0,0,0,0)");
-  ambL.addColorStop(0.5, "rgba(90,140,200,0.14)");
+  ambL.addColorStop(0.5, "rgba(70,110,170,0.06)");
   ambL.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = ambL;
   ctx.fillRect(0, 0, w, h);
 
-  const ambR = ctx.createLinearGradient(w * 0.62, 0, w * 0.88, 0);
+  const ambR = ctx.createLinearGradient(w * 0.66, 0, w * 0.9, 0);
   ambR.addColorStop(0, "rgba(0,0,0,0)");
-  ambR.addColorStop(0.5, "rgba(160,60,140,0.11)");
+  ambR.addColorStop(0.5, "rgba(140,40,120,0.05)");
   ambR.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = ambR;
   ctx.fillRect(0, 0, w, h);
 
-  // Top-left cool key (soft, colored — not a white wash)
   const key = ctx.createRadialGradient(
-    w * 0.14,
-    h * 0.08,
+    w * 0.12,
+    h * 0.06,
     0,
-    w * 0.14,
-    h * 0.08,
-    Math.min(w, h) * 0.38,
+    w * 0.12,
+    h * 0.06,
+    Math.min(w, h) * 0.28,
   );
-  key.addColorStop(0, "rgba(180,220,255,0.45)");
-  key.addColorStop(0.35, "rgba(100,170,230,0.16)");
+  key.addColorStop(0, "rgba(160,200,255,0.18)");
+  key.addColorStop(0.4, "rgba(80,140,200,0.06)");
   key.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = key;
   ctx.fillRect(0, 0, w, h);
 
-  // Magenta fill pocket
-  const fill = ctx.createRadialGradient(
-    w * 0.9,
-    h * 0.74,
-    0,
-    w * 0.9,
-    h * 0.74,
-    Math.min(w, h) * 0.48,
-  );
-  fill.addColorStop(0, "rgba(255,50,180,0.32)");
-  fill.addColorStop(0.5, "rgba(120,25,140,0.1)");
-  fill.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = fill;
-  ctx.fillRect(0, 0, w, h);
-
-  // Cyan rim pocket
-  const rim = ctx.createRadialGradient(
-    w * 0.5,
-    h * 0.36,
-    0,
-    w * 0.5,
-    h * 0.36,
-    Math.min(w, h) * 0.28,
-  );
-  rim.addColorStop(0, "rgba(40,255,230,0.18)");
-  rim.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = rim;
-  ctx.fillRect(0, 0, w, h);
-
-  /** Knife-edge vertical softbox: 1px soft shoulder + hard core. */
-  const knifeV = (cx: number, coreW: number, shoulder: number, rgb: string, aCore: number, aShoulder: number) => {
-    const x0 = Math.max(0, Math.floor(cx - coreW / 2 - shoulder));
-    const x1 = Math.min(w, Math.ceil(cx + coreW / 2 + shoulder));
-    if (x1 <= x0) return;
-    const g = ctx.createLinearGradient(x0, 0, x1, 0);
-    const tCore0 = shoulder / Math.max(1, x1 - x0);
-    const tCore1 = (shoulder + coreW) / Math.max(1, x1 - x0);
-    g.addColorStop(0, "rgba(0,0,0,0)");
-    g.addColorStop(Math.max(0, tCore0 - 0.001), `rgba(${rgb},${aShoulder})`);
-    g.addColorStop(tCore0, `rgba(${rgb},${aCore})`);
-    g.addColorStop(tCore1, `rgba(${rgb},${aCore})`);
-    g.addColorStop(Math.min(1, tCore1 + 0.001), `rgba(${rgb},${aShoulder})`);
-    g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-    // Absolute hard core (survives LINEAR blur)
+  /** Absolute hard core only — knife-edge wet-mirror bars (no soft shoulder wash). */
+  const knifeV = (cx: number, coreW: number, rgb: string) => {
     const hx = Math.floor(cx - coreW / 2);
-    ctx.fillStyle = `rgba(${rgb},${Math.min(1, aCore)})`;
+    ctx.fillStyle = `rgb(${rgb})`;
     ctx.fillRect(hx, 0, Math.max(1, Math.ceil(coreW)), h);
   };
 
-  // Primary + secondary + tertiary wet-mirror softboxes (concept 1c6PD / Z53Ve)
-  knifeV(w * 0.30, Math.max(2, w * 0.006), Math.max(2, w * 0.01), "255,252,248", 1.0, 0.35);
-  knifeV(w * 0.71, Math.max(2, w * 0.0045), Math.max(2, w * 0.008), "200,230,255", 0.92, 0.28);
-  knifeV(w * 0.18, Math.max(1, w * 0.0035), Math.max(1, w * 0.007), "255,180,240", 0.55, 0.18);
-  knifeV(w * 0.48, Math.max(1, w * 0.0028), Math.max(1, w * 0.006), "120,255,250", 0.5, 0.15);
+  // Dense wet-mirror softboxes (concept 1c6PD / Z53Ve)
+  knifeV(w * 0.22, Math.max(1, w * 0.0012), "255,255,255");
+  knifeV(w * 0.3, Math.max(2, w * 0.0018), "255,252,248");
+  knifeV(w * 0.38, Math.max(1, w * 0.0012), "255,255,255");
+  knifeV(w * 0.46, Math.max(1, w * 0.0009), "140,255,255");
+  knifeV(w * 0.54, Math.max(1, w * 0.0012), "255,255,230");
+  knifeV(w * 0.62, Math.max(1, w * 0.0009), "255,200,255");
+  knifeV(w * 0.71, Math.max(2, w * 0.0016), "220,235,255");
+  knifeV(w * 0.8, Math.max(1, w * 0.0012), "255,255,255");
+  knifeV(w * 0.16, Math.max(1, w * 0.0008), "255,120,220");
 
-  // Horizontal strip — thin hard core
+  // Horizontal strip — hard core only
   {
-    const cy = h * 0.25;
-    const coreH = Math.max(2, h * 0.005);
-    const sh = Math.max(2, h * 0.012);
-    const y0 = Math.floor(cy - coreH / 2 - sh);
-    const y1 = Math.ceil(cy + coreH / 2 + sh);
-    const g = ctx.createLinearGradient(0, y0, 0, y1);
-    g.addColorStop(0, "rgba(0,0,0,0)");
-    g.addColorStop(0.35, "rgba(255,245,255,0.2)");
-    g.addColorStop(0.48, "rgba(255,255,255,0.85)");
-    g.addColorStop(0.52, "rgba(255,255,255,0.85)");
-    g.addColorStop(0.65, "rgba(255,245,255,0.2)");
-    g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    const cy = h * 0.24;
+    const coreH = Math.max(2, h * 0.0015);
+    ctx.fillStyle = "rgb(255,255,255)";
     ctx.fillRect(0, Math.floor(cy - coreH / 2), w, Math.max(1, Math.ceil(coreH)));
   }
 

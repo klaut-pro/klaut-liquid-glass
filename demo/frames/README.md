@@ -32,6 +32,16 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 16 (harder knife plate + script face/filament)
+
+- Re-baked `studio-softbox.png` at 2k: near-black ambient, 1–3px absolute hard cores (no soft shoulders), denser bar set
+- Procedural `createChromeStudioBackdrop` matched (hard cores only, quieter amb)
+- chromeSansP: softAmb gated down, contrast expand on mids, white razor streak cores, film face-gated, thinner bevel + bright rim lip, filmThickness 0.1
+- scriptProP: razor-thin rim pow so thin strokes keep face fill; luminous tubeFill floor; silver mid-filament on medial (`inside/0.028`); thicker freeze filament (~0.07–0.085) + neck floor 0.28
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+
+**Status:** ❌ not READY — chromeSansP harder/less pastel than iter 15 but wet-mirror bars still short of 1c6PD/Z53Ve knife faces; scriptProP mid-filament + pendant improved but tubular face chrome still lag ENj9B (upper loop too rim/outline). Blender still unavailable. Loop stays armed.
+
 ## Iteration 15 (knife HDRI plate + planar softbox UV)
 
 - Procedural softbox ceiling: baked knife-edge plate (`demo/env/studio-softbox.png` via `bake-studio-env.py`) + NEAREST backdrop sampling

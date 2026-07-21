@@ -352,7 +352,7 @@ export class DripSim {
       if (!freeze) em.stretchT += dt / maps.stretchDuration;
       const t = clamp01(em.stretchT);
       // Freeze mid-stretch: elegant continuous filament (not fragmented / not lumpy)
-      const freezeNeckFloor = freeze ? 0.22 : 0.04;
+      const freezeNeckFloor = freeze ? 0.28 : 0.04;
       em.neckR = Math.max(
         freezeNeckFloor,
         1 - t * maps.neckThinRate * (0.35 + 0.65 * t) * (freeze ? 0.62 : 1),
@@ -384,27 +384,27 @@ export class DripSim {
         w: emDrip * Math.max(0.45, em.neckR),
       });
 
-      // Viscous filament — thick lip → hair mid → elegant bulb (ENj9B pendant)
+      // Viscous filament — thick lip → elegant mid-filament → round bulb (ENj9B)
       {
-        const segments = freeze ? 16 : 5;
+        const segments = freeze ? 18 : 5;
         for (let si = 1; si < segments; si++) {
           const ft = si / segments;
           let profile: number;
-            if (ft < 0.42) {
-            profile = mix(0.45, 0.055, ft / 0.42);
-          } else if (ft < 0.78) {
-            // Mid-filament lag — elegant viscous thread (readable, not wire)
-            profile = mix(0.055, 0.048, (ft - 0.42) / 0.36);
+          if (ft < 0.38) {
+            profile = mix(0.5, 0.085, ft / 0.38);
+          } else if (ft < 0.76) {
+            // Mid-filament — tubular elegance (readable thread, not hair wire)
+            profile = mix(0.085, 0.072, (ft - 0.38) / 0.38);
           } else {
-            profile = mix(0.048, 1.22, Math.pow((ft - 0.78) / 0.22, 1.25));
+            profile = mix(0.072, 1.28, Math.pow((ft - 0.76) / 0.24, 1.2));
           }
           const sy = mix(bottomY, tipY, ft);
           const sr = tipR * profile * Math.max(em.neckR, freezeNeckFloor);
           blobs.push({
-            x: em.x + wobble * 0.015,
+            x: em.x + wobble * 0.012,
             y: sy,
-            r: Math.max(sr, tipR * (freeze ? 0.042 : 0.04)),
-            w: emDrip * mix(1.08, 0.48, ft) * Math.max(0.4, em.neckR),
+            r: Math.max(sr, tipR * (freeze ? 0.055 : 0.04)),
+            w: emDrip * mix(1.12, 0.52, ft) * Math.max(0.42, em.neckR),
           });
         }
       }
