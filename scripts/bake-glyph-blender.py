@@ -237,16 +237,15 @@ def shape_height_profile(height: np.ndarray, mask: np.ndarray, profile: str) -> 
         # Keep a little Blender lip curvature near edges
         out = plateau * 0.88 + norm * 0.12
     else:
-        # Round pipe: local medial radius → crest 1 / flank 0 (ENj9B tubular)
+        # Round pipe: steep medial crest / dark flanks (ENj9B tubular elegance)
         ink = mask.astype(bool)
         inside = distance_transform_edt(ink)
-        local_r = np.maximum(inside, 1e-3)
-        medial = gaussian_filter(inside * ink, sigma=6.0)
-        medial = np.maximum(medial, local_r)
-        t = np.clip(inside / np.maximum(medial, 1e-3), 0.0, 1.0)
-        tube = np.sqrt(np.maximum(0.001, 1.0 - (1.0 - t) ** 2))
+        r_max = float(np.percentile(inside[ink], 98)) if ink.any() else 1.0
+        t = np.clip(inside / max(r_max, 1e-3), 0.0, 1.0)
+        # Steep crest — global EDT norm (inside/medial≈1 plateaued icy silver)
+        tube = np.power(t, 2.0)
         # Blender Z only nudges lip bevel — never dominates crest map
-        out = tube * 0.9 + norm * 0.1
+        out = tube * 0.92 + norm * 0.08
 
     out = np.where(mask, np.clip(out, 0.0, 1.0), 0.0).astype(np.float32)
     return out

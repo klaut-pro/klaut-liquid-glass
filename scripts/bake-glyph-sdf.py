@@ -143,8 +143,13 @@ def bake_sdf(
     local_r = np.maximum(inside, 1e-3)
     medial = gaussian_filter(inside * ink, sigma=6.0)
     medial = np.maximum(medial, local_r)
-    t = np.clip(inside / np.maximum(medial, 1e-3), 0.0, 1.0)
-    height_tube = np.sqrt(np.maximum(0.001, 1.0 - (1.0 - t) ** 2))
+    # Global-normalize EDT: inside/medial≈1 across stroke interiors (smoothing),
+    # which plateaued semicircle/power maps. Use max ink radius instead.
+    r_max = float(np.percentile(inside[ink], 98)) if ink.any() else 1.0
+    t = np.clip(inside / max(r_max, 1e-3), 0.0, 1.0)
+    # Steep round-pipe crest (ENj9B): flanks dark; crest near medial axis.
+    # pow 2.0 keeps enough crest area for silverRatio ~0.55 (2.6 was too dark).
+    height_tube = np.power(t, 2.0)
     height_planar = np.clip(t * 2.4, 0.0, 1.0)
     height_planar = np.where(t > 0.35, 1.0, height_planar)
 
@@ -154,13 +159,11 @@ def bake_sdf(
         # Blender orthographic Z often plateaus near 1 across tubes → icy flood.
         # For tube profile, prefer EDT medial crest; keep Blender as lip nuance.
         if force_profile == "tube":
-            ink_h = height[ink]
-            flat = float(np.percentile(ink_h, 50)) > 0.72 if ink_h.size else False
-            if flat:
-                height = height_tube * 0.88 + height * 0.12
-                height = np.where(ink, np.clip(height, 0.0, 1.0), 0.0).astype(np.float32)
-                height = gaussian_filter(height, sigma=0.9)
-                height = np.where(ink, np.clip(height, 0.0, 1.0), 0.0).astype(np.float32)
+            # Always reshape tubes — Blender Z plateaus kill crest/flank elegance
+            height = height_tube * 0.92 + height * 0.08
+            height = np.where(ink, np.clip(height, 0.0, 1.0), 0.0).astype(np.float32)
+            height = gaussian_filter(height, sigma=0.7)
+            height = np.where(ink, np.clip(height, 0.0, 1.0), 0.0).astype(np.float32)
         elif force_profile == "planar":
             # Preserve knife plateau; slight blend keeps Blender lip
             height = height_planar * 0.35 + height * 0.65

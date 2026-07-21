@@ -31,6 +31,17 @@ Rebake: `npm run bake:glyphs` · `npm run bake:faces` · `npm run bake:env`
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 39 (steep EDT crest + cream crush + warm tubular)
+
+- **Root cause:** `inside/medial≈1` tube height plateaued → silCover mid-gray ice; cream crush→B-boost cool read as cyan/mint; softbox still overwrote concept plate
+- Blender/EDT: global-normalized EDT height `t^2.0` (crest medial / dark flanks); SDF-led silver + height flank darken only
+- chromeSansP: harder faceplate mint clamp + Z53Ve-weighted crops; softboxGate↓; cyan-led oilFire; cream~0.03 (was ~0.09); residual mint/cyan vs 1c6PD/Z53Ve wet-mirror oil
+- scriptProP: warm-neutral silver (anti icy B); silverRatio ~0.48; pink0; height flank nuance; still short of ENj9B tubular elegance (icy residual / voids)
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: script pink0 silverRatio ~0.48; chrome pink0 cream~0.03 mint~0.18 cyan~0.41 gold~0.01
+
+**Status:** ❌ not READY — cream crushed further but chromeSansP still mint/cyan softbox vs 1c6PD/Z53Ve planar oil-slick; scriptProP warmer + silver recovering (~0.48) but tubular crest/flank still lags ENj9B. Loop stays armed.
+
 ## Iteration 38 (restore tubular silver + crush cream/mint oil)
 
 - **Root cause:** Blender orthographic Z plateaus near 1 across tubes → bodyT flood → icy crush → silverRatio ~0.14; cream crush mapped swamp→warm gold tan (reads as cream/butter)

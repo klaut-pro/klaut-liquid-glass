@@ -65,7 +65,7 @@ export const chromeSansP: GlyphProfile = {
     viscosity: 0.94,
     dispersion: 1,
     // Face film — concept hybrid carries oil; keep film supportive
-    filmThickness: 0.52,
+    filmThickness: 0.38,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.18,

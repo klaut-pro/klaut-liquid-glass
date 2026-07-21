@@ -29,14 +29,14 @@ SIZE = 512
 # Boxes are (x0,y0,x1,y1) on 784×1168 concept plates.
 CROPS = {
     "chromeSansP": [
-        # Z53Ve geometric chrome p — planar oil + softbox (wider, cleaner metal)
-        ("Z53Ve.jpg", (230, 620, 455, 930), 1.0),
-        # 1c6PD stem/bowl oil for richer gold/lime/cyan midtones
-        ("1c6PD.jpg", (145, 700, 330, 1040), 0.72),
+        # Z53Ve geometric chrome p — planar wet-mirror (prefer cool cyan oil over cream)
+        ("Z53Ve.jpg", (230, 620, 455, 930), 1.15),
+        # 1c6PD stem/bowl oil — lower weight (cream-prone); crush handles residual
+        ("1c6PD.jpg", (145, 700, 330, 1040), 0.45),
         # Z53Ve drip-adjacent oil accents
-        ("Z53Ve.jpg", (210, 820, 380, 1000), 0.4),
-        # 1c6PD upper bowl iridescence
-        ("1c6PD.jpg", (170, 640, 340, 820), 0.5),
+        ("Z53Ve.jpg", (210, 820, 380, 1000), 0.55),
+        # 1c6PD upper bowl — muted (cream risk)
+        ("1c6PD.jpg", (170, 640, 340, 820), 0.28),
     ],
     "scriptProP": [
         # ENj9B molten script p (full bowl+stem)
@@ -203,21 +203,24 @@ def bake_glyph(glyph_id: str) -> Image.Image:
     if glyph_id == "scriptProP":
         r, g, b = arr[..., 0], arr[..., 1], arr[..., 2]
         sil = 0.2126 * r + 0.7152 * g + 0.0722 * b
-        # Tubular elegance: silver wrap from concept luma structure (pink→silver)
-        cool = np.stack([sil * 0.94, sil * 1.0, sil * 1.08], axis=-1)
-        # Preserve / boost bright crest ribbons for silverRatio ~0.55
-        crest = sil > 115
-        flank = sil < 75
-        arr = cool.copy()
-        arr[crest] = np.stack([sil * 0.98, sil * 1.0, sil * 1.04], axis=-1)[crest]
-        arr[crest] = np.clip(arr[crest] * 1.22, 0, 255)
-        # Ensure crest cores clear RGB>210 for capture metric
-        hot = sil > 150
-        arr[hot] = np.clip(arr[hot] * 1.08, 0, 255)
-        arr[flank] = np.clip(arr[flank] * 0.5, 0, 255)
+        # Warm-neutral silver (NOT B-boost icy). Crest ribbons + dark flanks.
+        # Keep R≈G≈B±4 so cream metric stays low while avoiding icy B-lead.
+        warm = np.stack([sil * 1.0, sil * 0.995, sil * 0.99], axis=-1)
+        crest = sil > 135
+        flank = sil < 95
+        arr = warm.copy()
+        # Narrow hot crest only — avoid face-wide ice for silverRatio ~0.55
+        arr[crest] = np.stack([sil * 1.01, sil * 1.0, sil * 0.98], axis=-1)[crest]
+        arr[crest] = np.clip(arr[crest] * 1.18, 0, 255)
+        hot = sil > 175
+        arr[hot] = np.clip(arr[hot] * 1.06, 0, 255)
+        arr[flank] = np.clip(arr[flank] * 0.38, 0, 255)
+        # Mid flanks charcoal metal (tubular elegance)
+        midf = (sil >= 95) & (sil <= 135) & mask
+        arr[midf] = np.clip(arr[midf] * 0.62 + np.array([28.0, 30.0, 36.0]) * 0.38, 0, 255)
         chroma = arr.max(-1) - arr.min(-1)
         fringe = (b > r + 10) & (chroma > 28) & mask
-        arr[fringe] = arr[fringe] * 0.4 + cool[fringe] * 0.6
+        arr[fringe] = arr[fringe] * 0.35 + warm[fringe] * 0.65
         arr = crush_pink_cream(arr, spare_oil=False, keep_oil_chroma=0.0)
 
     if glyph_id == "chromeSansP":
@@ -225,54 +228,79 @@ def bake_glyph(glyph_id: str) -> Image.Image:
         sil = 0.2126 * r + 0.7152 * g + 0.0722 * b
         mid = (sil > 35) & (sil < 205) & mask
         chroma = arr.max(-1) - arr.min(-1)
-        # Enrich planar midtones slightly; oil chroma comes from concept crops
+        # Enrich planar midtones toward cyan/gold wet-mirror (not mint softbox)
         arr[mid, 0] = np.clip(arr[mid, 0] + 6.0, 0, 255)
-        arr[mid, 2] = np.clip(arr[mid, 2] + 6.0, 0, 255)
-        # Softbox peaks → cool silver (not cream)
-        peak_sil = np.stack([sil * 0.96, sil * 1.0, sil * 1.06], axis=-1)
-        pw = ((sil > 155) & (chroma < 40)).astype(np.float32)[..., None]
-        arr = arr * (1.0 - pw * 0.78) + peak_sil * (pw * 0.78)
-        # Cream/mint swamp → cool silver; spare high-chroma oil puddles (gold/cyan/lime)
-        swamp = np.maximum(0.0, arr[..., 1] - arr[..., 0] * 1.02) * np.maximum(
-            0.0, arr[..., 1] - arr[..., 2] * 0.98
+        arr[mid, 2] = np.clip(arr[mid, 2] + 4.0, 0, 255)
+        # Softbox peaks → cool silver (crush cream/mint)
+        peak_sil = np.stack([sil * 0.98, sil * 0.99, sil * 1.02], axis=-1)
+        pw = ((sil > 145) & (chroma < 42)).astype(np.float32)[..., None]
+        arr = arr * (1.0 - pw * 0.88) + peak_sil * (pw * 0.88)
+        # Cream/mint swamp → cool silver; spare high-chroma oil puddles only
+        swamp = np.maximum(0.0, arr[..., 1] - arr[..., 0] * 1.0) * np.maximum(
+            0.0, arr[..., 1] - arr[..., 2] * 0.95
         )
-        cream = np.maximum(0.0, arr[..., 0] - arr[..., 2] * 1.0)
-        cream = np.maximum(cream, np.maximum(0.0, arr[..., 1] * 0.92 - arr[..., 2]))
-        swamp = np.maximum(swamp * 1.15, cream)
-        w = np.clip(swamp / 22.0, 0.0, 1.0)
-        cool = np.stack([sil * 0.96, sil * 1.0, sil * 1.06], axis=-1)
-        spare = (chroma > 30) & (sil > 45) & (sil < 190)
-        w = np.where(spare, w * 0.2, w)
-        arr = arr * (1.0 - w[..., None] * 0.9) + cool * (w[..., None] * 0.9)
-        # Second pass residual mint/cream → cool silver
-        mint2 = np.maximum(0.0, arr[..., 1] - arr[..., 0] * 1.04) * np.maximum(
-            0.0, arr[..., 1] - arr[..., 2] * 0.98
-        )
-        cream2 = np.maximum(0.0, arr[..., 0] - arr[..., 2] * 1.02) + np.maximum(
-            0.0, arr[..., 1] * 0.9 - arr[..., 2]
-        )
-        w2 = np.clip(np.maximum(mint2, cream2) / 28.0, 0.0, 1.0)
-        sil2 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
-        cool2 = np.stack([sil2 * 0.96, sil2 * 1.0, sil2 * 1.06], axis=-1)
-        arr = arr * (1.0 - w2[..., None] * 0.85) + cool2 * (w2[..., None] * 0.85)
-        # Enrich sparse midtone oil (high chroma only) toward gold/cyan wet-mirror
+        cream = np.maximum(0.0, arr[..., 0] - arr[..., 2] * 0.98)
+        cream = np.maximum(cream, np.maximum(0.0, arr[..., 1] * 0.9 - arr[..., 2]))
+        swamp = np.maximum(swamp * 1.35, cream)
+        w = np.clip(swamp / 14.0, 0.0, 1.0)
+        cool = np.stack([sil * 0.98, sil * 0.99, sil * 1.02], axis=-1)
+        spare = (chroma > 36) & (sil > 45) & (sil < 185)
+        w = np.where(spare, w * 0.12, w)
+        arr = arr * (1.0 - w[..., None] * 0.95) + cool * (w[..., None] * 0.95)
+        # Second + third pass residual mint/cream → cool silver (harder crush)
+        for _ in range(2):
+            mint2 = np.maximum(0.0, arr[..., 1] - arr[..., 0] * 1.02) * np.maximum(
+                0.0, arr[..., 1] - arr[..., 2] * 0.96
+            )
+            cream2 = np.maximum(0.0, arr[..., 0] - arr[..., 2] * 1.0) + np.maximum(
+                0.0, arr[..., 1] * 0.88 - arr[..., 2]
+            )
+            w2 = np.clip(np.maximum(mint2, cream2) / 18.0, 0.0, 1.0)
+            sil2 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
+            cool2 = np.stack([sil2 * 0.98, sil2 * 0.99, sil2 * 1.02], axis=-1)
+            chs = arr.max(-1) - arr.min(-1)
+            w2 = np.where(chs > 34, w2 * 0.15, w2)
+            arr = arr * (1.0 - w2[..., None] * 0.92) + cool2 * (w2[..., None] * 0.92)
+        # Sparse midtone oil (high chroma) → cyan/gold wet-mirror accents
         ch3 = arr.max(-1) - arr.min(-1)
         sil3 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
-        oil_mid = mid & (ch3 > 28) & (sil3 > 50) & (sil3 < 185)
-        arr[oil_mid, 0] = np.clip(arr[oil_mid, 0] + 10.0, 0, 255)
-        arr[oil_mid, 2] = np.clip(arr[oil_mid, 2] + 8.0, 0, 255)
+        oil_mid = mid & (ch3 > 32) & (sil3 > 50) & (sil3 < 180)
+        arr[oil_mid, 0] = np.clip(arr[oil_mid, 0] + 12.0, 0, 255)
+        arr[oil_mid, 1] = np.clip(arr[oil_mid, 1] + 4.0, 0, 255)
+        arr[oil_mid, 2] = np.clip(arr[oil_mid, 2] + 6.0, 0, 255)
+        # Kill G-dominant mint on low-chroma faces (hard clamp)
+        g_dom = (arr[..., 1] > arr[..., 0] * 1.01) & (arr[..., 1] > arr[..., 2] * 0.97)
+        cool3 = np.stack([sil3 * 0.98, sil3 * 0.99, sil3 * 1.02], axis=-1)
+        gw = g_dom.astype(np.float32)[..., None] * np.where(ch3 < 40, 0.95, 0.55)[..., None]
+        arr = arr * (1.0 - gw) + cool3 * gw
+        # Hard cap: G cannot lead R/B on softbox / low-chroma metal
+        soft_g = (ch3 < 38) & mask
+        g_cap = np.maximum(arr[..., 0], arr[..., 2]) * 1.01
+        arr[..., 1] = np.where(soft_g, np.minimum(arr[..., 1], g_cap), arr[..., 1])
         # Final cream desat on low-chroma midtones
+        sil3 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         ch2 = arr.max(-1) - arr.min(-1)
-        cream_low = (sil3 > 60) & (sil3 < 200) & (ch2 < 28) & (
-            (arr[..., 0] > arr[..., 2] + 4) | (arr[..., 1] * 0.9 > arr[..., 2])
+        cream_low = (sil3 > 55) & (sil3 < 205) & (ch2 < 34) & (
+            (arr[..., 0] > arr[..., 2] + 2) | (arr[..., 1] * 0.88 > arr[..., 2])
         )
-        cool3 = np.stack([sil3 * 0.97, sil3 * 1.0, sil3 * 1.05], axis=-1)
-        cw = cream_low.astype(np.float32)[..., None] * 0.75
-        arr = arr * (1.0 - cw) + cool3 * cw
+        cool4 = np.stack([sil3 * 0.98, sil3 * 0.99, sil3 * 1.02], axis=-1)
+        cw = cream_low.astype(np.float32)[..., None] * 0.92
+        arr = arr * (1.0 - cw) + cool4 * cw
         # Charcoal interstitial voids
         void = (sil < 52) & mask
-        arr[void] = np.clip(arr[void] * 0.4 + np.array([12, 14, 20]) * 0.6, 0, 255)
-        arr = crush_pink_cream(arr, keep_oil_chroma=0.7)
+        arr[void] = np.clip(arr[void] * 0.35 + np.array([12, 14, 20]) * 0.65, 0, 255)
+        arr = crush_pink_cream(arr, keep_oil_chroma=0.4)
+        # Post-crush mint clamp again (crush can restore G via oil)
+        silf = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
+        chf = arr.max(-1) - arr.min(-1)
+        mintf = (arr[..., 1] > arr[..., 0] * 1.01) & (arr[..., 1] > arr[..., 2] * 0.97) & (chf < 42)
+        coolf = np.stack([silf * 0.98, silf * 0.99, silf * 1.02], axis=-1)
+        arr = arr * (1.0 - mintf[..., None] * 0.9) + coolf * (mintf[..., None] * 0.9)
+        arr[..., 1] = np.where(
+            (chf < 38) & mask,
+            np.minimum(arr[..., 1], np.maximum(arr[..., 0], arr[..., 2]) * 1.01),
+            arr[..., 1],
+        )
 
     arr *= mask[..., None].astype(np.float32)
     arr = inpaint_mask_holes(arr, mask)
