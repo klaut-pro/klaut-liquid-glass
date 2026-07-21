@@ -351,60 +351,60 @@ export class DripSim {
 
       if (!freeze) em.stretchT += dt / maps.stretchDuration;
       const t = clamp01(em.stretchT);
-      // Freeze mid-stretch: thinner elegant filament vs lumpy 0.42 floor
-      const freezeNeckFloor = freeze ? 0.32 : 0.04;
+      // Freeze mid-stretch: elegant continuous filament (not fragmented / not lumpy)
+      const freezeNeckFloor = freeze ? 0.28 : 0.04;
       em.neckR = Math.max(
         freezeNeckFloor,
-        1 - t * maps.neckThinRate * (0.35 + 0.65 * t) * (freeze ? 0.55 : 1),
+        1 - t * maps.neckThinRate * (0.35 + 0.65 * t) * (freeze ? 0.58 : 1),
       );
       const stretch = t * maps.stretchLen * halfH * em.stretchScale;
       const tipY = bottomY - stretch;
       const tipR = maps.dropR * minDim * (0.75 + 0.35 * emDrip) * (1.05 - 0.15 * t);
-      const neckY = mix(bottomY, tipY, 0.4);
+      const neckY = mix(bottomY, tipY, 0.42);
       const neckR =
-        tipR * mix(0.16, 0.4, emVisc) * Math.max(em.neckR, freezeNeckFloor);
+        tipR * mix(0.14, 0.34, emVisc) * Math.max(em.neckR, freezeNeckFloor);
 
       // Lip anchor — blends into glyph stem (root sits inside letterform)
       blobs.push({
         x: em.x + wobble * 0.2,
         y: bottomY + minDim * 0.06,
-        r: tipR * mix(1.1, 1.28, emVisc),
+        r: tipR * mix(1.08, 1.22, emVisc),
         w: emDrip * 1.18,
       });
       blobs.push({
         x: em.x + wobble * 0.12,
         y: bottomY - stretch * 0.04,
-        r: tipR * mix(0.7, 0.9, emVisc),
+        r: tipR * mix(0.65, 0.85, emVisc),
         w: emDrip * 1.0,
       });
       blobs.push({
         x: em.x + wobble * 0.08,
         y: neckY,
-        r: neckR * 0.75,
-        w: emDrip * Math.max(0.5, em.neckR),
+        r: neckR * 0.7,
+        w: emDrip * Math.max(0.48, em.neckR),
       });
 
       // Viscous filament — thin mid, swell to bulb (pendant profile)
       {
-        const segments = freeze ? 12 : 5;
+        const segments = freeze ? 14 : 5;
         for (let si = 1; si < segments; si++) {
           const ft = si / segments;
-          // Classic pendant: thick lip → thin filament → bulb tip
+          // Classic pendant: thick lip → elegant filament → bulb tip
           let profile: number;
-          if (ft < 0.5) {
-            profile = mix(0.42, 0.05, ft / 0.5);
-          } else if (ft < 0.78) {
-            profile = mix(0.05, 0.042, (ft - 0.5) / 0.28);
+          if (ft < 0.48) {
+            profile = mix(0.4, 0.038, ft / 0.48);
+          } else if (ft < 0.8) {
+            profile = mix(0.038, 0.034, (ft - 0.48) / 0.32);
           } else {
-            profile = mix(0.042, 1.08, (ft - 0.78) / 0.22);
+            profile = mix(0.034, 1.1, (ft - 0.8) / 0.2);
           }
           const sy = mix(bottomY, tipY, ft);
           const sr = tipR * profile * Math.max(em.neckR, freezeNeckFloor);
           blobs.push({
-            x: em.x + wobble * 0.025,
+            x: em.x + wobble * 0.02,
             y: sy,
-            r: Math.max(sr, tipR * (freeze ? 0.045 : 0.05)),
-            w: emDrip * mix(1.05, 0.55, ft) * Math.max(0.45, em.neckR),
+            r: Math.max(sr, tipR * (freeze ? 0.038 : 0.045)),
+            w: emDrip * mix(1.05, 0.52, ft) * Math.max(0.42, em.neckR),
           });
         }
       }
@@ -412,15 +412,15 @@ export class DripSim {
       blobs.push({
         x: em.x,
         y: mix(bottomY, tipY, 0.55),
-        r: tipR * mix(0.09, 0.16, emVisc) * Math.max(em.neckR, freezeNeckFloor),
-        w: emDrip * 0.55 * Math.max(0.35, em.neckR),
+        r: tipR * mix(0.07, 0.13, emVisc) * Math.max(em.neckR, freezeNeckFloor),
+        w: emDrip * 0.52 * Math.max(0.35, em.neckR),
       });
       // Tip bulb
       blobs.push({
         x: em.x + wobble,
         y: tipY,
-        r: tipR * (freeze ? 1.05 : 1.0),
-        w: emDrip * 1.2,
+        r: tipR * (freeze ? 1.08 : 1.0),
+        w: emDrip * 1.22,
       });
 
       if (!freeze && (em.neckR < 0.12 || t >= 1)) {

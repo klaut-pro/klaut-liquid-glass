@@ -32,6 +32,15 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 14 (env contrast + script face fill)
+
+- Razor softbox cores + soft shoulders in `studioEnv` / screen streaks; harder studio plate gradients
+- Script: thin bevel so tubular face isn't rim-voided; magenta tube fill + medial spine ridge
+- Face luminance floor (avoid black-void crush); continuous elegant pendant filament (~0.038 mid)
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+
+**Status:** ❌ not READY — chromeSansP softbox bars still soft vs wet-mirror 1c6PD/Z53Ve; scriptProP body chrome restored but stroke elegance / mid-filament still lag ENj9B. Loop stays armed.
+
 ## Iteration 13 (wet-mirror bars + thin filament)
 
 - Sharper softbox streak cores (pow falloff) over 99ecc20 chrome face base

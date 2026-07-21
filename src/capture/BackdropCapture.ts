@@ -192,29 +192,40 @@ export function createChromeStudioBackdrop(
   ctx.fillStyle = "#030306";
   ctx.fillRect(0, 0, w, h);
 
-  // Primary vertical softbox — tighter core for wet-mirror bars
-  const soft = ctx.createLinearGradient(w * 0.275, 0, w * 0.325, 0);
+  // Primary vertical softbox — razor core for wet-mirror bars
+  const soft = ctx.createLinearGradient(w * 0.288, 0, w * 0.312, 0);
   soft.addColorStop(0, "rgba(255,255,255,0)");
-  soft.addColorStop(0.35, "rgba(255,250,255,0.35)");
-  soft.addColorStop(0.48, "rgba(255,255,255,1)");
-  soft.addColorStop(0.52, "rgba(255,255,255,1)");
-  soft.addColorStop(0.65, "rgba(210,255,250,0.35)");
+  soft.addColorStop(0.28, "rgba(255,250,255,0.22)");
+  soft.addColorStop(0.45, "rgba(255,255,255,0.95)");
+  soft.addColorStop(0.5, "rgba(255,255,255,1)");
+  soft.addColorStop(0.55, "rgba(255,255,255,0.95)");
+  soft.addColorStop(0.72, "rgba(210,255,250,0.22)");
   soft.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = soft;
   ctx.fillRect(0, 0, w, h);
 
-  // Secondary softbox (right fill) — thinner
-  const soft2 = ctx.createLinearGradient(w * 0.69, 0, w * 0.73, 0);
+  // Secondary softbox (right fill) — thin hard bar
+  const soft2 = ctx.createLinearGradient(w * 0.702, 0, w * 0.722, 0);
   soft2.addColorStop(0, "rgba(255,255,255,0)");
-  soft2.addColorStop(0.5, "rgba(180,220,255,0.45)");
+  soft2.addColorStop(0.4, "rgba(180,220,255,0.25)");
+  soft2.addColorStop(0.5, "rgba(200,235,255,0.7)");
+  soft2.addColorStop(0.6, "rgba(180,220,255,0.25)");
   soft2.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = soft2;
   ctx.fillRect(0, 0, w, h);
 
-  // Horizontal softbox strip
-  const softH = ctx.createLinearGradient(0, h * 0.22, 0, h * 0.28);
+  // Soft shoulder fill (left) — keeps faces from black voids without milking bars
+  const shoulder = ctx.createLinearGradient(w * 0.22, 0, w * 0.38, 0);
+  shoulder.addColorStop(0, "rgba(255,255,255,0)");
+  shoulder.addColorStop(0.5, "rgba(200,220,255,0.12)");
+  shoulder.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = shoulder;
+  ctx.fillRect(0, 0, w, h);
+
+  // Horizontal softbox strip — narrower
+  const softH = ctx.createLinearGradient(0, h * 0.235, 0, h * 0.265);
   softH.addColorStop(0, "rgba(255,255,255,0)");
-  softH.addColorStop(0.5, "rgba(255,245,255,0.28)");
+  softH.addColorStop(0.5, "rgba(255,245,255,0.32)");
   softH.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = softH;
   ctx.fillRect(0, 0, w, h);
