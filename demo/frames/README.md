@@ -32,6 +32,17 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 32 (cool softbox + cream-lip kill; round-pipe crest)
+
+- **Root cause:** iter-31 residual lime/gold rim fire + cream drip lip; oilFire/env lime puddles; script crest still soft vs ENj9B
+- HDRI bake: multi-softbox silver lobes + whisper cool oil (no neon lime/gold puddles); milder blur to keep contrast
+- chromeSansP: cool silver rim fire (kill lime rim glow); cream drip lip crush; neon lime/gold flood crush; sparse planar oil; filmThickness 0.26; pink0; no barcode; faces filled
+- scriptProP: tighter crest/flank (bodyT/0.062, pow 0.36); thicker softMin joins; atlas dilate 7.8 / round 3.8; silverRatio ~0.69; pinkRatio 0
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome pink0 silverish~0.99 (flat softbox risk); script pinkRatio 0; silverRatio ~0.69; voidInside script↑
+
+**Status:** ❌ not READY — chromeSansP killed cream lip + neon rim better but still short of 1c6PD/Z53Ve planar oil-slick wet-mirror (faces read flat cream-silver vs concept softbox fidelity / residual mint edge); scriptProP crest/flank + joins improved but tubular elegance / round-pipe still lag ENj9B (silverRatio ~0.69, voids). Blender still unavailable. Loop stays armed.
+
 ## Iteration 31 (oil-slick planar + round-pipe crest; barcode dead)
 
 - **Root cause:** final chrome grade still had `barX`/`fract(p.x)` knife barcode (killed); equal RGB≥248 SwiftShader capture strip hollowed silver faces
