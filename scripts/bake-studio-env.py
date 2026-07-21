@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
 """Bake studio softbox plate for wet-mirror glyph QA (Blender unavailable).
 
-Iteration 23: iridescent planar knife softbox — hard chromatic slabs (cyan /
-magenta / lime) + white razor cores on charcoal. No warm cream panels.
+Iteration 24: faceted planar knife blocks — wider chromatic slabs + secondary
+facet mosaic + white razor cores on charcoal. No warm cream panels.
 """
 from __future__ import annotations
 
@@ -48,19 +47,25 @@ def main() -> None:
     im = Image.new("RGBA", (w, h), (0, 0, 0, 255))
     draw = ImageDraw.Draw(im, "RGBA")
 
-    # Iridescent planar slabs (oil-slick faces) — cool chroma only, never cream
-    panel_v(draw, w, h, w * 0.22, 22, (70, 210, 255))   # cyan
-    panel_v(draw, w, h, w * 0.40, 26, (255, 95, 210))    # magenta
-    panel_v(draw, w, h, w * 0.58, 30, (255, 255, 255))   # white knife key
-    panel_v(draw, w, h, w * 0.74, 22, (160, 255, 90))    # lime
-    panel_v(draw, w, h, w * 0.88, 18, (255, 200, 60))    # gold accent
+    # Faceted planar blocks — cool chroma only, never cream
+    panel_v(draw, w, h, w * 0.18, 30, (55, 195, 255))
+    panel_v(draw, w, h, w * 0.34, 34, (255, 70, 200))
+    panel_v(draw, w, h, w * 0.50, 38, (255, 255, 255))
+    panel_v(draw, w, h, w * 0.66, 32, (140, 255, 70))
+    panel_v(draw, w, h, w * 0.82, 28, (255, 185, 40))
+    # Secondary facet mosaic
+    panel_v(draw, w, h, w * 0.26, 16, (90, 230, 255))
+    panel_v(draw, w, h, w * 0.58, 18, (255, 120, 230))
+    panel_v(draw, w, h, w * 0.74, 16, (190, 255, 110))
 
-    # Razor knife cores on panel centers
-    knife_v(draw, w, h, w * 0.22, 2, (220, 255, 255))
-    knife_v(draw, w, h, w * 0.40, 2, (255, 220, 255))
-    knife_v(draw, w, h, w * 0.58, 3, (255, 255, 255))
-    knife_v(draw, w, h, w * 0.74, 2, (230, 255, 200))
-    knife_v(draw, w, h, w * 0.88, 2, (255, 240, 180))
+    knife_v(draw, w, h, w * 0.18, 3, (220, 255, 255))
+    knife_v(draw, w, h, w * 0.34, 3, (255, 210, 255))
+    knife_v(draw, w, h, w * 0.50, 4, (255, 255, 255))
+    knife_v(draw, w, h, w * 0.66, 3, (220, 255, 190))
+    knife_v(draw, w, h, w * 0.82, 3, (255, 235, 160))
+    knife_v(draw, w, h, w * 0.26, 2, (200, 255, 255))
+    knife_v(draw, w, h, w * 0.58, 2, (255, 200, 255))
+    knife_v(draw, w, h, w * 0.74, 2, (230, 255, 180))
 
     # Horizontal strip — 2px hard core
     cy = int(h * 0.18)

@@ -32,6 +32,15 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 24 (faceted softbox blocks + join notch + wrap AA)
+
+- chromeSansP: hard rectangular softbox columns + horizontal facet seams; architectural stem–bowl join notch carve; wider chromatic studio plate mosaic; cream/peach crush held; filmThickness 0.38; oil-slick faces retained
+- scriptProP: thicker softMin pipe join; fwidth-AA cylindrical wrap (anti alias sparkle); darker drip floors; atlas dilate 5.6 / round 2.35; pinkRatio 0; silverRatio ~0.36; voidInside ~420
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome bowl cool cyan `[137,172,250]` (no cream); script pinkRatio 0
+
+**Status:** ❌ not READY — chromeSansP faceted blocks + bowl join notch closer to 1c6PD/Z53Ve but planar knife wet-mirror still short of concept softbox fidelity; scriptProP pink crushed + wrap AA started but tubular elegance / icy bowl / join still lag ENj9B. Blender still unavailable. Loop stays armed.
+
 ## Iteration 23 (iridescent planar faces + tube join refine)
 
 - chromeSansP: chromatic softbox plate (cyan/magenta/lime/gold) + face-wide oil-slick edgeFire/film on planar slabs; cream crush spares high-chroma; filmThickness 0.45 slab-gated; knife white cores restored

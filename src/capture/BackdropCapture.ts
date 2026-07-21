@@ -210,18 +210,25 @@ export function createChromeStudioBackdrop(
     ctx.fillRect(x0, 0, Math.max(2, Math.ceil(halfW * 2)), h);
   };
 
-  // Iridescent planar slabs (1c6PD/Z53Ve oil-slick faces) — cool chroma, never cream
-  panelV(w * 0.22, Math.max(10, w * 0.02), "70,210,255");
-  panelV(w * 0.4, Math.max(12, w * 0.024), "255,95,210");
-  panelV(w * 0.58, Math.max(14, w * 0.028), "255,255,255");
-  panelV(w * 0.74, Math.max(10, w * 0.02), "160,255,90");
-  panelV(w * 0.88, Math.max(8, w * 0.016), "255,200,60");
+  // Faceted planar softbox blocks (1c6PD/Z53Ve) — wider hard slabs, cool chroma only
+  panelV(w * 0.18, Math.max(14, w * 0.028), "55,195,255");
+  panelV(w * 0.34, Math.max(16, w * 0.032), "255,70,200");
+  panelV(w * 0.5, Math.max(18, w * 0.036), "255,255,255");
+  panelV(w * 0.66, Math.max(16, w * 0.03), "140,255,70");
+  panelV(w * 0.82, Math.max(14, w * 0.026), "255,185,40");
+  // Secondary facet row offset — block mosaic read
+  panelV(w * 0.26, Math.max(8, w * 0.014), "90,230,255");
+  panelV(w * 0.58, Math.max(9, w * 0.016), "255,120,230");
+  panelV(w * 0.74, Math.max(8, w * 0.014), "190,255,110");
 
-  knifeV(w * 0.22, Math.max(1, w * 0.0015), "220,255,255");
-  knifeV(w * 0.4, Math.max(1, w * 0.0015), "255,220,255");
-  knifeV(w * 0.58, Math.max(2, w * 0.002), "255,255,255");
-  knifeV(w * 0.74, Math.max(1, w * 0.0015), "230,255,200");
-  knifeV(w * 0.88, Math.max(1, w * 0.0015), "255,240,180");
+  knifeV(w * 0.18, Math.max(2, w * 0.002), "220,255,255");
+  knifeV(w * 0.34, Math.max(2, w * 0.002), "255,210,255");
+  knifeV(w * 0.5, Math.max(2, w * 0.0025), "255,255,255");
+  knifeV(w * 0.66, Math.max(2, w * 0.002), "220,255,190");
+  knifeV(w * 0.82, Math.max(2, w * 0.002), "255,235,160");
+  knifeV(w * 0.26, Math.max(1, w * 0.0012), "200,255,255");
+  knifeV(w * 0.58, Math.max(1, w * 0.0012), "255,200,255");
+  knifeV(w * 0.74, Math.max(1, w * 0.0012), "230,255,180");
 
   // Horizontal strip — hard core only
   {
