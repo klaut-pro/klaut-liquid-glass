@@ -272,11 +272,11 @@ void main() {
   vec3 color = mix(refracted, reflectTint, fres * chromeMix * u_glass * mix(1.15, 0.18, interior));
   if (u_fieldMode > 0.5) {
     color += reflectTint * edge * 0.55 * u_lightIntensity * u_specular;
-    color = mix(color * 0.78, color, edge); // darker chrome body, bright rims
+    color = mix(color * 0.62, color, edge); // darker chrome body, bright rims
     // Environment reflection (chrome reads backdrop softbox)
-    vec2 envUv = clamp(uv + N.xy * refrStr * 2.4, 0.0, 1.0);
-    vec3 env = sampleBlur(envUv, blurAmt * 0.4);
-    color = mix(color, env, mix(0.22, 0.62, 1.0 - interior) * 0.9);
+    vec2 envUv = clamp(uv + N.xy * refrStr * 2.8, 0.0, 1.0);
+    vec3 env = sampleBlur(envUv, blurAmt * 0.35);
+    color = mix(color, env, mix(0.28, 0.72, 1.0 - interior) * 1.05);
     // Concept-art vertical softbox stripe (1c6PD / Z53Ve)
     float bar = smoothstep(0.32, 0.0, abs(p.x + 0.16)) * smoothstep(-0.55, 0.42, p.y);
     color += vec3(1.0) * bar * 0.52 * u_lightIntensity * mix(0.35, 1.0, edge);
@@ -298,8 +298,12 @@ void main() {
     float filmStr = film * (0.3 + 0.45 * edge) * (0.5 + 0.5 * ndotl * u_lightIntensity);
     if (u_fieldMode > 0.5) filmStr *= mix(0.72, 1.0, edge);
     vec3 filmTint = thinFilm(thick, ndotv, ndotl, filmStr);
-    color *= filmTint;
-    color += (filmTint - 0.5) * film * fres * 0.28 * u_lightIntensity;
+    if (u_fieldMode > 0.5) {
+      color += (filmTint - 0.5) * filmStr * 0.42;
+    } else {
+      color *= filmTint;
+      color += (filmTint - 0.5) * film * fres * 0.28 * u_lightIntensity;
+    }
   }
 
   // Specular from material light — tight hot spot (concept-art star glints)
