@@ -66,8 +66,8 @@ export const chromeSansP: GlyphProfile = {
     drip: 0.98,
     viscosity: 0.94,
     dispersion: 1,
-    // No thin film on planar faces — film was cyan/magenta wash source
-    filmThickness: 0,
+    // Thin face film — sparse oil-slick; shade pink0 + mint/cyan crush
+    filmThickness: 0.14,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.18,
@@ -99,7 +99,8 @@ export const scriptProP: GlyphProfile = {
     drip: 1,
     viscosity: 0.98,
     dispersion: 1,
-    filmThickness: 0.02,
+    // Rim-only film — tubular wrap from cylindrical shade, not face wash
+    filmThickness: 0.06,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.22,
