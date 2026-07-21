@@ -32,6 +32,17 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 27 (silver-first softbox + tubular ribbons)
+
+- HDRI bake: authored silver-first softbox (4 wide panels + voids; lime/gold accents; no magenta; no cyan-dominant flood)
+- Procedural fallback plate: magenta panels removed
+- chromeSansP: synthetic panel/void knife bars; pink0 + lavender→silver grade; edgeFire cyan/lime/gold only; filmThickness 0; cyan streak accents cut
+- scriptProP: charcoal body + cylindrical silver ribbons (not grazing-only, not face-wide ice); pinkRatio 0
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: script pinkRatio 0; silverRatio ~0.51 (restored from ~0.036); chrome bowl/stem near-neutral silver (no magenta tip)
+
+**Status:** ❌ not READY — chromeSansP regained panel/void + pink0 vs iter-26 cyan/magenta wash but still short of 1c6PD/Z53Ve iridescent planar knife wet-mirror fidelity; scriptProP silverRatio restored without pink flood but tubular elegance / wrap banding still lag ENj9B. Blender still unavailable. Loop stays armed.
+
 ## Iteration 26 (wide-panel concept HDRI + Fresnel tubular silver)
 
 - HDRI bake: contiguous wide softbox panels from concept metal harvest (no barcode columns / patch mosaic shred); cream+pink crushed

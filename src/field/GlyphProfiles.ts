@@ -66,8 +66,8 @@ export const chromeSansP: GlyphProfile = {
     drip: 0.98,
     viscosity: 0.94,
     dispersion: 1,
-    // Slab-gated thin film — keep low to avoid cyan face wash
-    filmThickness: 0.14,
+    // No thin film on planar faces — film was cyan/magenta wash source
+    filmThickness: 0,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.18,
