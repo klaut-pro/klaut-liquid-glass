@@ -32,6 +32,17 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 31 (oil-slick planar + round-pipe crest; barcode dead)
+
+- **Root cause:** final chrome grade still had `barX`/`fract(p.x)` knife barcode (killed); equal RGB≥248 SwiftShader capture strip hollowed silver faces
+- HDRI bake: softer overlapping elliptical softboxes + mild oil puddles (blur 28+8); lime/gold gain down
+- chromeSansP: continuous planar face UV (bright softbox cluster); elliptical oil puddles; silver softbox grade + mint-flood crush; unequal RGB peak cap; pink0 cream crush; filmThickness 0.32; no barcode
+- scriptProP: sharper crest/flank cylinder (bodyT/0.072, pow 0.42); thicker softMin joins; atlas dilate 7.4 / round 3.6; silverRatio ~0.79; darkFlank ~0.20; pinkRatio 0
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome silverish ~0.68 / lime~0.31; script pinkRatio 0; silverRatio ~0.79
+
+**Status:** ❌ not READY — chromeSansP regained continuous face (no barcode hollow) + silver-majority softbox but still short of 1c6PD/Z53Ve planar oil-slick wet-mirror fidelity (residual lime/gold vertical-ish accents + cream drip lip); scriptProP continuous silver without pink + clearer flank darkening but tubular elegance / round-pipe still lag ENj9B. Blender still unavailable. Loop stays armed.
+
 ## Iteration 30 (planar softbox LINEAR + round-pipe crest/flank)
 
 - HDRI bake: killed vertical barcode columns → continuous elliptical softboxes + diagonal lime↔gold oil wash + heavy blur
