@@ -89,10 +89,10 @@ float glyphScriptProP(vec2 p) {
   float top = sdCapsule(q, vec2(-0.12, 0.12), vec2(0.04, 0.22), 0.044);
   float right = sdCapsule(q, vec2(0.04, 0.22), vec2(0.14, 0.06), 0.042);
   float close = sdCapsule(q, vec2(0.14, 0.06), vec2(0.02, -0.12), 0.04);
-  float g = softMin(desc, left, 0.03);
-  g = softMin(g, top, 0.028);
-  g = softMin(g, right, 0.026);
-  g = softMin(g, close, 0.024);
+  float g = softMin(desc, left, 0.038);
+  g = softMin(g, top, 0.036);
+  g = softMin(g, right, 0.034);
+  g = softMin(g, close, 0.032);
   return g;
 }
 
@@ -286,8 +286,8 @@ void main() {
     } else {
       vec3 chrome = vec3(0.92, 0.96, 1.08);
       color = mix(color, color * chrome, 0.18 + 0.22 * (1.0 - interior));
-      vec3 bodySpec = 0.5 + 0.5 * cos(vec3(p.y * 9.0, p.y * 9.0 + 2.1, p.y * 9.0 + 4.2));
-      color += bodySpec * (1.0 - interior) * 0.14 * u_dispersion;
+      vec3 bodySpec = 0.5 + 0.5 * cos(vec3((p.x + p.y) * 7.5, (p.x - p.y) * 7.5 + 2.1, p.y * 6.0 + 4.2));
+      color += bodySpec * (1.0 - interior) * 0.12 * u_dispersion;
     }
   }
 
