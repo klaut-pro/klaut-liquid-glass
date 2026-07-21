@@ -11,18 +11,18 @@
 
 **Blender:** not on PATH / install blocked on admin UAC. Winget pulled Blender 5.2.0 MSI but elevation prompt stalled.
 
-**Chosen alternative:** TrueType outline → binary mask → Euclidean distance transform (EDT) → R8 SDF PNG + embedded atlas.
+**Chosen alternative:** TrueType outline → binary mask → Euclidean distance transform (EDT) → R8 SDF + **G height bevel** PNG + embedded atlas.
 
 | Step | Tool | Output |
 |------|------|--------|
-| 1 | `scripts/bake-glyph-sdf.py` (Pillow + SciPy) | `demo/glyph-atlases/*.png` |
+| 1 | `scripts/bake-glyph-sdf.py` (Pillow + SciPy) | `demo/glyph-atlases/*.png` (R=SDF, G=height) |
 | 2 | same script | `src/field/glyphAtlases.ts` (base64 embed) |
-| 3 | WebGL `u_glyphSdf` sample | crisp font silhouettes in fragment shader |
-| 4 | Flat-face + rim bevel shading | dark polished chrome (no medial-axis milk) |
+| 3 | `scripts/bake-concept-env.py` | concept-harvested `demo/env/studio-softbox.png` HDRI plate |
+| 4 | WebGL reflection sample + height-bevel normals | wet-mirror chrome / tubular wrap |
 
 Fonts: **Arial Black** (`ariblk.ttf`) for chromeSansP, **Segoe Script** (`segoesc.ttf`) for scriptProP.
 
-Rebake: `npm run bake:glyphs`
+Rebake: `npm run bake:glyphs` · `npm run bake:env`
 
 When Blender is available, replace atlas PNGs with extruded/remeshed heightfield or MSDF bake using the same R8 encode (`0.5 - 0.5 * signed/maxDist`).
 
@@ -31,6 +31,16 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Engine demo: `/demo/qa.html` (side-by-side ref vs live)
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
+
+## Iteration 25 (concept HDRI harvest + MSDF height bevel)
+
+- **Bold pivot** off softbox-column plateau: harvest metallic chrome pixels from `1c6PD`/`Z53Ve`/`ENj9B` → frontal reflection plate (`bake-concept-env.py`); atlas G channel height bevel (planar plateau / tubular crest); shade path reflection-maps concept plate instead of painted slab columns; continuous cos wrap for script (anti band sparkle); cream+pink crush in env bake + shade
+- chromeSansP: filmThickness 0.28; cyan-cool faces; magenta rim fire gated; open counter held
+- scriptProP: dilate 6.2 / round 2.8; height-smoothed tube normals; pinkRatio 0; silverRatio ~0.14; voidInside ~163
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: script pinkRatio 0; chrome stem cool cyan (no cream)
+
+**Status:** ❌ not READY — concept-derived plate + height bevel is a real architecture shift but chromeSansP still short of 1c6PD/Z53Ve planar knife wet-mirror (faces read cyan-washed / fragmented vs concept softbox fidelity); scriptProP pink crushed but still icy/diffuse tubular vs ENj9B molten chrome elegance (banding reduced, silverRatio low). Blender still unavailable. Loop stays armed.
 
 ## Iteration 24 (faceted softbox blocks + join notch + wrap AA)
 

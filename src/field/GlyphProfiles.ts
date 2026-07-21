@@ -66,8 +66,8 @@ export const chromeSansP: GlyphProfile = {
     drip: 0.98,
     viscosity: 0.94,
     dispersion: 1,
-    // Slab-gated thin film for oil-slick iridescent facets (not cream flood)
-    filmThickness: 0.38,
+    // Slab-gated thin film for oil-slick facets from concept HDRI
+    filmThickness: 0.28,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.18,

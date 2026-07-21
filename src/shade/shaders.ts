@@ -75,8 +75,8 @@ float sdCapsule(vec2 p, vec2 a, vec2 b, float r) {
 }
 
 /**
- * Font-baked EDT SDF (scripts/bake-glyph-sdf.py).
- * Encode: R = 0.5 - 0.5*(signedPx/maxDistPx); decode to Quilez signed field.
+ * Font-baked EDT SDF + height bevel (scripts/bake-glyph-sdf.py).
+ * Encode: R = 0.5 - 0.5*(signedPx/maxDistPx); G = height bevel 0..1.
  */
 float glyphAtlasField(vec2 p) {
   float ext = max(u_glyphExtent, 1e-4);
@@ -88,6 +88,13 @@ float glyphAtlasField(vec2 p) {
   vec2 over = max(abs(uv - 0.5) - 0.5, 0.0);
   d += length(over) * (2.0 * ext);
   return d;
+}
+
+/** Height bevel from atlas G (planar plateau / tubular crest). */
+float glyphAtlasHeight(vec2 p) {
+  float ext = max(u_glyphExtent, 1e-4);
+  vec2 uv = clamp(vec2(p.x / (2.0 * ext) + 0.5, p.y / (2.0 * ext) + 0.5), 0.0, 1.0);
+  return texture(u_glyphSdf, uv).g;
 }
 
 /** Procedural fallbacks (only if atlas not ready). */
@@ -417,21 +424,46 @@ void main() {
   float z = u_bevel * edge * 0.85;
   vec3 N;
   if (u_fieldMode > 0.5) {
-    // Chrome: zero pillow — planar knife wet-mirror faces (1c6PD/Z53Ve)
-    // Script: strong cylindrical tube pillow for chrome-pipe elegance (ENj9B)
-    float pillow = (u_glyphId > 0.5 ? 0.62 : 0.0) * (1.0 - rim) * u_bevel;
-    vec2 faceWarp = p * pillow * vec2(u_glyphId > 0.5 ? 1.35 : 0.0, u_glyphId > 0.5 ? 1.05 : 0.0);
-    float gAmt = mix(u_glyphId > 0.5 ? 0.06 : 0.004, 1.45, rimSharp) * (0.85 + 0.55 * u_bevel);
+    // MSDF height bevel — planar knife plateau (chrome) / tubular crest (script)
+    float hAtlas = u_useGlyphAtlas > 0.5 ? glyphAtlasHeight(p) : 0.0;
+    float hT = clamp(inside / max(bevelW * (u_glyphId > 0.5 ? 10.0 : 3.2), 1e-4), 0.0, 1.0);
+    float hAnalytic = u_glyphId > 0.5
+      ? sqrt(max(0.001, 1.0 - pow(1.0 - hT, 2.0)))
+      : mix(smoothstep(0.0, 0.42, hT), 1.0, smoothstep(0.32, 0.78, hT));
+    float height = mix(hAnalytic, hAtlas, u_useGlyphAtlas > 0.5 ? 0.85 : 0.0);
+    // Height gradient → bevel normal (finite difference in field space)
+    float eH = 0.0035;
+    float hdx = (u_useGlyphAtlas > 0.5 ? glyphAtlasHeight(p + vec2(eH, 0.0)) : hAnalytic)
+      - (u_useGlyphAtlas > 0.5 ? glyphAtlasHeight(p - vec2(eH, 0.0)) : hAnalytic);
+    float hdy = (u_useGlyphAtlas > 0.5 ? glyphAtlasHeight(p + vec2(0.0, eH)) : hAnalytic)
+      - (u_useGlyphAtlas > 0.5 ? glyphAtlasHeight(p - vec2(0.0, eH)) : hAnalytic);
+    // For analytic fallback, approximate height grad from SDF grad + profile
+    if (u_useGlyphAtlas < 0.5) {
+      float dh = u_glyphId > 0.5 ? (1.0 - hT) / max(bevelW * 10.0, 1e-4) : step(hT, 0.45) * 2.4 / max(bevelW * 3.2, 1e-4);
+      hdx = g.x * dh * eH * 2.0;
+      hdy = g.y * dh * eH * 2.0;
+    }
     vec3 dripN = dripNormalBias(p);
-    N = normalize(vec3(
-      g * gAmt + faceWarp + dripN.xy * (u_glyphId > 0.5 ? 1.35 : 0.4),
-      mix(u_glyphId > 0.5 ? 0.48 : 0.98, 1.0, 1.0 - rimSharp * 0.5) + dripN.z * 0.5
-    ));
-    if (u_glyphId > 0.5) {
-      // Tubular script: cylindrical pipe normal — chrome tube, not flat fill
-      float tube = mix(0.68, 3.1, rimSharp);
-      vec3 Ntube = normalize(vec3(g * tube, mix(0.68, 0.18, rimSharp)));
-      N = normalize(mix(N, Ntube, 0.9));
+    if (u_glyphId < 0.5) {
+      // Planar knife: face normal ≈ Z on plateau; bevel only at lip
+      float faceFlat = smoothstep(0.2, 0.85, height) * (1.0 - rimSharp);
+      float gAmt = mix(0.008, 1.55, rimSharp) * (0.9 + 0.5 * u_bevel);
+      N = normalize(vec3(
+        g * gAmt * (1.0 - faceFlat * 0.92) - vec2(hdx, hdy) * 14.0 * (1.0 - faceFlat),
+        mix(0.22, 1.0, faceFlat) + dripN.z * 0.25
+      ));
+    } else {
+      // Tubular elegance: cylindrical pipe from height crest (icy bowl / ENj9B)
+      float tube = mix(0.45, 2.4, rimSharp);
+      // Soft height grad — kill stair-step banding on tube
+      vec2 hGrad = vec2(hdx, hdy) * 4.5;
+      vec3 Ntube = normalize(vec3(
+        g * tube - hGrad,
+        mix(0.28, 0.78, height) * mix(0.9, 0.4, rimSharp) + dripN.z * 0.5
+      ));
+      float pillow = 0.42 * (1.0 - rim) * u_bevel * height;
+      vec3 Nsoft = normalize(vec3(g * 0.28 + p * pillow * vec2(1.1, 0.95) + dripN.xy * 1.1, mix(0.45, 0.88, height)));
+      N = normalize(mix(Nsoft, Ntube, 0.82));
     }
   } else {
     N = normalize(vec3(g * (1.0 + z), 1.0));
@@ -475,195 +507,148 @@ void main() {
 
   vec3 color;
   if (u_fieldMode > 0.5) {
-    // --- Wet mirror chrome: planar softbox panels + knife cores ---
-    // Chrome: near-planar face → true mirror softbox panels (1c6PD/Z53Ve)
-    // Script: cylindrical bend for tubular chrome wrap (ENj9B pipe elegance)
-    float faceBend = u_glyphId > 0.5 ? 1.85 : 0.02;
+    // --- Concept-HDRI wet mirror: reflection-mapped plate + height bevel ---
+    // Chrome: planar knife faces mirror concept softbox (1c6PD/Z53Ve)
+    // Script: tubular wrap of same plate (ENj9B icy bowl / pipe elegance)
+    float faceBend = u_glyphId > 0.5 ? 1.55 : 0.01;
     vec3 Ncurve = normalize(vec3(
-      p * vec2(faceBend, faceBend * 0.78) * (0.45 + 0.35 * u_bevel),
-      u_glyphId > 0.5 ? 0.38 : 0.998
+      p * vec2(faceBend, faceBend * 0.78) * (0.35 + 0.4 * u_bevel),
+      u_glyphId > 0.5 ? 0.42 : 0.998
     ));
-    vec3 Rface = reflect(-V, Ncurve);
-    vec3 Rlight = normalize(mix(Rface, reflect(-L, Ncurve), u_glyphId > 0.5 ? 0.42 : 0.04));
+    // Primary reflection from height-bevel normal (not painted slabs)
+    vec3 Rface = reflect(-V, N);
+    vec3 Rlight = normalize(mix(Rface, reflect(-L, N), u_glyphId > 0.5 ? 0.38 : 0.06));
     vec3 envFace = studioEnv(Rlight);
     vec3 envRim = studioEnv(R);
-    vec3 env = mix(envFace, envRim, rimSharp * 0.55);
-    // Direct plate sample — panels + knife; soft amb crushed for chromeSansP
-    vec2 plateUv = studioPlateUv(Rlight);
-    vec3 plate = texture(u_backdrop, plateUv).rgb;
-    float platePeak = max(plate.r, max(plate.g, plate.b));
-    float hardBar = smoothstep(0.32, 0.78, platePeak);
-    float softGate = u_glyphId > 0.5 ? 0.28 : 0.0;
-    float softAmb = smoothstep(0.05, 0.28, platePeak) * (1.0 - hardBar * 0.96) * softGate;
-    // Body: deep charcoal chrome / cool silver-chrome metal (not milky cyan / neon pink)
-    vec3 darkBody = u_glyphId > 0.5
-      ? vec3(0.1, 0.11, 0.15)
-      : vec3(0.002, 0.002, 0.004);
-    vec3 ambTint = u_glyphId > 0.5
-      ? vec3(0.32, 0.34, 0.42)
-      : vec3(0.035, 0.04, 0.048);
-    color = darkBody + ambTint * softAmb * 0.12;
-    color += envFace * softAmb * 0.04 * u_glass;
-    // Hard wet-mirror: script plate bars tempered; chrome dark-first (slabs applied later)
-    float hardMul = u_glyphId > 0.5 ? 3.8 : 0.0;
-    vec3 plateN = u_glyphId < 0.5
-      ? vec3(plate.r, mix(plate.g, plate.r, 0.35), mix(plate.b, plate.r, 0.55))
-      : plate;
-    color += plateN * hardBar * hardMul * u_glass;
-    color += envFace * hardBar * (u_glyphId > 0.5 ? 1.6 : 0.0) * u_glass;
-    float faceReflect = mix(u_glyphId > 0.5 ? 0.92 : 0.28, 1.0, fres) * u_glass;
-    color = mix(darkBody * 1.02, color, faceReflect);
+    vec3 env = mix(envFace, envRim, rimSharp * 0.5);
 
-    // Planar face plate UV — mirror softbox panels across letter faces
+    // Direct concept-HDRI plate sample via reflection UV (NEAREST knife cores)
+    vec2 plateUv = studioPlateUv(Rlight);
+    // Parallax face UV — planar: almost frontal; tubular: wraps with R
     vec2 facePlateUv = clamp(
-      vec2(0.5) + p * vec2(u_glyphId > 0.5 ? 1.0 : 0.55, u_glyphId > 0.5 ? 0.78 : 0.4)
-        + Rlight.xy * (u_glyphId > 0.5 ? 0.12 : 0.0),
+      mix(
+        vec2(0.5) + p * vec2(0.48, 0.22) + Rlight.xy * 0.04,
+        studioPlateUv(normalize(mix(Rlight, reflect(-V, Ncurve), 0.55))),
+        u_glyphId > 0.5 ? 0.85 : 0.2
+      ),
       0.0, 1.0
     );
+    vec3 plate = texture(u_backdrop, plateUv).rgb;
     vec3 facePlate = texture(u_backdrop, facePlateUv).rgb;
-    if (u_glyphId < 0.5) {
-      float fp = max(facePlate.r, max(facePlate.g, facePlate.b));
-      facePlate = vec3(fp, fp * 0.98, fp * 0.96);
-    }
+    float platePeak = max(plate.r, max(plate.g, plate.b));
     float facePeak = max(facePlate.r, max(facePlate.g, facePlate.b));
-    float faceHard = smoothstep(0.35, 0.82, facePeak);
-    float facePanel = smoothstep(0.25, 0.55, facePeak);
-    if (u_glyphId > 0.5) {
-      color += facePlate * faceHard * 3.4 * u_glass * (1.0 - rimSharp * 0.2);
-    }
-    // Face floor — chrome: deep interstitial; script: cool metal midtone
+    float hardBar = smoothstep(0.22, 0.72, platePeak);
+    float faceHard = smoothstep(0.18, 0.68, facePeak);
+
+    // Body: deep charcoal / cool silver (cream crushed, pink 0)
+    vec3 darkBody = u_glyphId > 0.5
+      ? vec3(0.08, 0.09, 0.13)
+      : vec3(0.002, 0.002, 0.004);
+    vec3 ambTint = u_glyphId > 0.5
+      ? vec3(0.28, 0.32, 0.42)
+      : vec3(0.03, 0.035, 0.045);
     float faceAlive = (1.0 - rimSharp) * u_glass;
-    color = max(color, (darkBody * (u_glyphId > 0.5 ? 1.35 : 1.0) + ambTint * 0.04) * faceAlive);
+
+    // Wet-mirror base: concept plate reflection (not procedural column paint)
+    color = darkBody;
+    float mirrorAmt = mix(u_glyphId > 0.5 ? 0.72 : 0.92, 1.0, fres) * u_glass;
+    vec3 mir = mix(facePlate, plate, 0.35) * (0.55 + 0.9 * hardBar);
+    mir = max(mir, envFace * 0.45);
+    // Chrome: desaturate pink in plate sample
+    if (u_glyphId < 0.5) {
+      float pinkP = max(0.0, mir.r - mir.g * 1.05) * max(0.0, mir.b - mir.g * 0.9);
+      mir.r -= pinkP * 0.85;
+      mir.b -= pinkP * 0.4;
+      float creamP = max(0.0, mir.r - mir.b * 1.02);
+      mir.r -= creamP * 0.7;
+      mir.g -= creamP * 0.35;
+    }
+    color = mix(darkBody, mir * (u_glyphId > 0.5 ? 1.55 : 2.15), mirrorAmt * faceAlive);
+    color += plate * hardBar * (u_glyphId > 0.5 ? 1.8 : 3.2) * u_glass * faceAlive;
+    color += facePlate * faceHard * (u_glyphId > 0.5 ? 2.2 : 2.8) * u_glass * faceAlive;
+    color += envFace * hardBar * (u_glyphId > 0.5 ? 1.1 : 0.35) * u_glass;
+    color = max(color, darkBody * (u_glyphId > 0.5 ? 1.5 : 1.05) * faceAlive);
 
     if (u_glyphId > 0.5) {
-      // Tubular silver-chrome body + bright wrap (ENj9B elegance — chrome pipe, not pink / icy flood)
+      // Tubular silver-chrome body — continuous wrap (no discrete band sparkle)
       float tubeBody = smoothstep(0.0, max(bevelW * 0.7, 0.0015), inside);
-      float wrapFres = pow(1.0 - ndotv, 0.95);
-      float tubeCatch = pow(max(dot(N, H), 0.0), 14.0);
-      float tubeCatch2 = pow(max(dot(N, H), 0.0), 42.0);
-      // Dark-first tube fill — silver lives in cylindrical wrap bands
-      vec3 tubeFill = darkBody * 1.85 + envFace * vec3(0.85, 0.95, 1.15) * 0.4;
-      tubeFill += facePlate * faceHard * vec3(1.0, 1.1, 1.3) * 0.55;
-      tubeFill += plate * hardBar * vec3(0.95, 1.05, 1.25) * 0.5;
-      tubeFill += ambTint * 0.12;
-      vec3 silverWrap = vec3(0.88, 0.95, 1.12) * (wrapFres * 3.8 + tubeCatch * 4.6 + tubeCatch2 * 5.2);
-      silverWrap += envFace * vec3(1.1, 1.2, 1.4) * wrapFres * 2.2;
-      silverWrap += facePlate * wrapFres * 1.6;
-      tubeFill = mix(tubeFill, max(tubeFill, silverWrap), clamp(wrapFres * 1.55 + tubeCatch * 1.2, 0.0, 0.9));
-      float faceAmt = mix(0.94, 0.2, rimSharp) * u_glass * mix(0.88, 1.0, tubeBody);
+      float wrapFres = pow(1.0 - ndotv, 0.9);
+      float tubeCatch = pow(max(dot(N, H), 0.0), 18.0);
+      float tubeCatch2 = pow(max(dot(N, H), 0.0), 48.0);
+      vec3 tubeFill = darkBody * 1.7 + envFace * vec3(0.75, 0.9, 1.2) * 0.55;
+      tubeFill += facePlate * faceHard * vec3(0.95, 1.1, 1.35) * 0.85;
+      tubeFill += plate * hardBar * vec3(0.9, 1.05, 1.3) * 0.7;
+      // Continuous cylindrical highlight — smooth low-freq wrap (anti banding)
+      vec2 Ttube = normalize(vec2(-g.y, g.x) + 1e-5);
+      float wrapCoord = dot(p, Ttube) * 2.8 + Rlight.x * 1.2;
+      float wrapSoft = 0.5 + 0.5 * cos(wrapCoord);
+      wrapSoft = pow(wrapSoft, 1.65);
+      float wrapAA = max(fwidth(wrapCoord), 0.04);
+      wrapSoft = mix(wrapSoft, 0.42, smoothstep(0.0, 0.12, wrapAA));
+      vec3 silverWrap = vec3(0.78, 0.88, 1.12) * (wrapFres * 2.6 + tubeCatch * 3.2 + tubeCatch2 * 3.6);
+      silverWrap += envFace * vec3(0.95, 1.1, 1.35) * wrapFres * 1.5;
+      silverWrap += facePlate * (0.45 + 0.55 * wrapSoft) * wrapFres * 2.8;
+      tubeFill = mix(tubeFill, max(tubeFill, silverWrap), clamp(wrapFres * 1.25 + tubeCatch * 0.9, 0.0, 0.82));
+      float faceAmt = mix(0.94, 0.18, rimSharp) * u_glass * mix(0.88, 1.0, tubeBody);
       color = mix(color, max(color, tubeFill), faceAmt);
       color = max(color, mix(darkBody, tubeFill, 0.55) * faceAmt);
-      color = max(color, vec3(0.16, 0.18, 0.26) * mix(1.0, 0.2, rimSharp) * u_glass);
-      color = max(color, tubeFill * 0.32 * tubeBody * u_glass);
+      color = max(color, vec3(0.12, 0.14, 0.2) * mix(1.0, 0.2, rimSharp) * u_glass);
+      // Icy bowl crush — cool white flood → dark tube + wrap chrome
+      float pkT = max(color.r, max(color.g, color.b));
+      float icyT = smoothstep(0.38, 0.9, pkT) * max(
+        max(0.0, color.b - color.r),
+        max(0.0, color.g * 0.9 - color.r)
+      );
+      icyT = max(icyT, smoothstep(0.55, 0.95, pkT) * (1.0 - smoothstep(0.04, 0.14, max(abs(color.r-color.g), abs(color.g-color.b)))));
+      color = mix(color, darkBody * 3.6 + silverWrap * 0.28, clamp(icyT * 0.72 * tubeBody, 0.0, 0.88));
+    } else {
+      // Planar knife accents — concept plate mosaic already carries softbox;
+      // only thin razor cores + oil-slick fringe (no painted slab columns)
+      float colAA = max(fwidth(p.x) * 1.2, 0.003);
+      float knife = pow(smoothstep(0.004 + colAA * 0.2, 0.00001, abs(fract(plateUv.x * 8.0) - 0.5) * 0.12), 10.0);
+      knife *= faceAlive * faceHard;
+      color += vec3(1.7, 1.8, 1.95) * knife * 4.2 * u_glass;
+      // Oil-slick iridescence from concept plate luminance
+      float mirL = facePeak;
+      vec3 irisA = edgeFire(fract(mirL * 2.2 + p.x * 1.4), 0.5 + 0.4 * faceHard);
+      vec3 irisB = edgeFire(fract(p.y * 1.8 - plateUv.x * 2.0 + 0.3), 0.4 + 0.35 * hardBar);
+      color += (irisA * 1.1 + irisB * 0.9) * faceAlive * u_dispersion * u_glass * 0.85;
+      color += facePlate * faceHard * 1.4 * u_glass * faceAlive;
     }
 
     vec2 e = Rlight.xy / (abs(Rlight.z) + 0.22);
-    // Chrome: suppress streak ribs — planar softbox panels carry the face
-    // Script: tubular wrap filaments along pipe
     float streakCore = pow(smoothstep(0.01, 0.00005, abs(e.x + 0.18)), 6.4);
-    streakCore += 0.95 * pow(smoothstep(0.009, 0.00004, abs(e.x - 0.34)), 6.5);
-    streakCore += 0.55 * pow(smoothstep(0.01, 0.00015, abs(e.x + 0.48)), 5.6);
-    streakCore += 0.85 * pow(smoothstep(0.008, 0.00005, abs(e.x + 0.02)), 6.0);
-    streakCore += 0.75 * pow(smoothstep(0.008, 0.00005, abs(e.x - 0.16)), 6.1);
-    streakCore += 0.7 * pow(smoothstep(0.009, 0.00008, abs(e.x - 0.52)), 5.8);
-    streakCore += 0.6 * pow(smoothstep(0.009, 0.00006, abs(e.x + 0.28)), 5.9);
-    float streakShoulder = smoothstep(0.028, 0.003, abs(e.x + 0.18)) * 0.04;
-    streakShoulder += 0.03 * smoothstep(0.025, 0.0025, abs(e.x - 0.34));
-    float streak = (streakCore + streakShoulder) * mix(0.95, 1.55, 0.25 + 0.75 * rimSharp);
-    if (u_glyphId < 0.5) {
-      // Planar knife softbox blocks + oil-slick wet-mirror (1c6PD/Z53Ve)
-      // Hard rectangular panels from studio plate — not flat pastel tiles
-      vec2 mirUv = clamp(vec2(0.5 + p.x * 0.72, 0.4 + p.y * 0.06), 0.0, 1.0);
-      vec3 mirPlate = texture(u_backdrop, mirUv).rgb;
-      float mirL = max(mirPlate.r, max(mirPlate.g, mirPlate.b));
-      mirPlate = max(mirPlate, vec3(mirL * 0.22));
-      float hardSlab = smoothstep(0.05, 0.42, mirL);
-      float knifeCore = pow(smoothstep(0.28, 0.86, mirL), 1.55);
-      // Hard-edged softbox columns (faceted block panels) with fwidth AA
-      float colAA = max(fwidth(p.x) * 1.6, 0.004);
-      float slabA = (1.0 - smoothstep(0.095, 0.095 + colAA, abs(p.x + 0.12))) * step(abs(p.y), 0.56);
-      float slabB = (1.0 - smoothstep(0.088, 0.088 + colAA, abs(p.x - 0.04))) * step(abs(p.y), 0.54);
-      float slabC = (1.0 - smoothstep(0.08, 0.08 + colAA, abs(p.x + 0.3))) * step(abs(p.y), 0.5) * 0.95;
-      float slabD = (1.0 - smoothstep(0.075, 0.075 + colAA, abs(p.x - 0.2))) * step(abs(p.y), 0.48) * 0.88;
-      float slabE = (1.0 - smoothstep(0.07, 0.07 + colAA, abs(p.x + 0.0))) * step(abs(p.y), 0.52) * 0.78;
-      // Horizontal facet seams — block chrome read (knife wet-mirror facets)
-      float rowAA = max(fwidth(p.y) * 1.6, 0.004);
-      float rowSeam = pow(smoothstep(0.012 + rowAA, 0.0, abs(fract(p.y * 3.2 + 0.5) - 0.5)), 4.0) * 0.55;
-      rowSeam += 0.4 * pow(smoothstep(0.01 + rowAA, 0.0, abs(fract(p.y * 2.4) - 0.5)), 3.5);
-      float slabs = max(max(max(slabA, slabB), max(slabC, slabD)), slabE) * faceAlive;
-      float knife = pow(smoothstep(0.0035 + colAA * 0.25, 0.00001, abs(p.x + 0.12)), 12.5);
-      knife += 0.95 * pow(smoothstep(0.0032 + colAA * 0.25, 0.00001, abs(p.x - 0.04)), 12.5);
-      knife += 0.7 * pow(smoothstep(0.003 + colAA * 0.25, 0.00002, abs(p.x + 0.3)), 11.5);
-      knife += 0.6 * pow(smoothstep(0.0028 + colAA * 0.25, 0.00002, abs(p.x - 0.2)), 11.5);
-      knife += rowSeam * slabs * 1.4;
-      knife *= faceAlive * step(-0.58, p.y) * step(p.y, 0.56);
-      color = darkBody;
-      color += mirPlate * hardSlab * slabs * 6.0 * u_glass;
-      color += mirPlate * slabs * 2.8 * u_glass;
-      color += vec3(0.8, 0.95, 1.2) * slabs * 1.5 * u_glass;
-      // Razor white softbox cores (planar knife wet-mirror)
-      color += vec3(1.8, 1.85, 1.95) * knife * 7.0 * u_glass;
-      color += vec3(1.5, 1.6, 1.75) * knifeCore * slabs * 2.6 * u_glass;
-      // Oil-slick iridescence on slabs — cyan/magenta/lime fringe
-      vec3 irisA = edgeFire(fract(p.x * 2.1 + p.y * 0.65 + 0.1), 0.55 + 0.45 * slabs);
-      vec3 irisB = edgeFire(fract(p.y * 2.6 - p.x * 1.2 + 0.5), 0.45 + 0.4 * hardSlab);
-      vec3 irisC = edgeFire(fract(mirL * 1.9 + p.x * 2.0), 0.4 + 0.5 * knifeCore);
-      color += (irisA * 1.4 + irisB * 1.15 + irisC * 1.0) * faceAlive * u_dispersion * u_glass;
-      float faceFire = max(slabs * 0.88, 0.34 * faceAlive) * (0.5 + 0.5 * hardSlab);
-      color += edgeFire(fract(p.x * 3.0 + p.y * 1.5), faceFire * 1.85 * u_dispersion * u_glass);
-      color += vec3(1.6, 1.65, 1.75) * knife * 5.4 * u_glass;
-      color += mirPlate * knifeCore * max(slabs, 0.48) * 4.0 * u_glass;
-      float barMask = smoothstep(0.07, 0.52, slabs * 0.75 + knife * 0.55 + faceAlive * 0.4 + hardSlab * 0.4);
-      color = mix(darkBody * 1.12 + irisA * 0.22 * faceAlive, color, barMask);
-      streak *= 0.0;
-      streakCore *= 0.0;
-      streakShoulder = max(faceFire, 0.55 * faceAlive);
-    } else {
-      float screenBar = pow(smoothstep(0.012, 0.0001, abs(p.x + 0.06)), 6.4) * smoothstep(-0.55, 0.5, p.y);
-      float screenBar2 = pow(smoothstep(0.01, 0.00012, abs(p.x - 0.14)), 6.2) * smoothstep(-0.4, 0.55, p.y);
-      streak = max(streak, max(screenBar * 2.2, screenBar2 * 1.6));
-    }
-    float barMul = u_glyphId > 0.5 ? 4.2 : 1.4;
-    color += vec3(2.65, 2.45, 2.35) * streakCore * barMul * u_glass;
-    color += vec3(1.05, 0.98, 0.95) * streakShoulder * 0.08 * u_glass;
+    streakCore += 0.85 * pow(smoothstep(0.009, 0.00004, abs(e.x - 0.34)), 6.5);
+    streakCore += 0.7 * pow(smoothstep(0.008, 0.00005, abs(e.x + 0.02)), 6.0);
+    float streakShoulder = u_glyphId < 0.5 ? faceHard * faceAlive : 0.08;
+    if (u_glyphId < 0.5) streakCore *= 0.25;
+    float barMul = u_glyphId > 0.5 ? 3.2 : 0.9;
+    color += vec3(2.4, 2.25, 2.2) * streakCore * barMul * u_glass;
+    color += vec3(1.0, 0.95, 0.92) * streakShoulder * 0.12 * u_glass;
+
     if (u_glyphId > 0.5) {
-      // Tubular wrap — cylindrical elegance (ENj9B); fwidth AA kills wrap alias
       float tubeAlive = smoothstep(0.0, max(bevelW * 0.7, 0.0015), inside);
-      vec2 Ttube = normalize(vec2(-g.y, g.x) + 1e-5);
-      float wrapCoord = dot(p, Ttube);
       float wrapFres2 = pow(1.0 - ndotv, 0.95);
-      float wAA = max(fwidth(wrapCoord) * 2.8, 0.012);
-      float wrapBand = smoothstep(0.15 + wAA, wAA * 0.45, abs(wrapCoord + 0.02)) * 1.2;
-      wrapBand += 1.0 * smoothstep(0.14 + wAA, wAA * 0.4, abs(wrapCoord - 0.09));
-      wrapBand += 0.8 * smoothstep(0.13 + wAA, wAA * 0.38, abs(wrapCoord + 0.15));
-      wrapBand += 0.55 * smoothstep(0.12 + wAA, wAA * 0.35, abs(wrapCoord - 0.18));
-      float tubeBar = 0.35 * pow(smoothstep(0.02 + wAA, wAA * 0.2, abs(wrapCoord + 0.03)), 2.8);
-      tubeBar += 0.28 * pow(smoothstep(0.018 + wAA, wAA * 0.18, abs(wrapCoord - 0.07)), 2.6);
-      tubeBar = max(tubeBar, wrapBand * (0.8 + 1.15 * wrapFres2));
-      tubeBar *= faceAlive * (0.55 + 0.45 * tubeAlive);
-      color += vec3(1.95, 2.05, 2.3) * tubeBar * 5.2 * u_glass;
-      color += vec3(1.45, 1.6, 1.9) * wrapFres2 * faceAlive * 2.5 * u_glass;
-      color += vec3(1.25, 1.35, 1.55) * pow(rimSharp, 1.45) * faceAlive * 0.45 * u_glass;
-      color = max(color, darkBody * 3.0 * tubeAlive * u_glass);
-      color = max(color, envFace * vec3(0.6, 0.7, 0.9) * 0.6 * tubeAlive * u_glass);
-      // Crush flat near-white / icy tube body → dark + wrap chrome
+      color += vec3(1.35, 1.5, 1.8) * wrapFres2 * faceAlive * 2.0 * u_glass;
+      color = max(color, darkBody * 2.8 * tubeAlive * u_glass);
+      color = max(color, envFace * vec3(0.55, 0.7, 0.95) * 0.55 * tubeAlive * u_glass);
+      // Crush flat near-white / icy tube body
       float flatW = smoothstep(0.5, 1.15, dot(color, vec3(0.2126, 0.7152, 0.0722)));
       float chromaW = max(abs(color.r - color.g), abs(color.g - color.b));
-      color = mix(color, mix(darkBody * 3.4, color * vec3(0.52, 0.6, 0.8), 0.38) + vec3(0.16, 0.26, 0.45) * wrapFres2, flatW * (1.0 - smoothstep(0.035, 0.13, chromaW)) * 0.88 * tubeAlive);
+      color = mix(color, mix(darkBody * 3.2, color * vec3(0.5, 0.6, 0.82), 0.4) + vec3(0.14, 0.24, 0.42) * wrapFres2, flatW * (1.0 - smoothstep(0.035, 0.13, chromaW)) * 0.85 * tubeAlive);
     }
-    // Thin spectral accents — chrome: also on iridescent face slabs; script: rim-weighted
-    float specRim = mix(u_glyphId < 0.5 ? max(0.35, streakShoulder * 1.4) : 0.08, 1.0, rimSharp);
-    color += vec3(1.85, 0.2, 1.45) * pow(smoothstep(0.016, 0.0003, abs(e.x - 0.1)), 5.0) * 0.7 * specRim;
-    color += vec3(0.05, 1.7, 1.85) * pow(smoothstep(0.017, 0.00035, abs(e.x + 0.02)), 4.8) * 0.65 * specRim;
-    color += vec3(1.6, 1.45, 0.25) * pow(smoothstep(0.014, 0.0006, abs(e.y - 0.2)), 4.2) * 0.55 * mix(u_glyphId < 0.5 ? max(0.4, streakShoulder) : 0.12, 1.0, rimSharp);
+
+    float specRim = mix(u_glyphId < 0.5 ? max(0.3, streakShoulder) : 0.08, 1.0, rimSharp);
+    color += vec3(1.7, 0.22, 1.35) * pow(smoothstep(0.016, 0.0003, abs(e.x - 0.1)), 5.0) * 0.55 * specRim;
+    color += vec3(0.05, 1.6, 1.8) * pow(smoothstep(0.017, 0.00035, abs(e.x + 0.02)), 4.8) * 0.55 * specRim;
+    color += vec3(1.5, 1.35, 0.25) * pow(smoothstep(0.014, 0.0006, abs(e.y - 0.2)), 4.2) * 0.45 * mix(u_glyphId < 0.5 ? max(0.35, streakShoulder) : 0.12, 1.0, rimSharp);
 
     color = max(color, vec3(0.0));
     // Contrast expand — crush milky cream mids, keep planar knife + iridescent peaks
     if (u_glyphId < 0.5) {
       float cl = dot(color, vec3(0.2126, 0.7152, 0.0722));
       float faceChroma = max(abs(color.r - color.g), max(abs(color.g - color.b), abs(color.r - color.b)));
-      color = mix(color * 0.32, color * 1.5, smoothstep(0.08, 1.6, cl));
-      // Cream / peach crush — warm near-white only (preserve cool/iridescent softbox)
+      color = mix(color * 0.35, color * 1.45, smoothstep(0.08, 1.6, cl));
       float cream = max(0.0, color.r - color.b * 1.05);
       cream = max(cream, max(0.0, color.g * 0.85 - color.b));
       cream = max(cream, max(0.0, color.r - color.g * 0.9) * 0.6);
@@ -678,48 +663,36 @@ void main() {
 
     vec2 T = normalize(vec2(-g.y, g.x) + 1e-5);
     float aniso = pow(max(1.0 - abs(dot(normalize(R.xy + 1e-5), T)), 0.0), 3.8);
-    // Chrome: kill aniso ribs on planar faces — softbox panels only
-    float anisoAmt = u_glyphId > 0.5
-      ? (0.28 + 0.55 * rimSharp)
-      : (0.0 + 0.12 * rimSharp);
+    float anisoAmt = u_glyphId > 0.5 ? (0.32 + 0.5 * rimSharp) : (0.0 + 0.1 * rimSharp);
     color += env * aniso * anisoAmt;
 
-    // Script stroke spine — bright silver tubular ridge (chrome elegance over pink)
     if (u_glyphId > 0.5) {
       float spine = exp(-pow(inside / 0.055, 2.0) * 0.35) * (1.0 - rimSharp * 0.1);
       float wrapFresS = pow(1.0 - ndotv, 1.05);
       float tubeAliveS = smoothstep(0.0, max(bevelW * 0.75, 0.0015), inside);
-      color += vec3(1.7, 1.8, 2.0) * spine * 3.8 * u_glass;
-      color += vec3(1.8, 1.85, 2.0) * spine * aniso * 2.4;
-      color += vec3(1.7, 1.8, 2.0) * streakCore * (1.0 - rimSharp * 0.15) * 2.2 * u_glass;
-      color += vec3(1.75, 1.8, 2.0) * wrapFresS * spine * 2.2 * u_glass;
-      color += envFace * spine * vec3(1.2, 1.3, 1.5) * 1.4;
-      // Hard anti-void — filled loop + junction midtones (dark chrome, not icy)
-      color = max(color, darkBody * 3.0 * tubeAliveS * u_glass);
-      color = max(color, ambTint * 0.9 * tubeAliveS * u_glass);
-      color = max(color, vec3(0.32, 0.34, 0.42) * tubeAliveS * u_glass);
-      color = max(color, vec3(0.55, 0.58, 0.7) * wrapFresS * tubeAliveS * 0.85 * u_glass);
-      // Stem–bowl join highlight — continuous pipe elegance (ENj9B)
+      color += vec3(1.55, 1.7, 1.95) * spine * 3.2 * u_glass;
+      color += vec3(1.6, 1.7, 1.95) * wrapFresS * spine * 1.8 * u_glass;
+      color += envFace * spine * vec3(1.1, 1.25, 1.5) * 1.2;
+      color = max(color, darkBody * 2.8 * tubeAliveS * u_glass);
+      color = max(color, ambTint * 0.85 * tubeAliveS * u_glass);
+      color = max(color, vec3(0.28, 0.32, 0.42) * tubeAliveS * u_glass);
       float joinZone = exp(-pow(length(p - vec2(-0.055, 0.07)) / 0.16, 2.0));
-      color += vec3(1.4, 1.5, 1.75) * joinZone * wrapFresS * tubeAliveS * 1.8 * u_glass;
-      color = max(color, envFace * joinZone * 1.05 * tubeAliveS * u_glass);
+      color += vec3(1.3, 1.45, 1.7) * joinZone * wrapFresS * tubeAliveS * 1.6 * u_glass;
+      color = max(color, envFace * joinZone * 1.0 * tubeAliveS * u_glass);
     }
 
     vec3 rimCol = mix(vec3(1.35, 1.4, 1.55), envRim * 3.1, 0.88);
     color = mix(color, max(color, rimCol), rimSharp * (u_glyphId > 0.5 ? 0.68 : 0.55) * (0.78 + 0.22 * fres));
 
     if (u_glyphId > 0.5) {
-      // Mild cool rim — spare silver body from magenta crush
-      color = mix(color, color * vec3(1.15, 0.85, 1.12), mix(0.04, 0.38, rimSharp));
+      color = mix(color, color * vec3(1.12, 0.88, 1.1), mix(0.04, 0.35, rimSharp));
     } else {
-      // chromeSansP: thin cool lip — not thick cream/beige void rim
       color = mix(color, max(color, rimCol * vec3(0.92, 0.96, 1.05)), rimSharp * 0.35);
       color = mix(color, color * vec3(0.9, 0.96, 1.08), rimSharp * 0.18);
     }
 
     float faceGate = 1.0 - rimSharp;
     float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
-    // Chrome: crush warm milk only — keep cool planar knife softbox peaks
     float crush = u_glyphId < 0.5
       ? smoothstep(0.75, 1.65, luma) * faceGate * 0.28 * max(0.0, 1.0 - (color.b - color.r) * 4.0)
       : smoothstep(2.4, 3.8, luma) * faceGate * 0.1;
@@ -733,7 +706,6 @@ void main() {
     vec3 H2 = normalize(L2 + V);
     float spec2 = pow(max(dot(N, H2), 0.0), 200.0);
     float li = u_lightIntensity * u_specular;
-    // Chrome faces: sparse specular only (specs flood = cream milk)
     float specFaceGate = u_glyphId < 0.5 ? mix(0.15, 1.0, rimSharp) : 1.0;
     color += vec3(1.1, 1.05, 0.98) * specFace * 0.7 * li * faceGate * specFaceGate;
     color += vec3(1.05, 1.0, 0.95) * specSoft * 0.45 * li * mix(0.5, 1.0, rimSharp) * specFaceGate;
@@ -746,13 +718,19 @@ void main() {
     float fireAmt = u_dispersion * (1.05 + 1.3 * fres) * mix(0.5, 1.95, rimSharp);
     fireAmt *= clamp(u_lightIntensity * 0.58, 0.85, 2.7);
     fireAmt *= (0.65 + 0.85 * lightDisp);
-    // Chrome: spectral fire on rim + iridescent face slabs (not milky full-face wash)
-    if (u_glyphId < 0.5) fireAmt *= mix(max(0.12, streakShoulder * 1.6), 1.0, rimSharp);
+    if (u_glyphId < 0.5) fireAmt *= mix(max(0.08, streakShoulder * 0.9), 0.85, rimSharp);
     float fireBand = pow(rim, 0.8) * mix(0.8, 1.45, rimSharp);
     float fireT = fract(ndotl * 2.5 + fres * 0.95 + length(p) * 1.25 + rimSharp * 0.48);
     float lightSide = smoothstep(-0.16, 0.92, ndotl);
-    color += edgeFire(mix(0.9, 0.1, lightSide), fireAmt * fireBand * 1.8);
-    color += edgeFire(mix(0.16, 0.8, lightSide), fireAmt * fireBand * 1.05 * max(lightDisp, 0.48));
+    // Chrome: bias edge fire toward cyan/lime (pink 0)
+    vec3 fireA = edgeFire(mix(0.9, 0.1, lightSide), fireAmt * fireBand * (u_glyphId < 0.5 ? 1.2 : 1.8));
+    vec3 fireB = edgeFire(mix(0.16, 0.8, lightSide), fireAmt * fireBand * 1.05 * max(lightDisp, 0.48));
+    if (u_glyphId < 0.5) {
+      fireA *= vec3(0.55, 1.05, 1.15);
+      fireB *= vec3(0.5, 1.1, 1.2);
+    }
+    color += fireA;
+    color += fireB;
     color += edgeFire(fireT, fireAmt * edge * 0.9);
     float outerFire = smoothstep(bevelW * 2.9, -aa * 0.6, d) * (1.0 - smoothstep(-aa, bevelW * 0.9, -d));
     color += edgeFire(0.28 + 0.45 * lightSide, outerFire * u_dispersion * 1.2 * u_lightIntensity);
@@ -761,13 +739,12 @@ void main() {
 
     float film = u_filmThickness;
     if (film > 0.001) {
-      // Chrome: film on iridescent slabs; script: mild face + rim
       float faceFilm = u_glyphId > 0.5
         ? faceGate * 0.28
-        : faceGate * mix(0.08, 0.55, clamp(streakShoulder * 1.8, 0.0, 1.0));
+        : faceGate * mix(0.12, 0.5, clamp(faceHard, 0.0, 1.0));
       float thick = film * (0.45 + 0.55 * rimSharp + 0.35 * faceFilm);
       float filmStr = film * mix(0.22, 0.95, rimSharp) * (0.45 + 0.55 * ndotl);
-      if (u_glyphId < 0.5) filmStr *= mix(0.35, 1.0, clamp(streakShoulder * 2.0, 0.0, 1.0));
+      if (u_glyphId < 0.5) filmStr *= mix(0.4, 1.0, clamp(faceHard, 0.0, 1.0));
       vec3 filmTint = thinFilm(thick, ndotv, ndotl, filmStr);
       color += (filmTint - 0.5) * filmStr * mix(0.7, 1.55, rimSharp);
       color = mix(color, color * filmTint, film * faceFilm * 0.22);
@@ -776,25 +753,21 @@ void main() {
     if (p.y < -0.02) {
       float dripZone = smoothstep(-0.01, -0.48, p.y);
       vec3 dripEnv = studioEnv(normalize(Rface + vec3(0.0, -0.4, 0.12)));
-      // Cool chrome drip — silver/cyan catch, not neon magenta / icy flood
       float dripMix = u_glyphId > 0.5 ? 0.32 : 0.55;
       color = mix(color, max(color, dripEnv * vec3(1.15, 1.2, 1.35)), dripZone * (dripMix + 0.2 * rimSharp));
       color += vec3(1.25, 1.3, 1.4) * specStar * dripZone * (u_glyphId > 0.5 ? 1.4 : 2.4) * li;
       color += edgeFire(0.55 + 0.25 * ndotl, dripZone * u_dispersion * (u_glyphId > 0.5 ? 0.28 : 0.55));
-      // Keep pendant midtones — silver-chrome body, not black void crush / icy milk
       float dripFloor = u_glyphId > 0.5 ? 2.0 : 1.65;
       color = max(color, darkBody * dripFloor * dripZone * (1.0 - rimSharp * 0.35));
       if (u_glyphId > 0.5) {
         color = max(color, ambTint * 0.55 * dripZone * (1.0 - rimSharp * 0.3));
         color = max(color, vec3(0.28, 0.3, 0.38) * dripZone * u_glass);
-        // Stem–bulb junction bridge — fill neck void with luminous silver-chrome
         float junc = smoothstep(-0.05, -0.2, p.y) * smoothstep(-0.58, -0.28, p.y);
         float juncFres = pow(1.0 - ndotv, 1.25);
         color = max(color, vec3(0.32, 0.34, 0.42) * junc * u_glass);
         color = max(color, envFace * junc * 0.75 * u_glass);
         color += vec3(0.65, 0.7, 0.85) * junc * juncFres * 1.1 * u_glass;
       } else {
-        // Chrome pendant — planar chrome continuity into bulb
         color = max(color, vec3(0.35, 0.38, 0.45) * dripZone * u_glass);
         color = max(color, facePlate * dripZone * 1.2 * u_glass);
       }
@@ -808,18 +781,13 @@ void main() {
     color = color / (1.0 + peak * (u_glyphId > 0.5 ? 0.1 : 0.12));
     if (u_glyphId > 0.5) {
       float silverCore = pow(max(dot(N, H), 0.0), 22.0);
-      silverCore = max(silverCore, streakCore * faceAlive * 1.25);
-      silverCore = max(silverCore, pow(max(dot(Ncurve, H), 0.0), 20.0));
+      silverCore = max(silverCore, streakCore * faceAlive * 1.1);
       silverCore = max(silverCore, pow(1.0 - ndotv, 1.35) * 1.05);
-      // Wrap filaments with fwidth AA (kill wrap alias sparkle vs ENj9B)
       vec2 Tsil = normalize(vec2(-g.y, g.x) + 1e-5);
-      float wCoord = dot(p, Tsil);
-      float wAA2 = max(fwidth(wCoord) * 2.4, 0.01);
-      float wrapSil = smoothstep(0.1 + wAA2, wAA2 * 0.3, abs(wCoord + 0.03)) * 1.0;
-      wrapSil += 0.9 * smoothstep(0.095 + wAA2, wAA2 * 0.28, abs(wCoord - 0.09));
-      wrapSil += 0.75 * smoothstep(0.09 + wAA2, wAA2 * 0.26, abs(wCoord + 0.15));
-      wrapSil = max(wrapSil, 0.4 * pow(smoothstep(0.02 + wAA2, wAA2 * 0.12, abs(wCoord + 0.04)), 2.6));
-      silverCore = max(silverCore, wrapSil * faceAlive * 1.55);
+      float wCoord = dot(p, Tsil) * 5.5;
+      float wrapSil = 0.5 + 0.5 * cos(wCoord);
+      wrapSil = pow(wrapSil, 2.4) * faceAlive;
+      silverCore = max(silverCore, wrapSil * 1.35);
       silverCore = max(silverCore, exp(-pow(inside / 0.05, 2.0) * 0.4) * faceAlive * 0.7);
       float wrapFresPost = pow(1.0 - ndotv, 1.15);
       color *= mix(vec3(0.9, 0.88, 0.96), vec3(0.94, 0.97, 1.04), clamp(silverCore * 2.1, 0.0, 1.0));
@@ -831,7 +799,6 @@ void main() {
       color = max(color, vec3(0.24, 0.26, 0.36) * (1.0 - rimSharp * 0.35) * u_glass);
       float pk = max(color.r, max(color.g, color.b));
       float chroma = max(abs(color.r - color.g), max(abs(color.g - color.b), abs(color.r - color.b)));
-      // Crush icy / cool-white flood → dark tubular chrome + wrap
       float icy = smoothstep(0.32, 0.85, pk) * max(
         smoothstep(0.0, 0.08, color.b - color.r),
         smoothstep(0.0, 0.06, color.g - color.r * 0.95)
@@ -848,17 +815,15 @@ void main() {
       color = mix(color, mix(darkBody * 4.0, color, 0.15), blown * 0.9);
       color.g = mix(min(color.g, color.r * 0.94), color.g, clamp(silverCore * 2.3, 0.0, 1.0));
       float pinkBleed = max(0.0, color.r - color.g * 1.05) * max(0.0, color.b - color.g * 0.9);
-      color.r -= pinkBleed * 0.55;
-      color.b -= pinkBleed * 0.35;
+      color.r -= pinkBleed * 0.85;
+      color.b -= pinkBleed * 0.55;
     } else {
       color *= vec3(0.98, 0.99, 1.02);
-      // Deep charcoal face floor between softbox panels (not milky cream interstitial)
       color = max(color, darkBody * 1.02 * (1.0 - rimSharp) * u_glass);
       float pk = max(color.r, max(color.g, color.b));
       float cl2 = dot(color, vec3(0.2126, 0.7152, 0.0722));
       float faceChroma2 = max(abs(color.r - color.g), max(abs(color.g - color.b), abs(color.r - color.b)));
       float irisKeep = smoothstep(0.07, 0.25, faceChroma2);
-      // Cream bowl killer — warm near-white → charcoal (spare iridescent chroma)
       float warm2 = max(0.0, color.r - color.b);
       warm2 = max(warm2, max(0.0, color.g * 0.9 - color.b));
       color = mix(color, darkBody * 1.6, clamp(warm2 * 2.0 * smoothstep(0.5, 1.4, cl2) * (1.0 - rimSharp) * (1.0 - irisKeep), 0.0, 0.88));
@@ -866,12 +831,10 @@ void main() {
         color *= vec3(0.96, 0.97, 1.0) / pk * 0.98;
       }
       color = clamp(color, 0.0, 0.995);
-      // Kill low-chroma lavender leftover only — keep oil-slick faces
       float lav2 = max(0.0, color.b - color.r * 0.95) * (1.0 - irisKeep);
       lav2 = max(lav2, max(0.0, (color.g + color.b) * 0.5 - color.r) * (1.0 - irisKeep));
       color.b -= lav2 * 0.45 * (1.0 - rimSharp);
       color.g -= lav2 * 0.15 * (1.0 - rimSharp);
-      // Force cool chroma on equal-white knife cores (never cream)
       if (color.r > 0.9 && color.g > 0.9 && color.b > 0.88 && faceChroma2 < 0.06) {
         float wrm = max(0.0, color.r - color.b);
         color = mix(color * vec3(0.9, 0.93, 1.0), color * vec3(0.85, 0.88, 0.98), clamp(wrm * 4.0, 0.0, 1.0));

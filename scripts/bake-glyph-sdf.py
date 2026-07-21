@@ -50,9 +50,9 @@ GLYPHS = {
             Path(r"C:\Windows\Fonts\segoepr.ttf"),
             Path(r"C:\Windows\Fonts\segoescb.ttf"),
         ],
-        # Tubular thicken + smooth join — chrome tube elegance vs ENj9B (anti wrap alias)
-        "dilate": 5.6,
-        "round": 2.35,
+        # Tubular thicken + smooth join — icy bowl / pipe elegance vs ENj9B
+        "dilate": 6.2,
+        "round": 2.8,
     },
 }
 
@@ -96,20 +96,50 @@ def render_mask(font_path: Path, char: str, size: int, dilate: float, round_px: 
     return binary.astype(bool)
 
 
-def bake_sdf(mask: np.ndarray, max_dist: float) -> np.ndarray:
-    """Signed distance: negative inside, positive outside (Quilez convention)."""
+def bake_sdf(mask: np.ndarray, max_dist: float) -> tuple[np.ndarray, np.ndarray]:
+    """Signed distance + height bevel (MSDF-style stand-in without Blender).
+
+    R encode: 0.5 = edge, >0.5 inside, <0.5 outside (Quilez via decode).
+    G encode: height bevel 0 at lip → 1 at plateau/tube crest (planar vs tubular).
+    """
     inside = distance_transform_edt(mask)
     outside = distance_transform_edt(~mask)
     signed = outside - inside  # >0 outside, <0 inside
-    # Encode: 0.5 = edge, >0.5 inside, <0.5 outside
     encoded = 0.5 - (signed / max_dist) * 0.5
-    return np.clip(encoded, 0.0, 1.0).astype(np.float32)
+    encoded = np.clip(encoded, 0.0, 1.0).astype(np.float32)
+
+    # Local stroke radius ≈ inside distance at medial; height from radial profile
+    # Planar knife: fast rise → flat plateau. Tubular: circular cross-section.
+    # Caller picks profile via max inside (dilated script has thicker strokes).
+    ink = mask.astype(bool)
+    local_r = np.maximum(inside, 1e-3)
+    # Approximate medial radius via large blur of inside on ink
+    medial = gaussian_filter(inside * ink, sigma=6.0)
+    medial = np.maximum(medial, local_r)
+    t = np.clip(inside / np.maximum(medial, 1e-3), 0.0, 1.0)
+    # Circular tube height (also reads as sharp bevel lip when medial is small)
+    height_tube = np.sqrt(np.maximum(0.001, 1.0 - (1.0 - t) ** 2))
+    # Planar plateau — knife wet-mirror faces
+    height_planar = np.clip(t * 2.4, 0.0, 1.0)
+    height_planar = np.where(t > 0.35, 1.0, height_planar)
+    # Mix by stroke thickness: thin strokes → planar plateau; thick → tube
+    thick = np.clip(medial / 28.0, 0.0, 1.0)
+    height = height_planar * (1.0 - thick * 0.85) + height_tube * (0.15 + thick * 0.85)
+    height = np.where(ink, height, 0.0).astype(np.float32)
+    # Smooth height to kill stair-step banding on tubular crests
+    height = gaussian_filter(height, sigma=1.1)
+    height = np.where(ink, np.clip(height, 0.0, 1.0), 0.0).astype(np.float32)
+    return encoded, height
 
 
-def write_png_r8_as_rgba(path: Path, encoded: np.ndarray) -> None:
-    """Store SDF in R (and G/B for sampling convenience) as 8-bit PNG."""
+def write_png_r8_as_rgba(path: Path, encoded: np.ndarray, height: np.ndarray | None = None) -> None:
+    """Store SDF in R, height bevel in G, duplicate R in B."""
     u8 = (encoded * 255.0 + 0.5).astype(np.uint8)
-    rgba = np.stack([u8, u8, u8, np.full_like(u8, 255)], axis=-1)
+    if height is None:
+        g8 = u8
+    else:
+        g8 = (np.clip(height, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
+    rgba = np.stack([u8, g8, u8, np.full_like(u8, 255)], axis=-1)
     Image.fromarray(rgba, mode="RGBA").save(path, optimize=True)
 
 
@@ -162,9 +192,9 @@ def main() -> None:
     for gid, spec in GLYPHS.items():
         font = pick_font(spec["fonts"])
         mask = render_mask(font, spec["char"], SIZE, spec["dilate"], spec["round"])
-        encoded = bake_sdf(mask, MAX_DIST)
+        encoded, height = bake_sdf(mask, MAX_DIST)
         png_path = OUT_DIR / f"{gid}.png"
-        write_png_r8_as_rgba(png_path, encoded)
+        write_png_r8_as_rgba(png_path, encoded, height)
         preview = Image.fromarray((mask.astype(np.uint8) * 255), mode="L")
         preview.save(OUT_DIR / f"{gid}-mask.png")
 
