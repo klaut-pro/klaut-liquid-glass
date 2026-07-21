@@ -10,6 +10,7 @@ export {
   type PresetName,
 } from "./api/LiquidGlass.js";
 
-export { DEFAULT_MATERIAL, resolveMaterial, clampMaterial } from "./api/Material.js";
-export { presets } from "./presets/index.js";
+export { DEFAULT_MATERIAL, resolveMaterial, clampMaterial, DEFAULT_LIGHT, type Vec3 } from "./api/Material.js";
+export { presets, lightFromOrbit, orbitFromLight } from "./presets/index.js";
 export { supportsWebGL2, prefersReducedMotion } from "./core/gl.js";
+export { DripSim, MAX_DRIP_BLOBS, type DripBlob } from "./field/DripSim.js";

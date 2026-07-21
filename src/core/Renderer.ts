@@ -4,12 +4,14 @@ import {
   prefersReducedMotion,
   uploadTexture,
 } from "./gl.js";
-import { FRAG_SRC, VERT_SRC } from "../shade/shaders.js";
+import { FRAG_SRC, SHADER_MAX_BLOBS, VERT_SRC } from "../shade/shaders.js";
 import type { Material } from "../api/Material.js";
+import type { DripBlob } from "../field/DripSim.js";
 
 export type SurfaceUniforms = Material & {
   time: number;
   reducedMotion: number;
+  blobs?: DripBlob[];
 };
 
 export class Renderer {
@@ -19,6 +21,7 @@ export class Renderer {
   private vao: WebGLVertexArrayObject;
   private backdropTex: WebGLTexture;
   private locs: Record<string, WebGLUniformLocation | null>;
+  private blobLocs: (WebGLUniformLocation | null)[] = [];
   private disposed = false;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -27,7 +30,7 @@ export class Renderer {
       alpha: true,
       premultipliedAlpha: true,
       antialias: false,
-      preserveDrawingBuffer: false,
+      preserveDrawingBuffer: true, // allow hyperframe / screenshot capture
     });
     if (!gl) throw new Error("WebGL2 unavailable");
     this.gl = gl;
@@ -64,6 +67,7 @@ export class Renderer {
       "u_glass",
       "u_liquify",
       "u_drip",
+      "u_viscosity",
       "u_dispersion",
       "u_filmThickness",
       "u_ior",
@@ -72,9 +76,16 @@ export class Renderer {
       "u_cornerRadius",
       "u_specular",
       "u_reducedMotion",
+      "u_lightPos",
+      "u_lightIntensity",
+      "u_blobCount",
     ];
     const out: Record<string, WebGLUniformLocation | null> = {};
     for (const n of names) out[n] = gl.getUniformLocation(this.program, n);
+    this.blobLocs = [];
+    for (let i = 0; i < SHADER_MAX_BLOBS; i++) {
+      this.blobLocs.push(gl.getUniformLocation(this.program, `u_blobs[${i}]`));
+    }
     return out;
   }
 
@@ -89,7 +100,12 @@ export class Renderer {
     this.canvas.style.height = `${cssHeight}px`;
   }
 
-  setBackdrop(source: TexImageSource): void {
+  /**
+   * Upload backdrop only when dimensions change or caller forces.
+   * Avoids mid-frame blanking — critical for flicker-free recapture.
+   */
+  setBackdrop(source: TexImageSource, _force = false): void {
+    void _force;
     uploadTexture(this.gl, this.backdropTex, source);
   }
 
@@ -97,6 +113,8 @@ export class Renderer {
     if (this.disposed) return;
     const gl = this.gl;
     const { width, height } = this.canvas;
+    if (width < 1 || height < 1) return;
+
     gl.viewport(0, 0, width, height);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -113,6 +131,7 @@ export class Renderer {
     gl.uniform1f(this.locs.u_glass, u.glass);
     gl.uniform1f(this.locs.u_liquify, u.liquify);
     gl.uniform1f(this.locs.u_drip, u.drip);
+    gl.uniform1f(this.locs.u_viscosity, u.viscosity);
     gl.uniform1f(this.locs.u_dispersion, u.dispersion);
     gl.uniform1f(this.locs.u_filmThickness, u.filmThickness);
     gl.uniform1f(this.locs.u_ior, u.ior);
@@ -121,9 +140,31 @@ export class Renderer {
     gl.uniform1f(this.locs.u_cornerRadius, u.cornerRadius);
     gl.uniform1f(this.locs.u_specular, u.specular);
     gl.uniform1f(this.locs.u_reducedMotion, u.reducedMotion);
+    const lp = u.lightPosition;
+    gl.uniform3f(this.locs.u_lightPos, lp.x, lp.y, lp.z);
+    gl.uniform1f(this.locs.u_lightIntensity, u.lightIntensity);
+
+    const blobs = u.blobs ?? [];
+    const count = Math.min(blobs.length, SHADER_MAX_BLOBS);
+    gl.uniform1i(this.locs.u_blobCount, count);
+    for (let i = 0; i < SHADER_MAX_BLOBS; i++) {
+      const loc = this.blobLocs[i];
+      if (!loc) continue;
+      if (i < count) {
+        const b = blobs[i];
+        gl.uniform4f(loc, b.x, b.y, b.r, b.w);
+      } else {
+        gl.uniform4f(loc, 0, 0, 0, 0);
+      }
+    }
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.bindVertexArray(null);
+  }
+
+  /** PNG data URL of current framebuffer (for hyperframe / analysis). */
+  captureFrame(): string {
+    return this.canvas.toDataURL("image/png");
   }
 
   dispose(): void {

@@ -1,7 +1,7 @@
 {
   "name": "@klaut-pro/klaut-liquid-glass",
   "version": "0.1.0",
-  "description": "From-scratch WebGL2 liquid glass: live-DOM glassify, liquify→drops, thin-film fringe",
+  "description": "From-scratch WebGL2 liquid glass: live-DOM glassify, liquify/drops, thin-film fringe",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -10,11 +10,13 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./react": {
       "types": "./dist/react/index.d.ts",
-      "import": "./dist/react/index.js"
+      "import": "./dist/react/index.js",
+      "default": "./dist/react/index.js"
     }
   },
   "files": [
@@ -36,12 +38,17 @@
     "react-dom": ">=18"
   },
   "peerDependenciesMeta": {
-    "react": { "optional": true },
-    "react-dom": { "optional": true }
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "playwright": "^1.61.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "typescript": "^5.8.0"

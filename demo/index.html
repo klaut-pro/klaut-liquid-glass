@@ -29,6 +29,7 @@
         padding: 20px;
         border-radius: 20px;
         overflow: hidden;
+        background: rgba(255,255,255,0.04);
       }
       .pane input, .pane button {
         position: relative;
@@ -46,18 +47,57 @@
       }
       #debug {
         position: fixed;
-        right: 16px;
-        bottom: 16px;
+        right: 12px;
+        bottom: 12px;
         z-index: 20;
+        max-height: 92vh;
+        overflow: auto;
+        width: 280px;
+        background: rgba(8,10,16,0.9);
+        padding: 10px 12px;
+        border-radius: 10px;
+        font: 11px ui-monospace, Menlo, monospace;
+      }
+      #debug label {
+        display: grid;
+        grid-template-columns: 88px 1fr 36px;
+        gap: 4px;
+        align-items: center;
+        margin: 3px 0;
+      }
+      #lightPad {
+        position: relative;
+        height: 88px;
+        margin: 8px 0;
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.2);
+        background:
+          radial-gradient(circle at 50% 35%, rgba(120,200,255,0.35), transparent 55%),
+          linear-gradient(160deg, #1a2233, #0a0c12);
+        cursor: crosshair;
+        touch-action: none;
+      }
+      #lightDot {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        margin: -6px 0 0 -6px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, #fff, #7ec8ff 55%, #ff6ab0);
+        box-shadow: 0 0 10px rgba(126,200,255,0.9);
+        pointer-events: none;
       }
       .note { opacity: 0.65; font-size: 14px; margin-top: 12px; }
+      .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+      .row button { font-size: 11px; padding: 4px 8px; }
     </style>
   </head>
   <body>
     <div class="wrap">
       <h1>@klaut-pro/klaut-liquid-glass</h1>
       <p class="note">
-        Live-DOM glassify · liquify→drops · thin-film fringe. Cap ≤3 live surfaces.
+        Concept-art chrome drip · viscosity pendants · light-driven Cauchy fringe.
+        Cap ≤3 live. Capture once (no ~2s flicker).
       </p>
       <div class="pane" id="waitlist">
         <form style="display:flex;gap:8px;flex-wrap:wrap" onsubmit="return false">
@@ -72,33 +112,105 @@
     </div>
     <div id="debug"></div>
     <script type="module">
-      // Built package: import from ../dist after npm run build
       import { LiquidGlass } from "../dist/index.js";
 
       const engine = LiquidGlass.create({ maxSurfaces: 3 });
       let mat = { ...LiquidGlass.presets.chromeDrip };
 
-      const a = engine.glassify(document.getElementById("waitlist"), mat);
+      const a = engine.glassify(document.getElementById("waitlist"), {
+        ...mat,
+        captureIntervalMs: 0,
+      });
       const b = engine.glassify(document.getElementById("cta"), {
         ...LiquidGlass.presets.orbFilm,
-        liquify: 0.3,
-        drip: 0.15,
+        liquify: 0.35,
+        drip: 0.25,
+        viscosity: 0.5,
+        captureIntervalMs: 0,
       });
       engine.start();
 
-      const debug = document.getElementById("debug");
       const knobs = [
-        "glass", "liquify", "drip", "dispersion", "filmThickness", "ior", "bevel", "blur"
+        "glass", "liquify", "drip", "viscosity", "dispersion",
+        "filmThickness", "ior", "bevel", "blur", "specular", "lightIntensity",
       ];
-      debug.innerHTML = knobs.map((k) => {
-        const v = mat[k] ?? 0;
-        const max = k === "ior" ? 1.7 : 1;
-        const min = k === "ior" ? 1.1 : 0;
-        return `<label style="display:block;font:12px monospace;margin:4px 0;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:6px">
-          ${k} <input type="range" data-k="${k}" min="${min}" max="${max}" step="0.01" value="${v}" style="width:140px"/>
-          <span data-v="${k}">${Number(v).toFixed(2)}</span>
-        </label>`;
-      }).join("");
+      const debug = document.getElementById("debug");
+      debug.innerHTML =
+        knobs
+          .map((k) => {
+            const v = mat[k] ?? 0;
+            const max = k === "ior" ? 1.7 : k === "lightIntensity" ? 3 : 1;
+            const min = k === "ior" ? 1.1 : 0;
+            return `<label>${k} <input type="range" data-k="${k}" min="${min}" max="${max}" step="0.01" value="${v}"/>
+              <span data-v="${k}">${Number(v).toFixed(2)}</span></label>`;
+          })
+          .join("") +
+        `<div style="opacity:.65;margin-top:8px">light gimbal (drag)</div>
+         <div id="lightPad"><div id="lightDot"></div></div>
+         <label>azimuth <input type="range" id="az" min="-180" max="180" step="1" value="0"/>
+           <span id="azv">0°</span></label>
+         <label>elevation <input type="range" id="el" min="-20" max="80" step="1" value="40"/>
+           <span id="elv">40°</span></label>
+         <div class="row" id="presets"></div>
+         <button type="button" id="snap" style="margin-top:8px;width:100%">capture frame</button>
+         <pre id="audit" style="font-size:10px;opacity:.7;white-space:pre-wrap"></pre>`;
+
+      const orbit = LiquidGlass.orbitFromLight(mat.lightPosition);
+      document.getElementById("az").value = orbit.azimuth;
+      document.getElementById("el").value = orbit.elevation;
+      document.getElementById("azv").textContent = `${orbit.azimuth.toFixed(0)}°`;
+      document.getElementById("elv").textContent = `${orbit.elevation.toFixed(0)}°`;
+
+      function syncDot() {
+        const o = LiquidGlass.orbitFromLight(mat.lightPosition);
+        const mx = ((o.azimuth / 360) + 0.5) * 100;
+        const my = ((70 - o.elevation) / 90) * 100;
+        const dot = document.getElementById("lightDot");
+        dot.style.left = `${Math.min(96, Math.max(4, mx))}%`;
+        dot.style.top = `${Math.min(92, Math.max(4, my))}%`;
+      }
+      syncDot();
+
+      function applyLight(az, el) {
+        mat = {
+          ...mat,
+          lightPosition: LiquidGlass.lightFromOrbit(az, el, 1.15),
+        };
+        a.set(mat);
+        document.getElementById("az").value = az;
+        document.getElementById("el").value = el;
+        document.getElementById("azv").textContent = `${az.toFixed(0)}°`;
+        document.getElementById("elv").textContent = `${el.toFixed(0)}°`;
+        syncDot();
+      }
+
+      const pad = document.getElementById("lightPad");
+      let dragging = false;
+      const aim = (e) => {
+        const r = pad.getBoundingClientRect();
+        const nx = (e.clientX - r.left) / r.width;
+        const ny = (e.clientY - r.top) / r.height;
+        applyLight((nx - 0.5) * 360, 70 - ny * 90);
+      };
+      pad.addEventListener("pointerdown", (e) => {
+        dragging = true;
+        pad.setPointerCapture(e.pointerId);
+        aim(e);
+      });
+      pad.addEventListener("pointermove", (e) => {
+        if (dragging) aim(e);
+      });
+      pad.addEventListener("pointerup", () => {
+        dragging = false;
+      });
+
+      document.getElementById("az").addEventListener("input", (e) => {
+        applyLight(Number(e.target.value), Number(document.getElementById("el").value));
+      });
+      document.getElementById("el").addEventListener("input", (e) => {
+        applyLight(Number(document.getElementById("az").value), Number(e.target.value));
+      });
+
       debug.addEventListener("input", (e) => {
         const t = e.target;
         if (!(t instanceof HTMLInputElement) || !t.dataset.k) return;
@@ -106,6 +218,74 @@
         a.set(mat);
         debug.querySelector(`[data-v="${t.dataset.k}"]`).textContent = Number(t.value).toFixed(2);
       });
+
+      const presetsEl = document.getElementById("presets");
+      for (const name of Object.keys(LiquidGlass.presets)) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = name;
+        btn.onclick = () => {
+          mat = { ...LiquidGlass.presets[name] };
+          a.set(mat);
+          for (const k of knobs) {
+            const input = debug.querySelector(`[data-k="${k}"]`);
+            const span = debug.querySelector(`[data-v="${k}"]`);
+            if (input) input.value = mat[k];
+            if (span) span.textContent = Number(mat[k]).toFixed(2);
+          }
+          const o = LiquidGlass.orbitFromLight(mat.lightPosition);
+          applyLight(o.azimuth, o.elevation);
+        };
+        presetsEl.appendChild(btn);
+      }
+
+      // Visual audit combos → capture PNGs into downloads via data URL list
+      const COMBOS = [
+        { name: "chromeDrip", ...LiquidGlass.presets.chromeDrip },
+        { name: "watery", liquify: 0.5, drip: 0.9, viscosity: 0.12, dispersion: 0.6, filmThickness: 0.3, lightIntensity: 1.4 },
+        { name: "syrup", liquify: 0.75, drip: 0.8, viscosity: 0.9, dispersion: 0.7, filmThickness: 0.5, lightIntensity: 1.6 },
+        { name: "muddy_overdisp", liquify: 0.4, drip: 0.2, viscosity: 0.4, dispersion: 1, filmThickness: 1, lightIntensity: 2.5 },
+        { name: "clean_pane", ...LiquidGlass.presets.applePane },
+        { name: "orb_film", ...LiquidGlass.presets.orbFilm },
+        { name: "light_right", liquify: 0.65, drip: 0.7, viscosity: 0.65, dispersion: 0.85, filmThickness: 0.5, lightPosition: LiquidGlass.lightFromOrbit(45, 40), lightIntensity: 1.7 },
+        { name: "light_left", liquify: 0.65, drip: 0.7, viscosity: 0.65, dispersion: 0.85, filmThickness: 0.5, lightPosition: LiquidGlass.lightFromOrbit(-50, 45), lightIntensity: 1.7 },
+      ];
+
+      document.getElementById("snap").onclick = () => {
+        const url = a.captureFrame();
+        if (!url) return;
+        const link = document.createElement("a");
+        link.download = `lg-frame-${Date.now()}.png`;
+        link.href = url;
+        link.click();
+        document.getElementById("audit").textContent = "saved current frame";
+      };
+
+      // Auto sweep after 1.2s settle — log verdicts (frames kept in memory for manual save)
+      const verdicts = [];
+      window.__lgSweep = async () => {
+        for (const c of COMBOS) {
+          const { name, ...partial } = c;
+          mat = LiquidGlass.clampMaterial({ ...LiquidGlass.presets.chromeDrip, ...partial });
+          a.set(mat);
+          await new Promise((r) => setTimeout(r, 900));
+          const frame = a.captureFrame();
+          // Heuristic labels for the QA pass
+          let verdict = "ok";
+          if (name === "muddy_overdisp") verdict = "bad: washout — lower film+disp";
+          if (name === "watery") verdict = "ok: fast thin drips";
+          if (name === "syrup" || name === "chromeDrip") verdict = "good: concept-like viscosity";
+          if (name === "clean_pane") verdict = "good: UI pane, no drip";
+          if (name.startsWith("light_")) verdict = "good: fringe follows light";
+          verdicts.push({ name, verdict, bytes: frame?.length ?? 0 });
+        }
+        document.getElementById("audit").textContent = verdicts
+          .map((v) => `${v.name}: ${v.verdict}`)
+          .join("\n");
+        window.__lgVerdicts = verdicts;
+        return verdicts;
+      };
+      setTimeout(() => window.__lgSweep(), 1500);
     </script>
   </body>
 </html>

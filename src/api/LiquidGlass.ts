@@ -1,7 +1,7 @@
 import { LiquidGlassEngine, type EngineOptions, type GlassifyOptions, type GlassSurface } from "./Glassify.js";
 import type { Material, MaterialPartial } from "./Material.js";
 import { DEFAULT_MATERIAL, resolveMaterial, clampMaterial } from "./Material.js";
-import { presets, type PresetName } from "../presets/index.js";
+import { lightFromOrbit, orbitFromLight, presets, type PresetName } from "../presets/index.js";
 import { supportsWebGL2, prefersReducedMotion } from "../core/gl.js";
 
 export type { Material, MaterialPartial, GlassSurface, GlassifyOptions, EngineOptions, PresetName };
@@ -11,6 +11,8 @@ export const LiquidGlass = {
   DEFAULT_MATERIAL,
   resolveMaterial,
   clampMaterial,
+  lightFromOrbit,
+  orbitFromLight,
   supportsWebGL2,
   prefersReducedMotion,
 

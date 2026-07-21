@@ -11,6 +11,7 @@ import {
   createFallbackBackdrop,
 } from "../capture/BackdropCapture.js";
 import { applyCssFallback } from "../fallback/CssFallback.js";
+import { DripSim, type DripBlob } from "../field/DripSim.js";
 
 let idCounter = 0;
 
@@ -21,6 +22,8 @@ export type GlassSurface = {
   get(): Material;
   set(partial: MaterialPartial): void;
   refreshBackdrop(): Promise<void>;
+  /** Capture current WebGL frame as PNG data URL (analysis / hyperframes). */
+  captureFrame(): string | null;
   destroy(): void;
 };
 
@@ -47,6 +50,12 @@ type InternalSurface = {
   captureIntervalMs: number;
   lastCapture: number;
   destroyed: boolean;
+  dripSim: DripSim;
+  /** Smoothed blobs for temporal stability (lerp toward sim). */
+  smoothBlobs: DripBlob[];
+  capturing: boolean;
+  lastW: number;
+  lastH: number;
 };
 
 /**
@@ -59,9 +68,11 @@ export class LiquidGlassEngine {
   private raf = 0;
   private running = false;
   private startTime = 0;
+  private lastTick = 0;
   private onScroll: (() => void) | null = null;
   private onResize: (() => void) | null = null;
   private scrollTimer = 0;
+  private resizeTimer = 0;
 
   constructor(opts: EngineOptions = {}) {
     this.root = opts.root ?? (typeof document !== "undefined" ? document.body : (null as unknown as HTMLElement));
@@ -79,7 +90,9 @@ export class LiquidGlassEngine {
     el.setAttribute("data-liquid-glass-id", id);
 
     const mat = clampMaterial(resolveMaterial(material));
-    const captureIntervalMs = material?.captureIntervalMs ?? 1200;
+    // 0 = no periodic recapture. Periodic texture swaps (~1–4s) caused visible flicker.
+    // Recapture only on mount + debounced scroll/resize.
+    const captureIntervalMs = material?.captureIntervalMs ?? 0;
 
     const surface: InternalSurface = {
       id,
@@ -93,6 +106,11 @@ export class LiquidGlassEngine {
       captureIntervalMs,
       lastCapture: 0,
       destroyed: false,
+      dripSim: new DripSim(5),
+      smoothBlobs: [],
+      capturing: false,
+      lastW: 0,
+      lastH: 0,
     };
 
     if (!supportsWebGL2()) {
@@ -113,15 +131,27 @@ export class LiquidGlassEngine {
       get mode() {
         return surface.mode;
       },
-      get: () => ({ ...surface.material }),
+      get: () => ({
+        ...surface.material,
+        lightPosition: { ...surface.material.lightPosition },
+      }),
       set: (partial) => {
-        surface.material = clampMaterial({ ...surface.material, ...partial });
+        const next = {
+          ...surface.material,
+          ...partial,
+          lightPosition: {
+            ...surface.material.lightPosition,
+            ...(partial.lightPosition ?? {}),
+          },
+        };
+        surface.material = clampMaterial(next);
         if (surface.mode === "css") {
           surface.disposeFallback?.();
           surface.disposeFallback = applyCssFallback(el, surface.material);
         }
       },
-      refreshBackdrop: () => this.refreshSurface(surface),
+      refreshBackdrop: () => this.refreshSurface(surface, true),
+      captureFrame: () => surface.renderer?.captureFrame() ?? null,
       destroy: () => this.destroySurface(surface),
     };
 
@@ -148,7 +178,6 @@ export class LiquidGlassEngine {
       borderRadius: style.borderRadius || "inherit",
     } as CSSStyleDeclaration);
 
-    // Ensure content stays above glass overlay for a11y / clicks
     Array.from(el.children).forEach((child) => {
       const node = child as HTMLElement;
       if (node.style) {
@@ -172,27 +201,55 @@ export class LiquidGlassEngine {
     }
   }
 
-  private async refreshSurface(surface: InternalSurface): Promise<void> {
+  /** Resize canvas to element — never touches backdrop texture (scroll-safe). */
+  private syncLayout(surface: InternalSurface): void {
     if (surface.destroyed || surface.mode !== "webgl" || !surface.renderer || !surface.canvas) {
       return;
     }
     const rect = surface.el.getBoundingClientRect();
+    const w = Math.round(rect.width);
+    const h = Math.round(rect.height);
+    if (w === surface.lastW && h === surface.lastH) return;
     surface.renderer.resize(rect.width, rect.height);
+    surface.lastW = w;
+    surface.lastH = h;
+  }
 
-    // Hide canvas during capture so we don't refract ourselves
-    surface.canvas.style.visibility = "hidden";
+  /**
+   * Capture backdrop once (or when forced).
+   * Periodic / scroll recaptures were the ~2s flicker: async texture swap
+   * against a live canvas. Default path captures at mount only.
+   */
+  private async refreshSurface(surface: InternalSurface, force = false): Promise<void> {
+    if (surface.destroyed || surface.mode !== "webgl" || !surface.renderer || !surface.canvas) {
+      return;
+    }
+    if (surface.capturing) return;
+    // Skip re-capture unless forced or never captured
+    if (!force && surface.lastCapture > 0) {
+      this.syncLayout(surface);
+      return;
+    }
+    surface.capturing = true;
+    this.syncLayout(surface);
+
+    // Never hide the live canvas — visibility toggles caused hard flicker.
     try {
       const shot = await captureBackdrop(surface.el, { exclude: surface.el });
-      surface.renderer.setBackdrop(shot);
+      if (!surface.destroyed && surface.renderer) {
+        surface.renderer.setBackdrop(shot, true);
+      }
     } catch {
-      const fb = createFallbackBackdrop(
-        surface.canvas.width || 256,
-        surface.canvas.height || 256,
-      );
-      surface.renderer.setBackdrop(fb);
+      if (!surface.destroyed && surface.renderer && surface.canvas) {
+        const fb = createFallbackBackdrop(
+          surface.canvas.width || 256,
+          surface.canvas.height || 256,
+        );
+        surface.renderer.setBackdrop(fb, true);
+      }
     } finally {
-      surface.canvas.style.visibility = "visible";
       surface.lastCapture = performance.now();
+      surface.capturing = false;
     }
   }
 
@@ -207,19 +264,54 @@ export class LiquidGlassEngine {
     if (this.surfaces.length === 0) this.stop();
   }
 
+  /** Lerp blob list toward target for detach/spawn temporal coherence. */
+  private smoothToward(prev: DripBlob[], next: DripBlob[], alpha: number): DripBlob[] {
+    const out: DripBlob[] = [];
+    const n = Math.max(prev.length, next.length);
+    for (let i = 0; i < n; i++) {
+      const a = prev[i];
+      const b = next[i];
+      if (a && b) {
+        out.push({
+          x: a.x + (b.x - a.x) * alpha,
+          y: a.y + (b.y - a.y) * alpha,
+          r: a.r + (b.r - a.r) * alpha,
+          w: a.w + (b.w - a.w) * alpha,
+        });
+      } else if (b) {
+        // Fade in
+        out.push({ ...b, w: b.w * alpha });
+      } else if (a) {
+        // Fade out
+        const w = a.w * (1 - alpha);
+        if (w > 0.02) out.push({ ...a, w });
+      }
+    }
+    return out;
+  }
+
   start(): void {
     if (this.running) return;
     this.running = true;
     this.startTime = performance.now();
+    this.lastTick = this.startTime;
 
+    // Scroll: layout only — NEVER recapture (was a primary flicker source)
     this.onScroll = () => {
       window.clearTimeout(this.scrollTimer);
       this.scrollTimer = window.setTimeout(() => {
-        for (const s of this.surfaces) void this.refreshSurface(s);
-      }, 120);
+        for (const s of this.surfaces) this.syncLayout(s);
+      }, 100);
     };
     this.onResize = () => {
-      for (const s of this.surfaces) void this.refreshSurface(s);
+      window.clearTimeout(this.resizeTimer);
+      this.resizeTimer = window.setTimeout(() => {
+        for (const s of this.surfaces) {
+          this.syncLayout(s);
+          // Size change only: optional one-shot recapture
+          void this.refreshSurface(s, true);
+        }
+      }, 200);
     };
     window.addEventListener("scroll", this.onScroll, { passive: true });
     window.addEventListener("resize", this.onResize);
@@ -227,20 +319,51 @@ export class LiquidGlassEngine {
     const tick = (now: number) => {
       if (!this.running) return;
       const t = (now - this.startTime) / 1000;
-      const reduced = motionFrozen() ? 1 : 0;
+      const rawDt = (now - this.lastTick) / 1000;
+      this.lastTick = now;
+      // Clamp dt to avoid giant steps after tab backgrounding (spawn storms)
+      const dt = Math.min(0.05, Math.max(0.001, rawDt));
+      const reducedMotion = motionFrozen();
+      const reducedFlag = reducedMotion ? 1 : 0;
 
       for (const s of this.surfaces) {
-        if (s.mode !== "webgl" || !s.renderer) continue;
+        if (s.mode !== "webgl" || !s.renderer || !s.canvas) continue;
+
+        // Opt-in only; default captureIntervalMs=0 kills the ~2s texture flicker
         if (
           s.captureIntervalMs > 0 &&
+          !s.capturing &&
           now - s.lastCapture > s.captureIntervalMs
         ) {
-          void this.refreshSurface(s);
+          void this.refreshSurface(s, true);
         }
+
+        const rect = s.el.getBoundingClientRect();
+        const aspect = rect.width / Math.max(rect.height, 1);
+        const halfH = 0.48;
+        const halfW = aspect * halfH;
+
+        const simBlobs =
+          reducedMotion || (s.material.drip < 0.001 && s.material.liquify < 0.001)
+            ? []
+            : s.dripSim.step(dt, {
+                drip: s.material.drip,
+                liquify: s.material.liquify,
+                viscosity: s.material.viscosity,
+                halfW,
+                halfH,
+                reducedMotion,
+              });
+
+        // Temporal smooth (~12–18Hz effective for blob topology changes)
+        const alpha = 1 - Math.exp(-dt * 14);
+        s.smoothBlobs = this.smoothToward(s.smoothBlobs, simBlobs, alpha);
+
         s.renderer.draw({
           ...s.material,
-          time: reduced ? 0 : t,
-          reducedMotion: reduced,
+          time: reducedMotion ? 0 : t,
+          reducedMotion: reducedFlag,
+          blobs: s.smoothBlobs,
         });
       }
       this.raf = requestAnimationFrame(tick);
@@ -253,6 +376,8 @@ export class LiquidGlassEngine {
     cancelAnimationFrame(this.raf);
     if (this.onScroll) window.removeEventListener("scroll", this.onScroll);
     if (this.onResize) window.removeEventListener("resize", this.onResize);
+    window.clearTimeout(this.scrollTimer);
+    window.clearTimeout(this.resizeTimer);
     this.onScroll = null;
     this.onResize = null;
   }
