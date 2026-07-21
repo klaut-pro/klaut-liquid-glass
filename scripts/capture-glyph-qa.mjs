@@ -76,10 +76,8 @@ async function main() {
   console.log("probe", JSON.stringify(probe));
 
   const frames = await page.evaluate(async () => {
-    if (typeof window.__lgGlyphCapture === "function") {
-      return await window.__lgGlyphCapture();
-    }
-    return {};
+    if (typeof window.__lgGlyphCapture !== "function") return {};
+    return await window.__lgGlyphCapture();
   });
 
   for (const [id, dataUrl] of Object.entries(frames)) {

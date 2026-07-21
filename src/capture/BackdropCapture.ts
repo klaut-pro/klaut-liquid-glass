@@ -175,7 +175,7 @@ export function createFallbackBackdrop(
 
 /**
  * High-contrast studio plate for glyph QA — vertical softboxes so
- * chrome refraction reads like concept-art specular bars.
+ * chrome reflections read like concept-art specular bars (wet chrome).
  */
 export function createChromeStudioBackdrop(
   width: number,
@@ -189,38 +189,75 @@ export function createChromeStudioBackdrop(
   const w = c.width;
   const h = c.height;
 
-  ctx.fillStyle = "#050508";
+  ctx.fillStyle = "#030306";
   ctx.fillRect(0, 0, w, h);
 
-  // Vertical softbox (concept long specular bar) — narrow, not full wash
-  const soft = ctx.createLinearGradient(w * 0.18, 0, w * 0.42, 0);
+  // Primary vertical softbox — narrow streak (not full-plate wash)
+  const soft = ctx.createLinearGradient(w * 0.26, 0, w * 0.34, 0);
   soft.addColorStop(0, "rgba(255,255,255,0)");
-  soft.addColorStop(0.42, "rgba(245,252,255,0.55)");
-  soft.addColorStop(0.5, "rgba(255,235,250,0.5)");
-  soft.addColorStop(0.58, "rgba(200,255,245,0.35)");
+  soft.addColorStop(0.4, "rgba(255,250,255,0.85)");
+  soft.addColorStop(0.5, "rgba(255,255,255,1)");
+  soft.addColorStop(0.6, "rgba(210,255,250,0.7)");
   soft.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = soft;
   ctx.fillRect(0, 0, w, h);
 
+  // Secondary softbox (right fill) — dimmer
+  const soft2 = ctx.createLinearGradient(w * 0.68, 0, w * 0.74, 0);
+  soft2.addColorStop(0, "rgba(255,255,255,0)");
+  soft2.addColorStop(0.5, "rgba(180,220,255,0.4)");
+  soft2.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = soft2;
+  ctx.fillRect(0, 0, w, h);
+
+  // Horizontal softbox strip
+  const softH = ctx.createLinearGradient(0, h * 0.22, 0, h * 0.28);
+  softH.addColorStop(0, "rgba(255,255,255,0)");
+  softH.addColorStop(0.5, "rgba(255,245,255,0.28)");
+  softH.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = softH;
+  ctx.fillRect(0, 0, w, h);
+
   // Top-left cool key
-  const key = ctx.createRadialGradient(w * 0.18, h * 0.12, 0, w * 0.18, h * 0.12, Math.min(w, h) * 0.55);
-  key.addColorStop(0, "rgba(200,240,255,0.65)");
-  key.addColorStop(0.35, "rgba(100,180,255,0.22)");
+  const key = ctx.createRadialGradient(
+    w * 0.16,
+    h * 0.1,
+    0,
+    w * 0.16,
+    h * 0.1,
+    Math.min(w, h) * 0.42,
+  );
+  key.addColorStop(0, "rgba(230,248,255,0.75)");
+  key.addColorStop(0.3, "rgba(140,210,255,0.28)");
   key.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = key;
   ctx.fillRect(0, 0, w, h);
 
-  // Magenta fill (concept fire)
-  const fill = ctx.createRadialGradient(w * 0.85, h * 0.7, 0, w * 0.85, h * 0.7, Math.min(w, h) * 0.5);
-  fill.addColorStop(0, "rgba(255,80,180,0.32)");
-  fill.addColorStop(0.55, "rgba(120,40,160,0.12)");
+  // Magenta fill
+  const fill = ctx.createRadialGradient(
+    w * 0.88,
+    h * 0.72,
+    0,
+    w * 0.88,
+    h * 0.72,
+    Math.min(w, h) * 0.5,
+  );
+  fill.addColorStop(0, "rgba(255,60,190,0.4)");
+  fill.addColorStop(0.45, "rgba(140,30,160,0.14)");
   fill.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = fill;
   ctx.fillRect(0, 0, w, h);
 
-  // Cyan rim
-  const rim = ctx.createRadialGradient(w * 0.55, h * 0.4, 0, w * 0.55, h * 0.4, Math.min(w, h) * 0.4);
-  rim.addColorStop(0, "rgba(80,255,230,0.18)");
+  // Cyan rim pocket
+  const rim = ctx.createRadialGradient(
+    w * 0.52,
+    h * 0.38,
+    0,
+    w * 0.52,
+    h * 0.38,
+    Math.min(w, h) * 0.32,
+  );
+  rim.addColorStop(0, "rgba(60,255,235,0.22)");
   rim.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = rim;
   ctx.fillRect(0, 0, w, h);
