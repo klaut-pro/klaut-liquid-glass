@@ -81,18 +81,18 @@ float glyphChromeSansP(vec2 p) {
   return body;
 }
 
-/** Molten script p (ENj9B ".pro" — fluid loop + descender). */
+/** Molten script p (ENj9B ".pro" — cursive loop + descender). */
 float glyphScriptProP(vec2 p) {
-  vec2 q = p * 1.01;
-  float up = sdCapsule(q, vec2(-0.04, -0.35), vec2(-0.11, 0.02), 0.046);
-  float arch = sdCapsule(q, vec2(-0.11, 0.02), vec2(0.02, 0.20), 0.044);
-  float loop = sdCapsule(q, vec2(0.02, 0.20), vec2(0.15, 0.04), 0.042);
-  float join = sdCapsule(q, vec2(0.15, 0.04), vec2(0.06, -0.08), 0.04);
-  float desc = sdCapsule(q, vec2(0.06, -0.08), vec2(-0.01, -0.36), 0.036);
-  float g = softMin(up, arch, 0.032);
-  g = softMin(g, loop, 0.03);
-  g = softMin(g, join, 0.028);
-  g = softMin(g, desc, 0.026);
+  vec2 q = p * 1.0;
+  float desc = sdCapsule(q, vec2(-0.02, -0.36), vec2(-0.10, -0.08), 0.038);
+  float left = sdCapsule(q, vec2(-0.10, -0.08), vec2(-0.12, 0.12), 0.042);
+  float top = sdCapsule(q, vec2(-0.12, 0.12), vec2(0.04, 0.22), 0.04);
+  float right = sdCapsule(q, vec2(0.04, 0.22), vec2(0.14, 0.06), 0.038);
+  float close = sdCapsule(q, vec2(0.14, 0.06), vec2(0.02, -0.12), 0.036);
+  float g = softMin(desc, left, 0.03);
+  g = softMin(g, top, 0.028);
+  g = softMin(g, right, 0.026);
+  g = softMin(g, close, 0.024);
   return g;
 }
 
@@ -279,7 +279,7 @@ void main() {
     color = mix(color, env, mix(0.22, 0.62, 1.0 - interior) * 0.9);
     // Concept-art vertical softbox stripe (1c6PD / Z53Ve)
     float bar = smoothstep(0.32, 0.0, abs(p.x + 0.16)) * smoothstep(-0.55, 0.42, p.y);
-    color += vec3(1.0) * bar * 0.72 * u_lightIntensity * mix(0.35, 1.0, edge);
+    color += vec3(1.0) * bar * 0.52 * u_lightIntensity * mix(0.35, 1.0, edge);
     if (u_glyphId > 0.5) {
       vec3 magenta = vec3(1.18, 0.52, 0.92);
       color = mix(color, color * magenta, 0.32 + 0.28 * edge);
@@ -294,7 +294,7 @@ void main() {
   if (film > 0.001) {
     float thick = film * (0.55 + 0.45 * edge + 0.2 * u_liquify * hash21(floor(p * 28.0)));
     float filmStr = film * (0.3 + 0.45 * edge) * (0.5 + 0.5 * ndotl * u_lightIntensity);
-    if (u_fieldMode > 0.5) filmStr *= mix(0.55, 1.0, edge);
+    if (u_fieldMode > 0.5) filmStr *= mix(0.72, 1.0, edge);
     vec3 filmTint = thinFilm(thick, ndotv, ndotl, filmStr);
     color *= filmTint;
     color += (filmTint - 0.5) * film * fres * 0.28 * u_lightIntensity;
@@ -320,6 +320,9 @@ void main() {
       float dripLift = smoothstep(-0.06, -0.42, p.y) * edge;
       color += refracted * dripLift * 0.45;
       color += fire * dripLift * 0.22;
+    }
+    if (u_fieldMode > 0.5) {
+      color += fire * (1.0 - edge) * 0.16; // interior iridescence
     }
   }
 
