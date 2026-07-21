@@ -20,15 +20,13 @@
 - `demo/frames/glyph-scriptProP.png` — live script p
 - `demo/frames/glyph-qa-meta.json`
 
-## Iteration 2 (in progress)
+## Iteration 10 (latest)
 
-- Sharper glyph specular (128-power tight hotspot)
-- Interior vs edge chrome mix (less milky center)
-- scriptProP magenta tint + thinner cursive SDF
-- Viscous filament segments + detached drop emitters
-- Stronger studio backdrop softbox for chrome reads
+- Heavier chrome: stronger env-reflection, darker body, additive film fringe
+- Falling teardrop emitters, body spectrum tint, cursive script SDF
+- Thinner viscous necks, magenta scriptProP, interior iridescence
 
-**Status:** structural + drip morphology improved; full concept-art chrome fidelity still iterating.
+**Status:** Both glyphs show chrome specular, prismatic fringe, viscous pendant necks + detached drops. Isolated letterform QA converged; full-word logo weight still out of scope for glyph harness.
 
 ## Engine changes
 

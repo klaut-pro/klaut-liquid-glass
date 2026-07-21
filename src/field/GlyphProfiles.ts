@@ -107,7 +107,7 @@ export const chromeSansP: GlyphProfile = {
     specular: 1,
     ior: 1.62,
     lightPosition: { x: -0.58, y: 0.78, z: 0.92 },
-    lightIntensity: 2.25,
+    lightIntensity: 2.35,
   },
   dripControl: {
     mode: "controlled",
@@ -138,7 +138,7 @@ export const scriptProP: GlyphProfile = {
     specular: 1,
     ior: 1.58,
     lightPosition: { x: -0.52, y: 0.72, z: 0.9 },
-    lightIntensity: 2.1,
+    lightIntensity: 2.2,
   },
   dripControl: {
     mode: "controlled",
