@@ -282,7 +282,7 @@ void main() {
     color += vec3(1.0) * bar * 0.52 * u_lightIntensity * mix(0.35, 1.0, edge);
     if (u_glyphId > 0.5) {
       vec3 magenta = vec3(1.18, 0.52, 0.92);
-      color = mix(color, color * magenta, 0.32 + 0.28 * edge);
+      color = mix(color, color * magenta, 0.48 + 0.32 * edge);
     } else {
       vec3 chrome = vec3(0.92, 0.96, 1.08);
       color = mix(color, color * chrome, 0.18 + 0.22 * (1.0 - interior));
@@ -322,7 +322,7 @@ void main() {
       color += fire * dripLift * 0.22;
     }
     if (u_fieldMode > 0.5) {
-      color += fire * (1.0 - edge) * 0.16; // interior iridescence
+      color += fire * (1.0 - edge) * 0.24; // interior iridescence
     }
   }
 

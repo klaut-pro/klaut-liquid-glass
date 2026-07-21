@@ -31,7 +31,7 @@ const chromeEmitters: DripEmitterSpec[] = [
     stretchScale: 1.55,
     locked: true,
     startInStretch: true,
-    stretchT: 0.74,
+    stretchT: 0.82,
   },
   {
     x: -0.11,
@@ -54,7 +54,7 @@ const scriptEmitters: DripEmitterSpec[] = [
     stretchScale: 1.75,
     locked: true,
     startInStretch: true,
-    stretchT: 0.8,
+    stretchT: 0.88,
   },
   {
     x: -0.02,

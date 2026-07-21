@@ -356,7 +356,7 @@ export class DripSim {
       const tipY = bottomY - stretch;
       const tipR = maps.dropR * minDim * (0.75 + 0.35 * emDrip) * (1.05 - 0.2 * t);
       const neckY = mix(bottomY, tipY, 0.4);
-      const neckR = tipR * mix(0.18, 0.55, emVisc) * Math.max(em.neckR, 0.04);
+      const neckR = tipR * mix(0.12, 0.42, emVisc) * Math.max(em.neckR, 0.04);
 
       blobs.push({
         x: em.x + wobble * 0.2,
@@ -377,7 +377,7 @@ export class DripSim {
         for (let si = 1; si < segments; si++) {
           const ft = si / segments;
           const sy = mix(bottomY, tipY, ft);
-          const sr = tipR * mix(0.62, 0.12, ft) * Math.max(em.neckR, 0.08);
+          const sr = tipR * mix(0.48, 0.06, ft) * Math.max(em.neckR, 0.08);
           blobs.push({
             x: em.x + wobble * 0.05,
             y: sy,
