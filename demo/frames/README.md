@@ -31,6 +31,17 @@ Rebake: `npm run bake:glyphs` · `npm run bake:faces` · `npm run bake:env`
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 38 (restore tubular silver + crush cream/mint oil)
+
+- **Root cause:** Blender orthographic Z plateaus near 1 across tubes → bodyT flood → icy crush → silverRatio ~0.14; cream crush mapped swamp→warm gold tan (reads as cream/butter)
+- Blender/EDT: tube height reshape via medial EDT when Blender plateau detected (`bake-glyph-sdf.py` + `shape_height_profile`)
+- scriptProP: SDF medial crest (height mix ≤0.14); concept dark no longer mixes silCover down; silverRatio 0.14→~0.60; pink0; voidInside held
+- chromeSansP: cream/mint→cool silver (not face-wide gold tan); cooler oilFire; softbox adds gated when concept alive; cream~0.09 gold~0.29; residual mint/cream vs 1c6PD/Z53Ve wet-mirror
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: script pink0 silverRatio ~0.60; chrome pink0 cream~0.09 mint~0.17 gold~0.29
+
+**Status:** ❌ not READY — silverRatio restored past target but script still reads icy vs ENj9B tubular elegance (crest/flank); chromeSansP cream/mint reduced vs iter-37 but planar wet-mirror still short of 1c6PD/Z53Ve. Loop stays armed.
+
 ## Iteration 37 (Blender heightfield bake + concept-first faces)
 
 - **Bold pivot:** portable Blender 4.2 wired — real extruded/bevelled glyph meshes → orthographic height bake (planar knife chrome / round-pipe script)

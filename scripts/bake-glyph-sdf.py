@@ -139,12 +139,7 @@ def bake_sdf(
     encoded = np.clip(encoded, 0.0, 1.0).astype(np.float32)
 
     ink = mask.astype(bool)
-    if height_override is not None:
-        height = gaussian_filter(height_override, sigma=0.85)
-        height = np.where(ink, np.clip(height, 0.0, 1.0), 0.0).astype(np.float32)
-        return encoded, height
-
-    # Analytic stand-in when Blender maps absent
+    # Analytic crest maps (also used to reshape flat Blender tube plateaus)
     local_r = np.maximum(inside, 1e-3)
     medial = gaussian_filter(inside * ink, sigma=6.0)
     medial = np.maximum(medial, local_r)
@@ -152,6 +147,27 @@ def bake_sdf(
     height_tube = np.sqrt(np.maximum(0.001, 1.0 - (1.0 - t) ** 2))
     height_planar = np.clip(t * 2.4, 0.0, 1.0)
     height_planar = np.where(t > 0.35, 1.0, height_planar)
+
+    if height_override is not None:
+        height = gaussian_filter(height_override, sigma=0.85)
+        height = np.where(ink, np.clip(height, 0.0, 1.0), 0.0).astype(np.float32)
+        # Blender orthographic Z often plateaus near 1 across tubes → icy flood.
+        # For tube profile, prefer EDT medial crest; keep Blender as lip nuance.
+        if force_profile == "tube":
+            ink_h = height[ink]
+            flat = float(np.percentile(ink_h, 50)) > 0.72 if ink_h.size else False
+            if flat:
+                height = height_tube * 0.88 + height * 0.12
+                height = np.where(ink, np.clip(height, 0.0, 1.0), 0.0).astype(np.float32)
+                height = gaussian_filter(height, sigma=0.9)
+                height = np.where(ink, np.clip(height, 0.0, 1.0), 0.0).astype(np.float32)
+        elif force_profile == "planar":
+            # Preserve knife plateau; slight blend keeps Blender lip
+            height = height_planar * 0.35 + height * 0.65
+            height = np.where(ink, np.clip(height, 0.0, 1.0), 0.0).astype(np.float32)
+        return encoded, height
+
+    # Analytic stand-in when Blender maps absent
     if force_profile == "planar":
         height = height_planar
     elif force_profile == "tube":

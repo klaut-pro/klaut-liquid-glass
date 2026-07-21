@@ -212,7 +212,14 @@ def raycast_heightfield(obj: "bpy.types.Object", size: int, extent: float) -> tu
 
 
 def shape_height_profile(height: np.ndarray, mask: np.ndarray, profile: str) -> np.ndarray:
-    """Post-shape Blender Z into planar plateau vs tubular crest."""
+    """Post-shape Blender Z into planar plateau vs tubular crest.
+
+    Tube must NOT plateau near 1 across the stroke — that floods silCover then
+    icy-crush kills silverRatio. Use EDT medial radius for round-pipe crest/flank
+    and keep Blender Z only as a light lip/bevel nuance.
+    """
+    from scipy.ndimage import distance_transform_edt, gaussian_filter
+
     out = height.copy()
     if not mask.any():
         return out
@@ -230,10 +237,16 @@ def shape_height_profile(height: np.ndarray, mask: np.ndarray, profile: str) -> 
         # Keep a little Blender lip curvature near edges
         out = plateau * 0.88 + norm * 0.12
     else:
-        # Circular tube cross-section from normalized crest
-        t = np.clip(norm, 0.0, 1.0)
+        # Round pipe: local medial radius → crest 1 / flank 0 (ENj9B tubular)
+        ink = mask.astype(bool)
+        inside = distance_transform_edt(ink)
+        local_r = np.maximum(inside, 1e-3)
+        medial = gaussian_filter(inside * ink, sigma=6.0)
+        medial = np.maximum(medial, local_r)
+        t = np.clip(inside / np.maximum(medial, 1e-3), 0.0, 1.0)
         tube = np.sqrt(np.maximum(0.001, 1.0 - (1.0 - t) ** 2))
-        out = tube * 0.82 + norm * 0.18
+        # Blender Z only nudges lip bevel — never dominates crest map
+        out = tube * 0.9 + norm * 0.1
 
     out = np.where(mask, np.clip(out, 0.0, 1.0), 0.0).astype(np.float32)
     return out

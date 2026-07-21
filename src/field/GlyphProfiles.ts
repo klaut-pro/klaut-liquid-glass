@@ -65,7 +65,7 @@ export const chromeSansP: GlyphProfile = {
     viscosity: 0.94,
     dispersion: 1,
     // Face film — concept hybrid carries oil; keep film supportive
-    filmThickness: 0.38,
+    filmThickness: 0.52,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.18,
@@ -105,7 +105,7 @@ export const scriptProP: GlyphProfile = {
     specular: 1,
     ior: 1.72,
     lightPosition: { x: -0.48, y: 0.92, z: 1.22 },
-    lightIntensity: 6.2,
+    lightIntensity: 6.55,
   },
   dripControl: {
     mode: "controlled",
