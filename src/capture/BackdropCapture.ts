@@ -232,15 +232,24 @@ export function createChromeStudioBackdrop(
   };
 
   // Dense wet-mirror softboxes (concept 1c6PD / Z53Ve)
+  knifeV(w * 0.18, Math.max(1, w * 0.001), "255,255,255");
   knifeV(w * 0.22, Math.max(1, w * 0.0012), "255,255,255");
+  knifeV(w * 0.26, Math.max(1, w * 0.0009), "240,250,255");
   knifeV(w * 0.3, Math.max(2, w * 0.0018), "255,252,248");
+  knifeV(w * 0.34, Math.max(1, w * 0.0009), "255,255,255");
   knifeV(w * 0.38, Math.max(1, w * 0.0012), "255,255,255");
+  knifeV(w * 0.42, Math.max(1, w * 0.0008), "200,240,255");
   knifeV(w * 0.46, Math.max(1, w * 0.0009), "140,255,255");
+  knifeV(w * 0.5, Math.max(1, w * 0.0008), "255,255,255");
   knifeV(w * 0.54, Math.max(1, w * 0.0012), "255,255,230");
+  knifeV(w * 0.58, Math.max(1, w * 0.0008), "255,220,255");
   knifeV(w * 0.62, Math.max(1, w * 0.0009), "255,200,255");
+  knifeV(w * 0.66, Math.max(1, w * 0.0008), "255,255,255");
   knifeV(w * 0.71, Math.max(2, w * 0.0016), "220,235,255");
+  knifeV(w * 0.76, Math.max(1, w * 0.0009), "255,255,255");
   knifeV(w * 0.8, Math.max(1, w * 0.0012), "255,255,255");
   knifeV(w * 0.16, Math.max(1, w * 0.0008), "255,120,220");
+  knifeV(w * 0.86, Math.max(1, w * 0.0009), "180,220,255");
 
   // Horizontal strip — hard core only
   {

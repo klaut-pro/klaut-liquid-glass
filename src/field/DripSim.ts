@@ -352,7 +352,7 @@ export class DripSim {
       if (!freeze) em.stretchT += dt / maps.stretchDuration;
       const t = clamp01(em.stretchT);
       // Freeze mid-stretch: elegant continuous filament (not fragmented / not lumpy)
-      const freezeNeckFloor = freeze ? 0.28 : 0.04;
+      const freezeNeckFloor = freeze ? 0.36 : 0.04;
       em.neckR = Math.max(
         freezeNeckFloor,
         1 - t * maps.neckThinRate * (0.35 + 0.65 * t) * (freeze ? 0.62 : 1),
