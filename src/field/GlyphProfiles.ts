@@ -66,8 +66,8 @@ export const chromeSansP: GlyphProfile = {
     drip: 0.98,
     viscosity: 0.94,
     dispersion: 1,
-    // Thin face film — whisper oil on silver softbox (anti lime/gold wash)
-    filmThickness: 0.26,
+    // Thin face film — oil accents on charcoal softbox (anti flat cream)
+    filmThickness: 0.42,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.18,
@@ -100,7 +100,7 @@ export const scriptProP: GlyphProfile = {
     viscosity: 0.98,
     dispersion: 1,
     // Rim-only film — tubular wrap from cylindrical shade, not face wash
-    filmThickness: 0.06,
+    filmThickness: 0.04,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.22,

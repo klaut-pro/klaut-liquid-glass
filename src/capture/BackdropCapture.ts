@@ -215,16 +215,18 @@ export function createChromeStudioBackdrop(
     ctx.restore();
   };
 
-  softEllipsis(w * 0.32, h * 0.2, w * 0.48, h * 0.28, "250,252,255", 0.98);
-  softEllipsis(w * 0.58, h * 0.18, w * 0.42, h * 0.26, "236,240,248", 0.9);
-  softEllipsis(w * 0.48, h * 0.4, w * 0.55, h * 0.38, "198,205,216", 0.78);
-  softEllipsis(w * 0.28, h * 0.52, w * 0.38, h * 0.34, "175,182,194", 0.65);
-  softEllipsis(w * 0.72, h * 0.48, w * 0.36, h * 0.36, "180,186,196", 0.62);
-  softEllipsis(w * 0.5, h * 0.62, w * 0.5, h * 0.3, "155,162,172", 0.5);
-  softEllipsis(w * 0.52, h * 0.36, w * 0.4, h * 0.32, "120,185,115", 0.22);
-  softEllipsis(w * 0.42, h * 0.58, w * 0.36, h * 0.28, "195,175,95", 0.2);
-  softEllipsis(w * 0.7, h * 0.3, w * 0.28, h * 0.24, "130,180,110", 0.16);
-  softEllipsis(w * 0.62, h * 0.66, w * 0.32, h * 0.26, "185,165,90", 0.15);
+  softEllipsis(w * 0.32, h * 0.18, w * 0.42, h * 0.24, "255,255,255", 0.98);
+  softEllipsis(w * 0.55, h * 0.16, w * 0.36, h * 0.22, "245,248,255", 0.9);
+  softEllipsis(w * 0.42, h * 0.36, w * 0.48, h * 0.32, "160,170,190", 0.7);
+  softEllipsis(w * 0.25, h * 0.5, w * 0.32, h * 0.28, "110,120,145", 0.55);
+  softEllipsis(w * 0.7, h * 0.45, w * 0.3, h * 0.3, "95,105,125", 0.48);
+  softEllipsis(w * 0.5, h * 0.6, w * 0.42, h * 0.26, "70,78,95", 0.4);
+  // Oil accents — cyan/lime/gold puddles (not neon flood)
+  softEllipsis(w * 0.48, h * 0.34, w * 0.36, h * 0.28, "90,185,160", 0.32);
+  softEllipsis(w * 0.38, h * 0.52, w * 0.3, h * 0.24, "185,155,75", 0.28);
+  softEllipsis(w * 0.62, h * 0.28, w * 0.26, h * 0.22, "70,160,190", 0.26);
+  softEllipsis(w * 0.58, h * 0.58, w * 0.28, h * 0.24, "150,175,90", 0.22);
+  softEllipsis(w * 0.3, h * 0.28, w * 0.22, h * 0.18, "55,140,175", 0.2);
 
   const ceil = ctx.createLinearGradient(0, h * 0.08, 0, h * 0.22);
   ceil.addColorStop(0, "rgba(250,252,255,0)");

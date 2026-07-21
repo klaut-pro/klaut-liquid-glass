@@ -32,6 +32,17 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 33 (charcoal softbox wet-mirror + narrow pipe crest)
+
+- **Root cause:** iter-32 crushed lime/cream into flat cream-silver matte; final silver grade + high face floors killed charcoal voids / oil accents; script crest saturated too early on thick strokes
+- HDRI bake: charcoal base + distinct softbox whites + sparse lime/gold oil (concept harvest, no barcode, cyan-milk crush sparing softbox whites)
+- chromeSansP: charcoal interstitial + softbox peaks + boundary oil fringe; filmThickness 0.42; pink0; no barcode; faces filled
+- scriptProP: narrow medial crest (bodyT/0.11, pow 0.55) + wide dark flanks; thicker softMin joins; atlas dilate 8.2 / round 4.0; silverRatio ~0.49; pinkRatio 0
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome pink0; bowl charcoal ~[30,41,28] vs stem softbox; silverRatio ~0.83 (peak-heavy); script pink0 silverRatio ~0.49 mid↑
+
+**Status:** ❌ not READY — chromeSansP regained charcoal void + softbox peak contrast vs flat cream but still short of 1c6PD/Z53Ve planar oil-slick wet-mirror fidelity (oil accents / softbox richness); scriptProP crest/flank ratio improved but tubular elegance still lags ENj9B. Blender still unavailable. Loop stays armed.
+
 ## Iteration 32 (cool softbox + cream-lip kill; round-pipe crest)
 
 - **Root cause:** iter-31 residual lime/gold rim fire + cream drip lip; oilFire/env lime puddles; script crest still soft vs ENj9B
