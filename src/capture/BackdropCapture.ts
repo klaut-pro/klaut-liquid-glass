@@ -231,7 +231,23 @@ export function createChromeStudioBackdrop(
     ctx.fillRect(hx, 0, Math.max(1, Math.ceil(coreW)), h);
   };
 
-  // Dense wet-mirror softboxes (concept 1c6PD / Z53Ve)
+  /** Medium softbox panel — planar chrome mirror faces (1c6PD/Z53Ve). */
+  const panelV = (cx: number, halfW: number, rgb: string) => {
+    const x0 = Math.floor(cx - halfW);
+    ctx.fillStyle = `rgb(${rgb})`;
+    ctx.fillRect(x0, 0, Math.max(2, Math.ceil(halfW * 2)), h);
+  };
+
+  // Planar softbox panels first (mirrored environment bands)
+  panelV(w * 0.2, Math.max(4, w * 0.009), "210,235,255");
+  panelV(w * 0.32, Math.max(6, w * 0.014), "255,250,245");
+  panelV(w * 0.44, Math.max(3, w * 0.007), "120,240,255");
+  panelV(w * 0.52, Math.max(5, w * 0.011), "255,255,255");
+  panelV(w * 0.62, Math.max(4, w * 0.008), "255,160,230");
+  panelV(w * 0.74, Math.max(5, w * 0.012), "200,220,255");
+  panelV(w * 0.86, Math.max(3, w * 0.006), "255,200,255");
+
+  // Dense knife cores on top of panels (concept 1c6PD / Z53Ve)
   knifeV(w * 0.18, Math.max(1, w * 0.001), "255,255,255");
   knifeV(w * 0.22, Math.max(1, w * 0.0012), "255,255,255");
   knifeV(w * 0.26, Math.max(1, w * 0.0009), "240,250,255");

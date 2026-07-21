@@ -352,7 +352,7 @@ export class DripSim {
       if (!freeze) em.stretchT += dt / maps.stretchDuration;
       const t = clamp01(em.stretchT);
       // Freeze mid-stretch: elegant continuous filament (not fragmented / not lumpy)
-      const freezeNeckFloor = freeze ? 0.36 : 0.04;
+      const freezeNeckFloor = freeze ? 0.42 : 0.04;
       em.neckR = Math.max(
         freezeNeckFloor,
         1 - t * maps.neckThinRate * (0.35 + 0.65 * t) * (freeze ? 0.62 : 1),
@@ -391,12 +391,12 @@ export class DripSim {
           const ft = si / segments;
           let profile: number;
           if (ft < 0.38) {
-            profile = mix(0.5, 0.085, ft / 0.38);
+            profile = mix(0.55, 0.11, ft / 0.38);
           } else if (ft < 0.76) {
-            // Mid-filament — tubular elegance (readable thread, not hair wire)
-            profile = mix(0.085, 0.072, (ft - 0.38) / 0.38);
+            // Mid-filament — thicker tubular elegance (anti-void at junction)
+            profile = mix(0.11, 0.095, (ft - 0.38) / 0.38);
           } else {
-            profile = mix(0.072, 1.28, Math.pow((ft - 0.76) / 0.24, 1.2));
+            profile = mix(0.095, 1.28, Math.pow((ft - 0.76) / 0.24, 1.2));
           }
           const sy = mix(bottomY, tipY, ft);
           const sr = tipR * profile * Math.max(em.neckR, freezeNeckFloor);

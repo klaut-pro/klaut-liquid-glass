@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Bake knife-edge studio softbox plate for wet-mirror glyph QA (Blender unavailable).
+"""Bake studio softbox plate for wet-mirror glyph QA (Blender unavailable).
 
-Iteration 16: higher contrast HDRI plate — near-black ambient + 1–2px hard cores
-(no soft shoulders) so chromeSansP wet-mirror bars stay razor vs pastel wash.
+Iteration 19: planar mirror panels (medium-width softboxes) + knife cores.
+True wet-mirror faces need reflected softbox *panels*, not only 1px streaks.
 """
 from __future__ import annotations
 
@@ -27,26 +27,49 @@ def knife_v(
     draw.rectangle([x0, 0, x0 + max(1, core) - 1, h - 1], fill=(*rgb, 255))
 
 
+def panel_v(
+    draw: ImageDraw.ImageDraw,
+    w: int,
+    h: int,
+    cx: float,
+    half_w: int,
+    rgb: tuple[int, int, int],
+    alpha: int = 255,
+) -> None:
+    """Medium softbox panel — planar chrome mirror faces (1c6PD/Z53Ve)."""
+    x0 = max(0, int(round(cx - half_w)))
+    x1 = min(w - 1, int(round(cx + half_w)))
+    draw.rectangle([x0, 0, x1, h - 1], fill=(*rgb, alpha))
+
+
 def main() -> None:
     w, h = 2048, 2048
     im = Image.new("RGBA", (w, h), (1, 1, 3, 255))
     px = im.load()
 
-    # Minimal colored ambient — midtones without milking knife bars
+    # Near-black ambient — wet chrome interstitial (not lavender fog)
     for x in range(w):
         t = x / (w - 1)
         for y in range(h):
             r, g, b, _a = px[x, y]
-            cool = max(0.0, 1.0 - abs(t - 0.26) / 0.12) * 0.045
-            mag = max(0.0, 1.0 - abs(t - 0.84) / 0.14) * 0.04
-            key = max(0.0, 1.0 - ((x / w - 0.12) ** 2 + (y / h - 0.06) ** 2) / 0.09) * 0.1
-            r = min(255, int(r + cool * 40 + mag * 70 + key * 90))
-            g = min(255, int(g + cool * 70 + mag * 18 + key * 110))
-            b = min(255, int(b + cool * 110 + mag * 55 + key * 140))
+            cool = max(0.0, 1.0 - abs(t - 0.26) / 0.12) * 0.03
+            mag = max(0.0, 1.0 - abs(t - 0.84) / 0.14) * 0.028
+            key = max(0.0, 1.0 - ((x / w - 0.12) ** 2 + (y / h - 0.06) ** 2) / 0.09) * 0.07
+            r = min(255, int(r + cool * 30 + mag * 55 + key * 70))
+            g = min(255, int(g + cool * 55 + mag * 12 + key * 85))
+            b = min(255, int(b + cool * 90 + mag * 40 + key * 110))
             px[x, y] = (r, g, b, 255)
 
     draw = ImageDraw.Draw(im, "RGBA")
-    # Dense knife-edge vertical softboxes — 1–3px hard cores (wet-mirror 1c6PD/Z53Ve)
+    # Planar softbox panels — mirrored environment bands (wet-mirror faces)
+    panel_v(draw, w, h, w * 0.20, 18, (210, 235, 255))
+    panel_v(draw, w, h, w * 0.32, 28, (255, 250, 245))
+    panel_v(draw, w, h, w * 0.44, 14, (120, 240, 255))
+    panel_v(draw, w, h, w * 0.52, 22, (255, 255, 255))
+    panel_v(draw, w, h, w * 0.62, 16, (255, 160, 230))
+    panel_v(draw, w, h, w * 0.74, 24, (200, 220, 255))
+    panel_v(draw, w, h, w * 0.86, 12, (255, 200, 255))
+    # Dense knife-edge cores on top of panels
     knife_v(draw, w, h, w * 0.18, 1, (255, 255, 255))
     knife_v(draw, w, h, w * 0.22, 2, (255, 255, 255))
     knife_v(draw, w, h, w * 0.26, 1, (240, 250, 255))

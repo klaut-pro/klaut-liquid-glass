@@ -32,6 +32,15 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 19 (planar softbox panels + tubular silver wrap)
+
+- Studio plate: medium-width softbox **panels** under knife cores (`bake-studio-env.py` + `createChromeStudioBackdrop`)
+- chromeSansP: near-planar face bend (0.16), zero softAmb lavender, forced plate mirror floor, panel bars over ribbed streaks, filmThickness 0.02; brightPct 0.051→0.111
+- scriptProP: cylindrical Fresnel silver wrap + broader wrap bands post-tonemap; thicker freeze filament (anti-junction void); filmThickness 0.14; silverRatio ~0.51
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+
+**Status:** ❌ not READY — chromeSansP brighter panels but still short of 1c6PD/Z53Ve wet-mirror planar fidelity (lavender stem + streak ribs); scriptProP silver wrap stronger but pink body still dominates ENj9B tubular chrome, junction void persists. Filled loop held. Blender still unavailable. Loop stays armed.
+
 ## Iteration 18 (knife densify + tubular silver chrome)
 
 - Denser studio softbox plate (procedural + baked `studio-softbox.png`) — more 1–2px hard cores
