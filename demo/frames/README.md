@@ -9,28 +9,37 @@
 
 ## Glyph pipeline (current)
 
-**Blender:** not on PATH / install blocked on admin UAC. Winget pulled Blender 5.2.0 MSI but elevation prompt stalled.
+**Blender:** portable 4.2 at `%LOCALAPPDATA%\Programs\blender-portable\` (no UAC). Wired via `scripts/bake-glyph-blender.py` → height/mask → `bake-glyph-sdf.py --prefer-blender`.
 
-**Chosen alternative:** TrueType outline → binary mask → Euclidean distance transform (EDT) → R8 SDF + **G height bevel** PNG + embedded atlas.
+**Pipeline:** TrueType → Blender extrude/bevel mesh → orthographic Z heightfield + mask → EDT SDF (R) + height (G) → embed + concept faceplates.
 
 | Step | Tool | Output |
 |------|------|--------|
-| 1 | `scripts/bake-glyph-sdf.py` (Pillow + SciPy) | `demo/glyph-atlases/*.png` (R=SDF, G=height) |
-| 2 | same script | `src/field/glyphAtlases.ts` (base64 embed) |
-| 3 | `scripts/bake-concept-env.py` | concept-harvested `demo/env/studio-softbox.png` HDRI plate |
-| 4 | WebGL reflection sample + height-bevel normals | wet-mirror chrome / tubular wrap |
+| 1 | `scripts/bake-glyph-blender.py` (Blender 4.2) | `*-blender-height.png`, `*-blender-mask.png`, `*.glb` |
+| 2 | `scripts/bake-glyph-sdf.py --prefer-blender` | `demo/glyph-atlases/*.png` (R=SDF, G=height) + `glyphAtlases.ts` |
+| 3 | `scripts/bake-concept-faceplates.py` | `demo/env/face-*.png` hybrid photo-plates |
+| 4 | `scripts/bake-concept-env.py` | `demo/env/studio-softbox.png` HDRI |
+| 5 | WebGL | height-bevel normals + `u_conceptFace` sample |
 
 Fonts: **Arial Black** (`ariblk.ttf`) for chromeSansP, **Segoe Script** (`segoesc.ttf`) for scriptProP.
 
-Rebake: `npm run bake:glyphs` · `npm run bake:env`
-
-When Blender is available, replace atlas PNGs with extruded/remeshed heightfield or MSDF bake using the same R8 encode (`0.5 - 0.5 * signed/maxDist`).
+Rebake: `npm run bake:glyphs` · `npm run bake:faces` · `npm run bake:env`
 
 ## Harness
 
 - Engine demo: `/demo/qa.html` (side-by-side ref vs live)
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
+
+## Iteration 37 (Blender heightfield bake + concept-first faces)
+
+- **Bold pivot:** portable Blender 4.2 wired — real extruded/bevelled glyph meshes → orthographic height bake (planar knife chrome / round-pipe script)
+- Faceplates: wider 1c6PD/Z53Ve/ENj9B crops, swamp-green crush, inpaint fill; shader concept-first planar (kill softbox cream overwrite)
+- chromeSansP: gold midtones ~0.09; pink0; charcoal voids; faces filled; residual cream/mint vs 1c6PD/Z53Ve wet-mirror
+- scriptProP: silverRatio 0→~0.14; lighter softMin on atlas; tubular elegance / continuous pipe still short of ENj9B
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`, `*-blender.glb`
+
+**Status:** ❌ not READY — Blender bake path is real (height+GLB) but chromeSansP planar oil still short of 1c6PD/Z53Ve fidelity (cream/mint residual); scriptProP silver started without pink but tubular elegance still lags ENj9B. Loop stays armed.
 
 ## Iteration 36 (hybrid photo-plate concept crops on SDF)
 

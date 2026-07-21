@@ -1,13 +1,11 @@
 /**
  * Concept-art letterform profiles for isolated glyph QA.
  *
- * Glyph silhouettes come from font-baked EDT SDF atlases
- * (`scripts/bake-glyph-sdf.py` → `src/field/glyphAtlases.ts`):
- * - chromeSansP — Arial Black geometric "p" (refs: 1c6PD.jpg, Z53Ve.jpg)
- * - scriptProP  — Segoe Script molten "p" (ref: ENj9B.jpg ".pro" stroke)
- *
- * Blender was not on PATH at bake time; atlas PNGs are the WebGL-consumable
- * stand-in (same R8 SDF encoding a Blender heightfield bake would export).
+ * Glyph silhouettes: Blender extruded/bevelled heightfields (portable 4.2) when
+ * available via `scripts/bake-glyph-blender.py`, else font EDT SDF. Merged by
+ * `scripts/bake-glyph-sdf.py` → `src/field/glyphAtlases.ts` (R=SDF, G=height):
+ * - chromeSansP — Arial Black planar knife "p" (refs: 1c6PD.jpg, Z53Ve.jpg)
+ * - scriptProP  — Segoe Script tubular "p" (ref: ENj9B.jpg ".pro" stroke)
  */
 
 import type { DripControl, DripEmitterSpec } from "./DripSim.js";
@@ -67,7 +65,7 @@ export const chromeSansP: GlyphProfile = {
     viscosity: 0.94,
     dispersion: 1,
     // Face film — concept hybrid carries oil; keep film supportive
-    filmThickness: 0.48,
+    filmThickness: 0.38,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.18,

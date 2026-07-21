@@ -1,20 +1,24 @@
 {
-  "pipeline": "font-outline->EDT-SDF",
-  "blender": false,
+  "pipeline": "blender-height+EDT-SDF",
+  "blender": true,
   "glyphs": {
     "chromeSansP": {
       "font": "C:\\Windows\\Fonts\\ariblk.ttf",
+      "source": "blender+ariblk.ttf",
       "png": "demo/glyph-atlases/chromeSansP.png",
       "maxDistPx": 48.0,
       "fieldExtent": 0.55,
-      "inkPx": 32218
+      "inkPx": 49279,
+      "blenderHeight": true
     },
     "scriptProP": {
       "font": "C:\\Windows\\Fonts\\segoesc.ttf",
+      "source": "blender+segoesc.ttf",
       "png": "demo/glyph-atlases/scriptProP.png",
       "maxDistPx": 48.0,
       "fieldExtent": 0.55,
-      "inkPx": 26421
+      "inkPx": 46874,
+      "blenderHeight": true
     }
   }
 }

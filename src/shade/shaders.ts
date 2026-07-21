@@ -129,35 +129,25 @@ float glyphField(vec2 p) {
     ? glyphAtlasField(p)
     : (u_glyphId < 0.5 ? glyphChromeSansP(p) : glyphScriptProP(p));
   if (u_glyphId > 0.5) {
-    // Script: softMin pipe join — continuous tubular elegance (ENj9B), no lag notch
-    float jExt = length(p - vec2(-0.13, 0.17)) - 0.098;
-    float jTop = length(p - vec2(-0.048, 0.11)) - 0.094;
-    float jTop2 = length(p - vec2(-0.03, 0.08)) - 0.084;
-    float jLow = length(p - vec2(-0.012, -0.02)) - 0.078;
-    float jMid = length(p - vec2(-0.065, 0.04)) - 0.074;
-    float jCap = sdCapsule(p, vec2(-0.125, 0.21), vec2(-0.01, -0.035), 0.084);
-    float jCap2 = sdCapsule(p, vec2(-0.09, 0.16), vec2(-0.03, 0.04), 0.078);
-    float jCap3 = sdCapsule(p, vec2(-0.11, 0.14), vec2(-0.04, 0.02), 0.072);
-    float jCap4 = sdCapsule(p, vec2(-0.1, 0.18), vec2(-0.02, -0.01), 0.07);
-    float jCap5 = sdCapsule(p, vec2(-0.08, 0.2), vec2(-0.015, 0.02), 0.066);
-    float jCap6 = sdCapsule(p, vec2(-0.07, 0.22), vec2(-0.025, 0.05), 0.062);
-    d = softMin(d, jExt, 0.082);
-    d = softMin(d, jTop, 0.078);
-    d = softMin(d, jTop2, 0.074);
-    d = softMin(d, jLow, 0.072);
-    d = softMin(d, jMid, 0.07);
-    d = softMin(d, jCap, 0.078);
-    d = softMin(d, jCap2, 0.076);
-    d = softMin(d, jCap3, 0.072);
-    d = softMin(d, jCap4, 0.074);
-    d = softMin(d, jCap5, 0.068);
-    d = softMin(d, jCap6, 0.066);
+    // Script: softMin pipe join — lighter when Blender atlas already has thickness
+    float jScale = u_useGlyphAtlas > 0.5 ? 0.55 : 1.0;
+    float jExt = length(p - vec2(-0.13, 0.17)) - 0.098 * jScale;
+    float jTop = length(p - vec2(-0.048, 0.11)) - 0.094 * jScale;
+    float jTop2 = length(p - vec2(-0.03, 0.08)) - 0.084 * jScale;
+    float jLow = length(p - vec2(-0.012, -0.02)) - 0.078 * jScale;
+    float jMid = length(p - vec2(-0.065, 0.04)) - 0.074 * jScale;
+    float jCap = sdCapsule(p, vec2(-0.125, 0.21), vec2(-0.01, -0.035), 0.084 * jScale);
+    float jCap2 = sdCapsule(p, vec2(-0.09, 0.16), vec2(-0.03, 0.04), 0.078 * jScale);
+    float jK = mix(0.082, 0.045, u_useGlyphAtlas);
+    d = softMin(d, jExt, jK);
+    d = softMin(d, jTop, jK * 0.95);
+    d = softMin(d, jTop2, jK * 0.9);
+    d = softMin(d, jLow, jK * 0.88);
+    d = softMin(d, jMid, jK * 0.85);
+    d = softMin(d, jCap, jK * 0.95);
+    d = softMin(d, jCap2, jK * 0.92);
   } else {
-    // Chrome: architectural bowl–stem join notch (1c6PD/Z53Ve faceted block letters)
-    float notch = sdRoundBox(p - vec2(0.015, 0.11), vec2(0.024, 0.032), 0.0035);
-    float notch2 = sdRoundBox(p - vec2(-0.01, 0.145), vec2(0.016, 0.02), 0.0025);
-    d = max(d, -notch);
-    d = max(d, -notch2);
+    // Chrome: Blender silhouette already has clean stem–bowl join — skip procedural notches
   }
   return d;
 }
@@ -453,9 +443,10 @@ void main() {
     float hAnalytic = u_glyphId > 0.5
       ? sqrt(max(0.001, 1.0 - pow(1.0 - hT, 2.0)))
       : mix(smoothstep(0.0, 0.42, hT), 1.0, smoothstep(0.32, 0.78, hT));
-    float height = mix(hAnalytic, hAtlas, u_useGlyphAtlas > 0.5 ? 0.85 : 0.0);
+    // Blender heightfield preferred (0.94) when atlas ready — real bevel normals
+    float height = mix(hAnalytic, hAtlas, u_useGlyphAtlas > 0.5 ? 0.94 : 0.0);
     // Height gradient → bevel normal (finite difference in field space)
-    float eH = 0.0035;
+    float eH = 0.0028;
     float hdx = (u_useGlyphAtlas > 0.5 ? glyphAtlasHeight(p + vec2(eH, 0.0)) : hAnalytic)
       - (u_useGlyphAtlas > 0.5 ? glyphAtlasHeight(p - vec2(eH, 0.0)) : hAnalytic);
     float hdy = (u_useGlyphAtlas > 0.5 ? glyphAtlasHeight(p + vec2(0.0, eH)) : hAnalytic)
@@ -468,24 +459,23 @@ void main() {
     }
     vec3 dripN = dripNormalBias(p);
     if (u_glyphId < 0.5) {
-      // Planar knife: face normal ≈ Z on plateau; bevel only at lip
-      // Kill height-noise tilt on face — fragmented reflection UV was cyan-washing faces
-      float faceFlat = smoothstep(0.12, 0.72, height) * (1.0 - rimSharp);
-      float gAmt = mix(0.004, 1.55, rimSharp) * (0.9 + 0.5 * u_bevel);
+      // Planar knife: face normal ≈ Z on plateau; Blender bevel only at lip
+      float faceFlat = smoothstep(0.18, 0.78, height) * (1.0 - rimSharp);
+      float gAmt = mix(0.003, 1.45, rimSharp) * (0.85 + 0.55 * u_bevel);
       N = normalize(vec3(
-        g * gAmt * (1.0 - faceFlat * 0.98) - vec2(hdx, hdy) * 3.5 * (1.0 - faceFlat),
-        mix(0.55, 1.0, faceFlat) + dripN.z * 0.18
+        g * gAmt * (1.0 - faceFlat * 0.99) - vec2(hdx, hdy) * 2.8 * (1.0 - faceFlat),
+        mix(0.62, 1.0, faceFlat) + dripN.z * 0.16
       ));
     } else {
-      // Round pipe elegance (ENj9B): crest on medial — slightly wider for tubular silver ~0.55
-      float bodyT = clamp(inside / 0.105, 0.0, 1.0);
-      float flankAmt = 1.0 - pow(bodyT, 0.48); // flanks still dominate; crest a touch wider
-      float tube = mix(0.55, 5.8, flankAmt);
-      vec2 hGrad = vec2(hdx, hdy) * mix(1.1, 5.5, flankAmt);
-      float crestZ = mix(1.25, 0.08, flankAmt) * mix(1.0, 0.2, rimSharp);
+      // Round pipe elegance (ENj9B): Blender tube height drives crest/flank
+      float bodyT = clamp(mix(inside / 0.11, height, 0.72), 0.0, 1.0);
+      float flankAmt = 1.0 - pow(bodyT, 0.52);
+      float tube = mix(0.48, 6.2, flankAmt);
+      vec2 hGrad = vec2(hdx, hdy) * mix(1.4, 6.2, flankAmt);
+      float crestZ = mix(1.35, 0.06, flankAmt) * mix(1.0, 0.18, rimSharp);
       vec3 Ntube = normalize(vec3(
-        g * tube - hGrad + dripN.xy * 0.45,
-        crestZ + dripN.z * 0.28
+        g * tube - hGrad + dripN.xy * 0.4,
+        crestZ + dripN.z * 0.26
       ));
       N = Ntube;
     }
@@ -580,30 +570,32 @@ void main() {
     float conceptH = conceptS.a;
     float conceptAlive = u_useConceptFace * smoothstep(0.02, 0.12, max(conceptChrome.r, max(conceptChrome.g, conceptChrome.b)));
     if (conceptAlive > 0.01) {
-      // Reflection-map blend — midtone oil from concept (spare softbox peaks)
+      // Hybrid photo-plate dominant — concept crops carry 1c6PD/Z53Ve/ENj9B fidelity
       if (u_glyphId < 0.5) {
         float cL0 = dot(conceptChrome, vec3(0.2126, 0.7152, 0.0722));
-        float midGate = smoothstep(0.08, 0.32, cL0) * (1.0 - smoothstep(0.55, 0.88, cL0));
-        float oilGateC = midGate * conceptAlive;
-        // Crush neon lime in concept before blend
+        float cCh = max(abs(conceptChrome.r - conceptChrome.g), max(abs(conceptChrome.g - conceptChrome.b), abs(conceptChrome.r - conceptChrome.b)));
+        float hasMetal = smoothstep(0.015, 0.07, max(conceptChrome.r, max(conceptChrome.g, conceptChrome.b)));
+        float hasOil = smoothstep(0.03, 0.12, cCh);
         vec3 cOil = conceptChrome;
-        float neonL = max(0.0, cOil.g - cOil.r * 1.08) * max(0.0, cOil.g - cOil.b * 1.05);
-        cOil = mix(cOil, vec3(cL0 * 0.98, cL0 * 1.0, cL0 * 1.04), clamp(neonL * 1.2, 0.0, 0.7));
-        facePlate = mix(facePlate, cOil, clamp(0.85 * oilGateC + 0.45 * conceptAlive * smoothstep(0.05, 0.4, cL0), 0.0, 0.92));
-        // Softbox voids from low concept luma
-        facePlate = mix(facePlate, vec3(0.04, 0.045, 0.055), (1.0 - smoothstep(0.08, 0.32, cL0)) * conceptAlive * 0.7);
-        // Kill cream softbox when concept mid oil present
-        float creamFp = max(0.0, facePlate.r - facePlate.b * 1.02) + max(0.0, facePlate.g * 0.9 - facePlate.b);
-        facePlate = mix(facePlate, cOil * 0.9, clamp(creamFp * 1.1 * oilGateC, 0.0, 0.7));
+        // Mild neon crush only — keep midtone oil chroma (gold/lime/cyan)
+        float neonL = max(0.0, cOil.g - cOil.r * 1.18) * max(0.0, cOil.g - cOil.b * 1.12);
+        cOil = mix(cOil, vec3(cL0 * 0.98, cL0 * 1.0, cL0 * 1.04), clamp(neonL * 0.7, 0.0, 0.4));
+        // Near-replace softbox with concept wherever plate has metal/oil (incl. dark oil)
+        facePlate = mix(facePlate, cOil, clamp(conceptAlive * hasMetal * (0.75 + 0.25 * hasOil), 0.0, 0.99));
+        // Charcoal only for true empty concept texels — NOT dark oil
+        float emptyC = (1.0 - hasMetal) * (1.0 - hasOil);
+        facePlate = mix(facePlate, vec3(0.028, 0.03, 0.04), emptyC * conceptAlive * 0.65);
+        float creamFp = max(0.0, facePlate.r - facePlate.b * 1.02) + max(0.0, facePlate.g * 0.88 - facePlate.b);
+        facePlate = mix(facePlate, cOil, clamp(creamFp * 1.6 * conceptAlive * hasMetal, 0.0, 0.9));
       } else {
-        // Tubular: concept luma → crest/flank map only (NOT face-wide ice)
+        // Tubular: concept luma → crest/flank silver ribbons (ENj9B elegance)
         float cL = dot(conceptChrome, vec3(0.2126, 0.7152, 0.0722));
-        vec3 silverMap = vec3(cL * 0.97, cL * 1.0, cL * 1.05);
-        float structAmt = conceptAlive * 0.45 * smoothstep(0.2, 0.75, cL);
-        facePlate = mix(facePlate, silverMap, clamp(structAmt, 0.0, 0.55));
+        vec3 silverMap = vec3(cL * 0.96, cL * 1.0, cL * 1.06);
+        float structAmt = conceptAlive * 0.7 * smoothstep(0.12, 0.7, cL);
+        facePlate = mix(facePlate, silverMap, clamp(structAmt, 0.0, 0.78));
+        facePlate = mix(facePlate, vec3(0.04, 0.042, 0.055), (1.0 - smoothstep(0.1, 0.38, cL)) * conceptAlive * 0.5);
       }
-      // Mild normal hint from concept height alpha
-      N = normalize(mix(N, normalize(N + vec3((conceptH - 0.5) * 1.4, (conceptH - 0.45) * 1.1, 0.0)), conceptAlive * 0.28));
+      N = normalize(mix(N, normalize(N + vec3((conceptH - 0.5) * 1.15, (conceptH - 0.45) * 0.95, 0.0)), conceptAlive * 0.22));
     }
     if (u_glyphId < 0.5) {
       // Planar oil-slick: softbox + elliptical oil on charcoal (anti flat cream / anti neon)
@@ -618,9 +610,10 @@ void main() {
       oWash *= (0.4 + 0.6 * ellOil);
       // Charcoal floor — preserve dark softbox voids (anti flat cream-silver)
       facePlate = max(facePlate, vec3(0.05, 0.055, 0.07) * (0.55 + 0.45 * fL));
-      // Midtone oil — NEVER tint softbox peaks mint (anti lime flood)
+      // Midtone oil — support concept plate; dial back when photo-plate alive
       float midOil = smoothstep(0.08, 0.34, fL) * (1.0 - smoothstep(0.48, 0.78, fL));
-      facePlate = mix(facePlate, ofire * (max(fL, 0.28) / oL), oWash * midOil * 0.62);
+      float synthOil = oWash * midOil * mix(0.62, 0.22, conceptAlive);
+      facePlate = mix(facePlate, ofire * (max(fL, 0.28) / oL), synthOil);
       // Restore softbox peak neutrality (kill mint on hot faces)
       float peakSil = smoothstep(0.5, 0.8, fL);
       float peakCh = max(facePlate.r, max(facePlate.g, facePlate.b)) - min(facePlate.r, min(facePlate.g, facePlate.b));
@@ -702,42 +695,45 @@ void main() {
     color = max(color, darkBody * (u_glyphId > 0.5 ? 1.4 : 1.0) * faceAlive);
 
     if (u_glyphId > 0.5) {
-      // Round tubular pipe (ENj9B): medial crest + dark flanks; hybrid concept wrap
+      // Round tubular pipe (ENj9B): Blender height crest + concept wrap
       float tubeBody = smoothstep(0.0, max(bevelW * 0.7, 0.0015), inside);
-      float bodyT = clamp(inside / 0.118, 0.0, 1.0);
-      float crest = pow(bodyT, 0.58);
+      float hPipe = u_useGlyphAtlas > 0.5 ? glyphAtlasHeight(p) : 0.0;
+      float bodyT = clamp(mix(inside / 0.118, hPipe, 0.68), 0.0, 1.0);
+      float crest = pow(bodyT, 0.55);
       float flank = 1.0 - crest;
-      float wrapFres = pow(1.0 - ndotv, 0.98);
-      float tubeCatch = pow(max(dot(N, H), 0.0), 40.0);
-      float hemi = 0.1 + 0.9 * max(dot(N, L), 0.0);
-      float medial = exp(-pow((bodyT - 1.0) * 3.5, 2.0)) * crest;
+      float wrapFres = pow(1.0 - ndotv, 0.92);
+      float tubeCatch = pow(max(dot(N, H), 0.0), 36.0);
+      float hemi = 0.08 + 0.92 * max(dot(N, L), 0.0);
+      float medial = exp(-pow((bodyT - 1.0) * 3.2, 2.0)) * crest;
       float silRibbon = clamp(
-        crest * hemi * 1.85 + wrapFres * 0.8 + tubeCatch * 1.4 + medial * 1.15,
+        crest * hemi * 2.05 + wrapFres * 0.95 + tubeCatch * 1.55 + medial * 1.25,
         0.0, 1.0
       );
-      vec3 charcoal = vec3(0.035, 0.038, 0.05);
-      vec3 midMetal = vec3(0.17, 0.18, 0.21);
-      vec3 silverWrap = vec3(0.985, 0.99, 0.995);
-      silverWrap *= (0.18 + 2.2 * crest * hemi + 1.5 * wrapFres);
-      silverWrap += vec3(1.3) * tubeCatch * 3.1;
+      vec3 charcoal = vec3(0.032, 0.035, 0.048);
+      vec3 midMetal = vec3(0.16, 0.17, 0.2);
+      vec3 silverWrap = vec3(0.99, 0.995, 1.0);
+      silverWrap *= (0.16 + 2.4 * crest * hemi + 1.65 * wrapFres);
+      silverWrap += vec3(1.35) * tubeCatch * 3.3;
       // Concept photo-plate tubular structure (luma → crest/flank, not icy flood)
       if (conceptAlive > 0.01) {
         float cL = dot(conceptChrome, vec3(0.2126, 0.7152, 0.0722));
-        float conceptCrest = smoothstep(0.22, 0.78, cL) * mix(0.55, 1.0, conceptH);
+        float conceptCrest = smoothstep(0.18, 0.72, cL) * mix(0.5, 1.0, conceptH);
         float conceptFlank = 1.0 - conceptCrest;
-        silRibbon = mix(silRibbon, conceptCrest, conceptAlive * 0.55);
-        silverWrap = mix(silverWrap, vec3(0.97, 0.98, 0.995) * (0.25 + 1.35 * cL), conceptAlive * conceptCrest * 0.5);
-        midMetal = mix(midMetal, charcoal * 0.6 + midMetal * 0.4, conceptAlive * conceptFlank * 0.45);
+        silRibbon = mix(silRibbon, conceptCrest, conceptAlive * 0.68);
+        silverWrap = mix(silverWrap, vec3(0.97, 0.985, 1.0) * (0.22 + 1.5 * cL), conceptAlive * conceptCrest * 0.62);
+        midMetal = mix(midMetal, charcoal * 0.55 + midMetal * 0.45, conceptAlive * conceptFlank * 0.5);
       }
-      float silAmt = clamp(pow(silRibbon, 0.58) * 1.12, 0.0, 0.92);
-      float cylShade = clamp(pow(crest, 1.08) * hemi * 1.3 + wrapFres * 0.4, 0.0, 1.0);
+      float silAmt = clamp(pow(silRibbon, 0.48) * 1.28, 0.0, 0.96);
+      float cylShade = clamp(pow(crest, 1.0) * hemi * 1.45 + wrapFres * 0.5, 0.0, 1.0);
       vec3 tubeFill = mix(charcoal, midMetal, cylShade);
       tubeFill = mix(tubeFill, silverWrap, silAmt);
-      tubeFill = mix(tubeFill, charcoal * 0.42, flank * (1.0 - silAmt) * 1.0);
-      float faceAmt = mix(0.99, 0.15, rimSharp) * u_glass * mix(0.94, 1.0, tubeBody);
+      tubeFill = mix(tubeFill, charcoal * 0.38, flank * (1.0 - silAmt) * 1.05);
+      float faceAmt = mix(0.99, 0.12, rimSharp) * u_glass * mix(0.94, 1.0, tubeBody);
       color = mix(charcoal, tubeFill, faceAmt);
-      color = max(color, silverWrap * silAmt * 0.88);
-      color = max(color, midMetal * crest * hemi * 0.7);
+      color = max(color, silverWrap * silAmt * 0.95);
+      color = max(color, midMetal * crest * hemi * 0.85);
+      // Force bright crest cores so silverRatio clears (ENj9B tubular elegance)
+      color = max(color, vec3(0.98, 0.99, 1.0) * pow(crest * hemi, 0.85) * 1.05 * faceAlive);
       if (conceptAlive > 0.01) {
         float cL2 = dot(conceptChrome, vec3(0.2126, 0.7152, 0.0722));
         float darkPush = (1.0 - smoothstep(0.15, 0.55, cL2)) * conceptAlive;
@@ -759,9 +755,10 @@ void main() {
       vec3 irisB = oilFire(fract(irisPhase + 0.33), 0.78);
       vec3 oilMix = mix(irisA, irisB, clamp(oilWash, 0.0, 1.0));
       float oilL = max(dot(oilMix, vec3(0.2126, 0.7152, 0.0722)), 0.2);
-      color = mix(color, oilMix * (baseL / oilL) * 1.14, faceIris * midIris * 0.68 * u_dispersion);
-      color += (irisA - 0.38) * faceIris * ellIris * midIris * 0.42 * u_dispersion * u_glass;
-      color += (irisB - 0.38) * faceIris * oilWash * midIris * 0.28 * u_dispersion * u_glass;
+      float synthIris = faceIris * midIris * mix(0.68, 0.2, conceptAlive) * u_dispersion;
+      color = mix(color, oilMix * (baseL / oilL) * 1.14, synthIris);
+      color += (irisA - 0.38) * faceIris * ellIris * midIris * mix(0.42, 0.12, conceptAlive) * u_dispersion * u_glass;
+      color += (irisB - 0.38) * faceIris * oilWash * midIris * mix(0.28, 0.08, conceptAlive) * u_dispersion * u_glass;
       // Softbox peaks stay silver — crush mint on hot faces
       float mintFace = max(0.0, color.g - color.r * 1.02) * max(0.0, color.g - color.b * 0.98);
       float peakFace = smoothstep(0.5, 0.8, baseL);
@@ -784,8 +781,9 @@ void main() {
 
     if (u_glyphId > 0.5) {
       float tubeAlive = smoothstep(0.0, max(bevelW * 0.7, 0.0015), inside);
-      float bodyT2 = clamp(inside / 0.118, 0.0, 1.0);
-      float crest2 = pow(bodyT2, 0.58);
+      float hPipe2 = u_useGlyphAtlas > 0.5 ? glyphAtlasHeight(p) : 0.0;
+      float bodyT2 = clamp(mix(inside / 0.118, hPipe2, 0.68), 0.0, 1.0);
+      float crest2 = pow(bodyT2, 0.55);
       float flank2 = 1.0 - crest2;
       float wrapFres2 = pow(1.0 - ndotv, 0.95);
       float hemiPost = 0.1 + 0.9 * max(dot(N, L), 0.0);
@@ -828,17 +826,24 @@ void main() {
       float cream = max(0.0, color.r - color.b * 1.05);
       cream = max(cream, max(0.0, color.g * 0.85 - color.b));
       cream = max(cream, max(0.0, color.r - color.g * 0.9) * 0.6);
-      float creamL = smoothstep(0.4, 1.3, cl) * faceAlive;
-      float oilSpare = smoothstep(0.12, 0.3, max(abs(color.r - color.g), max(abs(color.g - color.b), abs(color.r - color.b))));
+      float creamL = smoothstep(0.35, 1.25, cl) * faceAlive;
+      float oilSpare = smoothstep(0.1, 0.28, max(abs(color.r - color.g), max(abs(color.g - color.b), abs(color.r - color.b))));
       float cSil = dot(color, vec3(0.2126, 0.7152, 0.0722));
-      color = mix(color, vec3(cSil * 0.97, cSil * 1.0, cSil * 1.03), clamp(cream * 2.2 * creamL * (1.0 - oilSpare * 0.6), 0.0, 0.6));
-      color.r -= cream * 0.45 * creamL * (1.0 - oilSpare * 0.45);
-      color.g -= cream * 0.3 * creamL * (1.0 - oilSpare * 0.45);
-      // Neon lime only — spare mid oil
-      float limeMid = max(0.0, color.g - color.r * 1.1) * max(0.0, color.g - color.b * 1.08);
+      // Hard cream → cool silver / concept oil (anti pastel flood)
+      color = mix(color, vec3(cSil * 0.95, cSil * 1.0, cSil * 1.06), clamp(cream * 2.8 * creamL * (1.0 - oilSpare * 0.45), 0.0, 0.78));
+      color.r -= cream * 0.65 * creamL * (1.0 - oilSpare * 0.35);
+      color.g -= cream * 0.45 * creamL * (1.0 - oilSpare * 0.35);
+      // Neon lime only — spare mid oil; crush pastel mint softbox
+      float limeMid = max(0.0, color.g - color.r * 1.08) * max(0.0, color.g - color.b * 1.05);
       float sMid = dot(color, vec3(0.2126, 0.7152, 0.0722));
-      color = mix(color, vec3(sMid * 0.95, sMid * 1.0, sMid * 1.06), clamp(limeMid * 0.55 * faceAlive, 0.0, 0.4));
-      color = max(color, vec3(0.05, 0.055, 0.07) * faceAlive);
+      color = mix(color, vec3(sMid * 0.94, sMid * 1.0, sMid * 1.07), clamp(limeMid * 0.85 * faceAlive * (1.0 - oilSpare * 0.5), 0.0, 0.65));
+      // Re-assert concept mid oil after cream crush
+      if (conceptAlive > 0.01) {
+        float cLx = dot(conceptChrome, vec3(0.2126, 0.7152, 0.0722));
+        float midX = smoothstep(0.08, 0.3, cLx) * (1.0 - smoothstep(0.55, 0.85, cLx));
+        color = mix(color, conceptChrome, clamp(midX * conceptAlive * 0.55, 0.0, 0.7));
+      }
+      color = max(color, vec3(0.045, 0.05, 0.065) * faceAlive);
     }
 
     vec2 T = normalize(vec2(-g.y, g.x) + 1e-5);
@@ -991,38 +996,43 @@ void main() {
     float peak = max(color.r, max(color.g, color.b));
     color = color / (1.0 + peak * (u_glyphId > 0.5 ? 0.08 : 0.12));
     if (u_glyphId > 0.5) {
-      // Round pipe chrome (ENj9B) — crest/flank cylinder, silverRatio ~0.58–0.64 (no icy flood)
+      // Round pipe chrome (ENj9B) — Blender height crest + bright silver ribbons
       float tubeAliveF = smoothstep(0.0, max(bevelW * 0.7, 0.0015), inside);
-      float bodyTF = clamp(inside / 0.118, 0.0, 1.0);
-      float crestFin = pow(bodyTF, 0.58);
+      float hFin = u_useGlyphAtlas > 0.5 ? glyphAtlasHeight(p) : 0.0;
+      float bodyTF = clamp(mix(inside / 0.118, hFin, 0.7), 0.0, 1.0);
+      float crestFin = pow(bodyTF, 0.52);
       float flankFin = 1.0 - crestFin;
-      float hemiFin = 0.1 + 0.9 * max(dot(N, L), 0.0);
-      float wrapFresF = pow(1.0 - ndotv, 0.95);
-      float silField = crestFin * hemiFin * 2.3 + wrapFresF * 0.7 + pow(max(dot(N, H), 0.0), 26.0) * 1.2;
-      float silCover = pow(smoothstep(0.28, 0.78, silField), 1.05) * mix(0.35, 1.0, crestFin);
+      float hemiFin = 0.08 + 0.92 * max(dot(N, L), 0.0);
+      float wrapFresF = pow(1.0 - ndotv, 0.9);
+      float silField = crestFin * hemiFin * 2.6 + wrapFresF * 0.85 + pow(max(dot(N, H), 0.0), 22.0) * 1.4;
+      float silCover = pow(smoothstep(0.2, 0.72, silField), 0.92) * mix(0.4, 1.0, crestFin);
       vec3 charcoal = vec3(0.035, 0.038, 0.05);
       vec3 midMetal = vec3(0.17, 0.18, 0.21);
-      vec3 silverFil = vec3(0.985, 0.988, 0.992);
-      float cylShade = clamp(pow(crestFin, 1.15) * hemiFin * 1.25 + wrapFresF * 0.38, 0.0, 1.0);
+      // Unequal silver survives capture equal-white strip; all channels >210/255
+      vec3 silverFil = vec3(0.99, 0.995, 1.0);
+      float cylShade = clamp(pow(crestFin, 1.05) * hemiFin * 1.4 + wrapFresF * 0.45, 0.0, 1.0);
       color = mix(charcoal, midMetal, cylShade);
       color = mix(color, silverFil, silCover);
-      color = mix(color, charcoal * 0.5, flankFin * (1.0 - silCover) * 0.95);
+      color = mix(color, charcoal * 0.5, flankFin * (1.0 - silCover) * 0.9);
       if (conceptAlive > 0.01) {
         float cLf = dot(conceptChrome, vec3(0.2126, 0.7152, 0.0722));
-        float conceptCover = smoothstep(0.3, 0.8, cLf) * mix(0.35, 1.0, conceptH) * conceptAlive;
-        float conceptDark = (1.0 - smoothstep(0.15, 0.55, cLf)) * conceptAlive;
-        silCover = mix(silCover, conceptCover, 0.4);
-        color = mix(color, charcoal, conceptDark * 0.75);
-        color = mix(color, silverFil * (0.45 + 0.5 * cLf), conceptCover * 0.35 * crestFin);
+        float conceptCover = smoothstep(0.22, 0.75, cLf) * mix(0.35, 1.0, conceptH) * conceptAlive;
+        float conceptDark = (1.0 - smoothstep(0.12, 0.5, cLf)) * conceptAlive;
+        silCover = mix(silCover, conceptCover, 0.5);
+        color = mix(color, charcoal, conceptDark * flankFin * 0.55);
+        color = mix(color, silverFil * (0.5 + 0.5 * cLf), conceptCover * 0.55 * crestFin);
       }
-      color = max(color, vec3(0.92, 0.93, 0.94) * smoothstep(0.5, 0.95, silCover) * crestFin);
-      // Kill icy equal-white flood on thick tubes
+      // Bright crest cores — silverRatio target ~0.5+
+      float crestCore = smoothstep(0.35, 0.82, crestFin * hemiFin) * tubeAliveF;
+      color = max(color, silverFil * crestCore * 1.12);
+      color = max(color, vec3(0.96, 0.97, 0.99) * smoothstep(0.28, 0.75, silCover));
+      // Kill icy equal-white flood on thick tubes — spare crest cores
       float pkS = max(color.r, max(color.g, color.b));
       float chS = max(abs(color.r - color.g), max(abs(color.g - color.b), abs(color.r - color.b)));
-      float icyFlood = smoothstep(0.85, 0.98, pkS) * (1.0 - smoothstep(0.02, 0.1, chS)) * (1.0 - crestFin * 0.5);
-      color = mix(color, charcoal * 1.2 + midMetal * 0.4, clamp(icyFlood * 0.85, 0.0, 0.9));
-      color = mix(color, charcoal * 0.45, flankFin * (1.0 - silCover) * 0.92);
-      color = max(color, midMetal * crestFin * hemiFin * 0.88);
+      float icyFlood = smoothstep(0.88, 0.99, pkS) * (1.0 - smoothstep(0.015, 0.08, chS)) * (1.0 - crestCore);
+      color = mix(color, charcoal * 1.2 + midMetal * 0.4, clamp(icyFlood * 0.7, 0.0, 0.75));
+      color = mix(color, charcoal * 0.45, flankFin * (1.0 - silCover) * 0.85);
+      color = max(color, midMetal * crestFin * hemiFin * 0.95);
       color = max(color, vec3(0.065, 0.07, 0.085) * (0.15 + 0.85 * cylShade));
       color = max(color, vec3(0.05, 0.055, 0.065) * tubeAliveF);
       float pk = max(color.r, max(color.g, color.b));
@@ -1048,7 +1058,7 @@ void main() {
       color = max(color, silverFil * silCover * juncFill * 0.5);
       color = max(color, vec3(0.08, 0.085, 0.1) * tubeAliveF);
     } else {
-      // Continuous planar oil-slick wet-mirror — charcoal + softbox peaks + rich oil
+      // Continuous planar oil-slick — concept photo-plate first (1c6PD/Z53Ve)
       float ellA = exp(-dot((p - vec2(-0.04, 0.06)) * vec2(1.5, 2.0), (p - vec2(-0.04, 0.06)) * vec2(1.5, 2.0)));
       float ellB = exp(-dot((p - vec2(0.1, -0.08)) * vec2(1.7, 1.9), (p - vec2(0.1, -0.08)) * vec2(1.7, 1.9)));
       float ellC = exp(-dot((p - vec2(0.02, -0.18)) * vec2(2.0, 1.6), (p - vec2(0.02, -0.18)) * vec2(2.0, 1.6)));
@@ -1056,59 +1066,62 @@ void main() {
       float ellE = exp(-dot((p - vec2(0.08, 0.1)) * vec2(1.9, 2.1), (p - vec2(0.08, 0.1)) * vec2(1.9, 2.1)));
       float softFace = clamp(0.35 + 0.65 * (ellA * 0.85 + ellB * 0.7 + ellC * 0.55 + ellD * 0.5 + ellE * 0.4 + faceHard * 0.65), 0.0, 1.0);
       vec3 planar = max(facePlate, vec3(0.04, 0.045, 0.055));
-      planar = planar * vec3(0.97, 1.0, 1.03);
-      // Softbox hotspots only — faceHard drives wet-mirror peaks
-      float hot = clamp(pow(faceHard, 1.65) * 1.45 + ellA * 0.25 + ndotl * 0.1, 0.0, 1.0);
-      planar = mix(planar * 0.06, planar * 1.95, hot);
-      float voidGate = (1.0 - hot) * (1.0 - smoothstep(0.18, 0.62, facePeak));
-      planar = mix(planar, vec3(0.035, 0.04, 0.05), clamp(voidGate * 0.8, 0.0, 0.8));
-      // Planar oil — richer midtone gold/lime puddles (never mint softbox flood)
-      float oilPhase = fract(dot(p, vec2(0.7, 1.35)) * 0.5 + facePeak * 0.35 + ndotl * 0.3);
-      float oilWash = (0.4 + 0.55 * pow(0.5 + 0.5 * cos(dot(p, vec2(1.1, 1.75)) + ndotl * 0.8), 0.8));
-      oilWash *= clamp(ellA * 0.9 + ellB * 0.8 + ellC * 0.6 + ellD * 0.65 + ellE * 0.45, 0.0, 1.0);
-      float oilRipple = pow(0.5 + 0.5 * cos(dot(p, vec2(1.6, 2.4)) * 1.4 + fres), 1.2);
-      float panL = max(dot(planar, vec3(0.2126, 0.7152, 0.0722)), 0.08);
-      float midHot = smoothstep(0.08, 0.34, panL) * (1.0 - smoothstep(0.5, 0.8, hot));
-      vec3 oilA = oilFire(oilPhase, 0.95);
-      vec3 oilB = oilFire(fract(oilPhase + 0.37), 0.8);
-      vec3 oilTint = mix(oilA, oilB, oilWash);
-      float oilL = max(dot(oilTint, vec3(0.2126, 0.7152, 0.0722)), 0.2);
-      planar = mix(planar, oilTint * (panL / oilL), oilWash * midHot * 0.62 * faceAlive);
-      planar += (oilA * 0.11 + oilB * 0.075) * oilWash * panL * midHot * (0.35 + 0.65 * ellA);
-      planar += (oilA * 0.07 + oilB * 0.055) * oilRipple * panL * midHot * ellB;
-      // Softbox peak silver restore
-      float peakMint = max(0.0, planar.g - planar.r * 1.02) * max(0.0, planar.g - planar.b * 0.98);
-      planar = mix(planar, vec3(panL * 0.98, panL * 1.0, panL * 1.04), clamp(peakMint * 1.7 * hot * (1.0 - midHot), 0.0, 0.88));
-      color = mix(color, planar, faceAlive * softFace * 0.78);
-      color = max(color, planar * faceAlive * 0.32);
-      // Hybrid photo-plate oil — midtone concept chrome (anti mint/cream flood)
+      // When concept plate alive, use it as the planar wet-mirror (not cream softbox ramp)
       if (conceptAlive > 0.01) {
         float cL3 = dot(conceptChrome, vec3(0.2126, 0.7152, 0.0722));
-        float midC = smoothstep(0.08, 0.3, cL3) * (1.0 - smoothstep(0.52, 0.85, cL3));
-        vec3 cOil2 = conceptChrome;
-        float neon2 = max(0.0, cOil2.g - cOil2.r * 1.08) * max(0.0, cOil2.g - cOil2.b * 1.05);
-        cOil2 = mix(cOil2, vec3(cL3 * 0.97, cL3 * 1.0, cL3 * 1.05), clamp(neon2 * 1.3, 0.0, 0.75));
-        color = mix(color, cOil2, faceAlive * conceptAlive * midC * 0.7);
-        color = max(color, cOil2 * faceAlive * conceptAlive * midC * 0.35);
-        // Charcoal voids from dark concept regions
-        color = mix(color, vec3(0.035, 0.04, 0.05), (1.0 - smoothstep(0.05, 0.28, cL3)) * conceptAlive * faceAlive * 0.75);
-        // Cream crush after concept blend
+        float cCh3 = max(abs(conceptChrome.r - conceptChrome.g), max(abs(conceptChrome.g - conceptChrome.b), abs(conceptChrome.r - conceptChrome.b)));
+        float hasM = smoothstep(0.015, 0.07, max(conceptChrome.r, max(conceptChrome.g, conceptChrome.b)));
+        planar = mix(planar, conceptChrome, clamp(conceptAlive * hasM * 0.95, 0.0, 0.98));
+        // Softbox peaks only as sparse silver accents — not face flood
+        float hotC = clamp(pow(faceHard, 2.0) * 0.55, 0.0, 1.0);
+        planar = mix(planar, vec3(0.97, 1.0, 1.05) * max(cL3, 0.55), hotC * (1.0 - smoothstep(0.08, 0.22, cCh3)) * 0.35);
+        // Charcoal voids only where concept empty
+        planar = mix(planar, vec3(0.03, 0.034, 0.045), (1.0 - hasM) * conceptAlive * 0.7);
+        color = mix(color, planar, faceAlive * softFace * 0.88);
+        color = max(color, planar * faceAlive * 0.55);
+        // Midtone oil keep (incl. dark oil chroma)
+        float midC = smoothstep(0.04, 0.55, cL3) * (1.0 - smoothstep(0.7, 0.92, cL3));
+        color = mix(color, conceptChrome, faceAlive * conceptAlive * midC * 0.55);
+        color = max(color, conceptChrome * faceAlive * conceptAlive * hasM * 0.4);
         float creamC = max(0.0, color.r - color.b * 1.02) + max(0.0, color.g * 0.88 - color.b);
+        float oilSpareC = smoothstep(0.06, 0.2, cCh3);
         float cSil = dot(color, vec3(0.2126, 0.7152, 0.0722));
-        color = mix(color, vec3(cSil * 0.96, cSil * 1.0, cSil * 1.05), clamp(creamC * 0.9 * (1.0 - midC), 0.0, 0.55));
+        color = mix(color, conceptChrome, clamp(creamC * 1.2 * (1.0 - oilSpareC * 0.5) * conceptAlive, 0.0, 0.75));
+        color = mix(color, vec3(cSil * 0.95, cSil * 1.0, cSil * 1.06), clamp(creamC * 0.5 * (1.0 - oilSpareC), 0.0, 0.4));
+      } else {
+        planar = planar * vec3(0.97, 1.0, 1.03);
+        float hot = clamp(pow(faceHard, 1.65) * 1.45 + ellA * 0.25 + ndotl * 0.1, 0.0, 1.0);
+        planar = mix(planar * 0.06, planar * 1.95, hot);
+        float voidGate = (1.0 - hot) * (1.0 - smoothstep(0.18, 0.62, facePeak));
+        planar = mix(planar, vec3(0.035, 0.04, 0.05), clamp(voidGate * 0.8, 0.0, 0.8));
+        float oilPhase = fract(dot(p, vec2(0.7, 1.35)) * 0.5 + facePeak * 0.35 + ndotl * 0.3);
+        float oilWash = (0.4 + 0.55 * pow(0.5 + 0.5 * cos(dot(p, vec2(1.1, 1.75)) + ndotl * 0.8), 0.8));
+        oilWash *= clamp(ellA * 0.9 + ellB * 0.8 + ellC * 0.6 + ellD * 0.65 + ellE * 0.45, 0.0, 1.0);
+        float panL = max(dot(planar, vec3(0.2126, 0.7152, 0.0722)), 0.08);
+        float midHot = smoothstep(0.08, 0.34, panL) * (1.0 - smoothstep(0.5, 0.8, hot));
+        vec3 oilA = oilFire(oilPhase, 0.95);
+        vec3 oilB = oilFire(fract(oilPhase + 0.37), 0.8);
+        vec3 oilTint = mix(oilA, oilB, oilWash);
+        float oilL = max(dot(oilTint, vec3(0.2126, 0.7152, 0.0722)), 0.2);
+        planar = mix(planar, oilTint * (panL / oilL), oilWash * midHot * 0.62 * faceAlive);
+        color = mix(color, planar, faceAlive * softFace * 0.78);
+        color = max(color, planar * faceAlive * 0.32);
       }
       color = max(color, vec3(0.035, 0.04, 0.05) * faceAlive);
       float vign = smoothstep(0.75, 0.25, length(p * vec2(1.15, 1.0)));
-      color = mix(planar * 0.22, color, mix(0.6, 1.0, vign));
-      color = mix(color, vec3(0.03, 0.035, 0.045), voidGate * faceAlive * 0.65);
-      color += (oilA - 0.34) * faceAlive * oilWash * midHot * 0.28 * u_dispersion * ellA;
-      color += (oilB - 0.34) * faceAlive * oilWash * midHot * 0.2 * u_dispersion * ellB;
-      color += vec3(1.22, 1.24, 1.3) * pow(faceHard, 1.55) * faceAlive * 0.95 * u_glass * hot;
-      // Oil fringe at softbox/void boundary (planar wet-mirror iridescence)
+      color = mix(facePlate * 0.25, color, mix(0.65, 1.0, vign));
+      // Sparse softbox glint only
+      color += vec3(1.15, 1.18, 1.25) * pow(faceHard, 2.2) * faceAlive * 0.35 * u_glass * (1.0 - conceptAlive * 0.7);
       float boundary = smoothstep(0.06, 0.32, facePeak) * (1.0 - smoothstep(0.42, 0.75, facePeak));
-      color += oilA * faceAlive * boundary * 0.58 * u_dispersion;
-      color += oilB * faceAlive * boundary * 0.42 * u_dispersion * ellB;
-      color += oilA * faceAlive * midHot * oilWash * 0.28 * u_dispersion;
+      float oilPhaseF = fract(dot(p, vec2(0.7, 1.35)) * 0.5 + facePeak * 0.35 + ndotl * 0.3);
+      vec3 oilAF = oilFire(oilPhaseF, 0.95);
+      vec3 oilBF = oilFire(fract(oilPhaseF + 0.37), 0.8);
+      float midHotF = smoothstep(0.08, 0.34, facePeak) * (1.0 - smoothstep(0.55, 0.85, faceHard));
+      float oilWashF = clamp(ellA * 0.9 + ellB * 0.8 + ellC * 0.55, 0.0, 1.0);
+      float synthAmt = mix(1.0, 0.25, conceptAlive);
+      color += oilAF * faceAlive * boundary * 0.58 * u_dispersion * synthAmt;
+      color += oilBF * faceAlive * boundary * 0.42 * u_dispersion * ellB * synthAmt;
+      color += oilAF * faceAlive * midHotF * oilWashF * 0.28 * u_dispersion * synthAmt;
       float pinkF = max(0.0, color.r - color.g * 0.98) * max(0.0, color.b - color.g * 0.8);
       color.r -= pinkF * 1.0;
       color.b -= pinkF * 0.9;
@@ -1117,13 +1130,14 @@ void main() {
       float limeFlood = max(0.0, color.g - color.r * 1.05) * max(0.0, color.g - color.b * 1.02);
       float silL2 = dot(color, vec3(0.2126, 0.7152, 0.0722));
       vec3 coolSil = vec3(silL2 * 0.97, silL2 * 1.0, silL2 * 1.04);
-      float oilGate = clamp(ellA * 0.75 + ellB * 0.55 + ellC * 0.4 + ellD * 0.45 + ellE * 0.35 + boundary * 0.65, 0.0, 1.0) * midHot;
-      color = mix(color, coolSil, clamp(limeFlood * mix(0.8, 0.2, oilGate) * faceAlive, 0.0, 0.65));
+      float oilGate = clamp(ellA * 0.75 + ellB * 0.55 + ellC * 0.4 + ellD * 0.45 + ellE * 0.35 + boundary * 0.65, 0.0, 1.0) * midHotF;
+      float hot = clamp(pow(faceHard, 1.65), 0.0, 1.0);
+      color = mix(color, coolSil, clamp(limeFlood * mix(0.8, 0.2, oilGate) * faceAlive * (1.0 - conceptAlive * 0.6), 0.0, 0.65));
       float cyanMilk = max(0.0, color.b - color.r * 0.96) * (1.0 - smoothstep(0.1, 0.28, faceChroma2));
       color = mix(color, coolSil, clamp(cyanMilk * 0.5 * faceAlive, 0.0, 0.45));
       // Charcoal interstitial in dead flats (anti cream-silver matte)
       float flatDead = (1.0 - oilGate) * (1.0 - hot) * (1.0 - smoothstep(0.12, 0.35, faceChroma2));
-      color = mix(color, vec3(0.04, 0.045, 0.055), clamp(flatDead * 0.7 * faceAlive, 0.0, 0.7));
+      color = mix(color, vec3(0.04, 0.045, 0.055), clamp(flatDead * 0.7 * faceAlive * (1.0 - conceptAlive * 0.5), 0.0, 0.7));
       float dripLip = smoothstep(-0.02, -0.4, p.y);
       float creamLip2 = max(0.0, color.r - color.b * 1.02);
       creamLip2 = max(creamLip2, max(0.0, color.g * 0.88 - color.b));
@@ -1136,30 +1150,26 @@ void main() {
       color.r = min(color.r, 0.96);
       color.g = min(color.g, 0.97);
       color.b = min(color.b, 0.95);
-      // Force midtone gold/lime micro-chroma (gold-led, not peak mint)
+      // Force midtone gold/lime micro-chroma when concept weak
       float forceCh = abs(color.r - color.g) + abs(color.g - color.b);
-      color.r += step(forceCh, 0.045) * 0.05 * faceAlive * oilGate;
-      color.g += step(forceCh, 0.045) * 0.018 * faceAlive * oilGate;
-      color.b -= step(forceCh, 0.045) * 0.032 * faceAlive * oilGate;
+      color.r += step(forceCh, 0.045) * 0.05 * faceAlive * oilGate * (1.0 - conceptAlive);
+      color.g += step(forceCh, 0.045) * 0.018 * faceAlive * oilGate * (1.0 - conceptAlive);
+      color.b -= step(forceCh, 0.045) * 0.032 * faceAlive * oilGate * (1.0 - conceptAlive);
       float gDom = max(0.0, color.g - max(color.r, color.b) * 1.08);
       float creamDom = max(0.0, color.r - color.b * 1.05) + max(0.0, color.g * 0.85 - color.b);
       float creamLowCh = creamDom * (1.0 - smoothstep(0.08, 0.22, faceChroma2));
       float finL = dot(color, vec3(0.2126, 0.7152, 0.0722));
       vec3 finCool = vec3(finL * 0.96, finL * 1.0, finL * 1.05);
       color = mix(color, finCool, clamp((gDom * 2.6 * (1.0 - oilGate) + creamLowCh * 2.0 + creamDom * 0.5 * (1.0 - oilGate)) * faceAlive, 0.0, 0.7));
-      // Extra softbox-peak cream kill (keep mid oil gold)
       float creamPeak = creamDom * smoothstep(0.45, 0.82, finL) * (1.0 - oilGate);
       color = mix(color, vec3(finL * 0.97, finL * 1.0, finL * 1.05), clamp(creamPeak * 1.8 * faceAlive, 0.0, 0.7));
-      // Extra cream crush when concept hybrid active
       if (conceptAlive > 0.01) {
         float creamAll = max(0.0, color.r - color.b * 1.0) + max(0.0, color.g * 0.92 - color.b);
         float cL4 = dot(conceptChrome, vec3(0.2126, 0.7152, 0.0722));
-        float midKeep = smoothstep(0.1, 0.35, cL4) * (1.0 - smoothstep(0.5, 0.8, cL4));
-        color = mix(color, conceptChrome, clamp(creamAll * 1.2 * conceptAlive * midKeep, 0.0, 0.75));
-        color = mix(color, vec3(finL * 0.95, finL * 1.0, finL * 1.06), clamp(creamAll * 0.7 * (1.0 - midKeep) * conceptAlive, 0.0, 0.55));
-        // Softbox peak silver (not cream) when hot
-        float hotSil = smoothstep(0.55, 0.85, finL);
-        color = mix(color, vec3(finL * 0.98, finL * 1.0, finL * 1.04), clamp(hotSil * creamAll * 1.5, 0.0, 0.65));
+        float hasM4 = smoothstep(0.015, 0.07, max(conceptChrome.r, max(conceptChrome.g, conceptChrome.b)));
+        color = mix(color, conceptChrome, clamp(creamAll * 1.4 * conceptAlive * hasM4, 0.0, 0.85));
+        color = mix(color, vec3(finL * 0.95, finL * 1.0, finL * 1.06), clamp(creamAll * 0.55 * (1.0 - hasM4) * conceptAlive, 0.0, 0.5));
+        color = max(color, conceptChrome * hasM4 * conceptAlive * 0.45 * faceAlive);
       }
       color = clamp(color, 0.0, 0.98);
     }

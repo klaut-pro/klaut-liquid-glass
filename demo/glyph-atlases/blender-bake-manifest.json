@@ -1,0 +1,29 @@
+{
+  "blender": true,
+  "fieldExtent": 0.55,
+  "size": 512,
+  "glyphs": [
+    {
+      "glyph": "chromeSansP",
+      "font": "C:\\Windows\\Fonts\\ariblk.ttf",
+      "profile": "planar",
+      "extrude": 0.055,
+      "bevel_depth": 0.008,
+      "inkPx": 49279,
+      "heightMean": 0.9451731443405151,
+      "heightPng": "demo/glyph-atlases/chromeSansP-blender-height.png",
+      "maskPng": "demo/glyph-atlases/chromeSansP-blender-mask.png"
+    },
+    {
+      "glyph": "scriptProP",
+      "font": "C:\\Windows\\Fonts\\segoesc.ttf",
+      "profile": "tube",
+      "extrude": 0.008,
+      "bevel_depth": 0.022,
+      "inkPx": 40346,
+      "heightMean": 0.8865544199943542,
+      "heightPng": "demo/glyph-atlases/scriptProP-blender-height.png",
+      "maskPng": "demo/glyph-atlases/scriptProP-blender-mask.png"
+    }
+  ]
+}
