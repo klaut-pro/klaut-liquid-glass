@@ -32,6 +32,17 @@ When Blender is available, replace atlas PNGs with extruded/remeshed heightfield
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 34 (midtone gold/lime oil + tubular silver↑)
+
+- **Root cause:** iter-33 charcoal/softbox OK but oil accents too weak; naive oil enrichment → mint softbox flood (limeRatio ~0.70)
+- HDRI bake: gold-led midtone oil puddles (avoid softbox peak centers); concept harvest prefers lime/gold
+- chromeSansP: midtone-gated oilFire (gold-led) + peak mint crush; boundary oil fringe; filmThickness 0.52; pink0; no barcode; faces filled
+- scriptProP: slightly wider crest (bodyT/0.105, pow 0.48); silCover threshold↓; silverRatio ~0.545; pinkRatio 0
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome pink0 cyan~0 cream~0.01; limeRatio ~0.14 goldRatio ~0.13 (balanced midtone oil, softbox silver restored); script pink0 silverRatio ~0.545
+
+**Status:** ❌ not READY — chromeSansP regained softbox silver + charcoal voids + midtone gold/lime oil without mint flood, but planar oil-slick still short of 1c6PD/Z53Ve wet-mirror fidelity (accents still weak vs concept); scriptProP silverRatio ~0.545 without pink/icy flood but tubular elegance still lags ENj9B. Blender still unavailable. Loop stays armed.
+
 ## Iteration 33 (charcoal softbox wet-mirror + narrow pipe crest)
 
 - **Root cause:** iter-32 crushed lime/cream into flat cream-silver matte; final silver grade + high face floors killed charcoal voids / oil accents; script crest saturated too early on thick strokes

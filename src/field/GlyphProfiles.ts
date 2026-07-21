@@ -66,8 +66,8 @@ export const chromeSansP: GlyphProfile = {
     drip: 0.98,
     viscosity: 0.94,
     dispersion: 1,
-    // Thin face film — oil accents on charcoal softbox (anti flat cream)
-    filmThickness: 0.42,
+    // Face film — midtone oil accents (anti mint peak flood)
+    filmThickness: 0.52,
     bevel: 1,
     blur: 0.008,
     cornerRadius: 0.18,

@@ -5,9 +5,9 @@ Bake concept-art-derived studio HDRI / reflection plate.
 Blender unavailable — frontal softbox plate for reflection sampling
 (planar wet-mirror + tubular wrap).
 
-Iteration 33: rich planar oil-slick wet-mirror —
-dark charcoal base + distinct softbox whites + concept-harvested
-iridescent accents (cyan/lime/gold). No neon lime flood, no cream
+Iteration 34: enrich planar oil-slick wet-mirror —
+dark charcoal base + distinct softbox whites + stronger midtone
+lime/gold oil puddles (cyan whisper only). No neon lime flood, no cream
 matte wash, no pink, no barcode columns.
 """
 from __future__ import annotations
@@ -76,7 +76,7 @@ def soft_ellipse(yy: np.ndarray, xx: np.ndarray, cy: float, cx: float, ry: float
 
 
 def planar_oil_field(h: int, w: int) -> np.ndarray:
-    """Sparse oil-slick accents — lime↔gold primary, cyan whisper (not cyan flood)."""
+    """Midtone oil-slick — gold-led + lime accents, cyan whisper (not mint softbox flood)."""
     yy = np.linspace(0, 1, h, dtype=np.float32).reshape(-1, 1)
     xx = np.linspace(0, 1, w, dtype=np.float32).reshape(1, -1)
     phase = yy * 3.1 + xx * 1.85
@@ -85,15 +85,20 @@ def planar_oil_field(h: int, w: int) -> np.ndarray:
     gold = 0.5 + 0.5 * np.sin(phase * 1.55 + 2.1)
     cyan = 0.5 + 0.5 * np.sin(phase2 * 1.2 + 0.8)
     wash = 0.35 + 0.45 * (0.5 + 0.5 * np.sin(phase2 * 0.95))
-    puddle = soft_ellipse(yy, xx, 0.32, 0.38, 0.42, 0.48)
-    puddle = np.maximum(puddle, soft_ellipse(yy, xx, 0.52, 0.6, 0.36, 0.42) * 0.75)
-    puddle = np.maximum(puddle, soft_ellipse(yy, xx, 0.26, 0.7, 0.28, 0.32) * 0.55)
-    puddle = np.maximum(puddle, soft_ellipse(yy, xx, 0.64, 0.3, 0.3, 0.34) * 0.5)
+    # Avoid softbox peak centers (upper-left cluster) — oil in mid plate only
+    puddle = soft_ellipse(yy, xx, 0.38, 0.42, 0.36, 0.4)
+    puddle = np.maximum(puddle, soft_ellipse(yy, xx, 0.55, 0.58, 0.32, 0.38) * 0.8)
+    puddle = np.maximum(puddle, soft_ellipse(yy, xx, 0.48, 0.28, 0.26, 0.3) * 0.65)
+    puddle = np.maximum(puddle, soft_ellipse(yy, xx, 0.62, 0.72, 0.24, 0.28) * 0.55)
+    # Suppress oil under bright softbox lobes
+    peak_avoid = soft_ellipse(yy, xx, 0.16, 0.26, 0.2, 0.28)
+    peak_avoid = np.maximum(peak_avoid, soft_ellipse(yy, xx, 0.2, 0.5, 0.18, 0.24))
+    puddle = puddle * (1.0 - peak_avoid * 0.85)
     mod = np.zeros((h, w, 3), dtype=np.float32)
-    # Lime/gold lead; cyan as thin accent only
-    mod[..., 0] = (-8.0 * lime + 32.0 * gold - 4.0 * cyan) * wash * puddle
-    mod[..., 1] = (30.0 * lime + 12.0 * gold + 4.0 * cyan) * wash * puddle
-    mod[..., 2] = (-14.0 * lime - 20.0 * gold + 12.0 * cyan) * wash * puddle
+    # Gold-led oil; lime secondary; cyan whisper
+    mod[..., 0] = (42.0 * gold - 6.0 * lime - 2.0 * cyan) * wash * puddle
+    mod[..., 1] = (22.0 * gold + 28.0 * lime + 2.0 * cyan) * wash * puddle
+    mod[..., 2] = (-22.0 * gold - 16.0 * lime + 8.0 * cyan) * wash * puddle
     return mod
 
 
@@ -101,18 +106,23 @@ def harvest_oil_patches() -> list[np.ndarray]:
     """Soft concept metal patches for oil-slick reflection fidelity."""
     patches: list[np.ndarray] = []
     rng = np.random.default_rng(33)
-    for name, n in (("1c6PD.jpg", 28), ("Z53Ve.jpg", 22), ("ENj9B.jpg", 10)):
+    for name, n in (("1c6PD.jpg", 34), ("Z53Ve.jpg", 28), ("ENj9B.jpg", 8)):
         try:
             rgb = crush_cream_pink(load_rgb(name))
         except OSError:
             continue
         m = metal_mask(rgb)
         chroma = rgb.max(-1) - rgb.min(-1)
-        score = chroma * m.astype(np.float32)
+        # Boost lime/gold chroma preference for oil enrichment
+        g = rgb[..., 1]
+        r = rgb[..., 0]
+        b = rgb[..., 2]
+        lime_gold = ((g > r + 6) & (g > b + 4)) | ((r > b + 8) & (g > b + 4) & (chroma > 20))
+        score = chroma * m.astype(np.float32) * (1.0 + 0.85 * lime_gold.astype(np.float32))
         flat = score.ravel()
         if flat.size < 100:
             continue
-        top_n = min(1800, flat.size)
+        top_n = min(2200, flat.size)
         top = np.argpartition(flat, -top_n)[-top_n:]
         top = top[rng.permutation(len(top))]
         h, w, _ = rgb.shape
@@ -132,8 +142,10 @@ def harvest_oil_patches() -> list[np.ndarray]:
             # Prefer chromatic oil (skip near-white softbox cores)
             pl = 0.2126 * patch[..., 0] + 0.7152 * patch[..., 1] + 0.0722 * patch[..., 2]
             pc = patch.max(-1) - patch.min(-1)
-            if float(pc.mean()) < 18 and float(pl.mean()) > 200:
+            if float(pc.mean()) < 20 and float(pl.mean()) > 195:
                 continue
+            if float(patch[..., 2].mean()) > float(patch[..., 0].mean()) + 22:
+                continue  # skip cyan-dominant harvest
             patches.append(patch)
             got += 1
     return patches
@@ -207,18 +219,22 @@ def build_plate() -> Image.Image:
     rng = np.random.default_rng(33)
     stamped = 0
     for patch in patches:
-        if stamped >= 28:
+        if stamped >= 36:
             break
         pl = 0.2126 * patch[..., 0] + 0.7152 * patch[..., 1] + 0.0722 * patch[..., 2]
         pb = patch[..., 2].mean()
         pr = patch[..., 0].mean()
+        pg = patch[..., 1].mean()
         if float(pb) > float(pr) + 18:
             continue  # skip cyan-dominant patches
-        cy = float(rng.uniform(0.2, 0.68))
-        cx = float(rng.uniform(0.2, 0.8))
-        ry = float(rng.uniform(0.1, 0.22))
-        rx = float(rng.uniform(0.12, 0.26))
-        gain = float(rng.uniform(0.28, 0.55))
+        # Prefer lime/gold chromatic patches for oil enrichment
+        if float(pg) < float(pr) + 4 and float(pr) < float(pb) + 8 and float(pl) > 190:
+            continue  # skip near-white softbox cores
+        cy = float(rng.uniform(0.18, 0.7))
+        cx = float(rng.uniform(0.18, 0.82))
+        ry = float(rng.uniform(0.1, 0.24))
+        rx = float(rng.uniform(0.12, 0.28))
+        gain = float(rng.uniform(0.38, 0.72))
         stamp_soft_patch(plate, patch, cy, cx, ry, rx, gain)
         stamped += 1
 
