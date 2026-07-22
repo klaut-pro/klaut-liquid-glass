@@ -1,0 +1,32 @@
+{
+  "url": "http://localhost:52780/demo/scratch.html",
+  "stats": {
+    "badge": "stage 3",
+    "sub": "Font: Arial Black · wordmark klaut.pro\n        Blender extrude → Three.js orbit → glass → liquid → drip",
+    "hintHasGlb": true,
+    "hudSaysKlautPro": true,
+    "scratch": {
+      "wordmark": "klaut.pro",
+      "mesh": "./scratch/mesh/wordmark-klaut-pro.glb",
+      "size": {
+        "x": 9.482480142064306,
+        "y": 1.85,
+        "z": 0.5546800868341215
+      },
+      "ready": true
+    },
+    "canvas": {
+      "w": 1440,
+      "h": 800
+    },
+    "nonDark": 26664,
+    "maxLum": 254.99999999999997,
+    "colVariance": 1.7426392897108618,
+    "activeCols": 1,
+    "spanCols": 24,
+    "bg": "rgb(158, 176, 204)"
+  },
+  "consoleLogs": [],
+  "failed": [],
+  "shot": "C:\\Users\\Julian\\Documents\\Programming\\klaut-liquid-glass\\demo\\frames\\scratch-verify.png"
+}

@@ -1,13 +1,21 @@
 {
   "font": "Arial Black",
   "fontPath": "C:/Windows/Fonts/ariblk.ttf",
-  "char": "K",
-  "extrude": 0.12,
-  "bevelDepth": 0.018,
+  "text": "klaut.pro",
+  "char": "klaut.pro",
+  "extrude": 0.09,
+  "bevelDepth": 0.014,
   "bevelResolution": 3,
-  "mesh": "letter-K.glb",
+  "targetHeight": 1.15,
+  "bakedDimensions": {
+    "x": 5.894514560699463,
+    "y": 0.344801127910614,
+    "z": 1.149999976158142
+  },
+  "mesh": "wordmark-klaut-pro.glb",
+  "legacyMesh": "letter-K.glb",
   "pipeline": [
-    "1-font: Arial Black (ariblk.ttf)",
+    "1-font: Arial Black (ariblk.ttf) wordmark klaut.pro",
     "2-mesh: Blender extrude+bevel \u2192 GLB",
     "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
     "4-liquid: vertex liquify (demo)",

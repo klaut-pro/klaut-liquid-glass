@@ -8,22 +8,28 @@ Clean staged path — **not** the old `chromeSansP` / `scriptProP` SDF atlas QA 
 |--------|-----|
 | **Arial Black** (`C:\Windows\Fonts\ariblk.ttf`) | Heavy geometric display sans on every Windows box; extrudes cleanly; reads as a block letter under glass |
 
-Glyph for this pass: **`K`** (single letter, clear silhouette, easy to orbit).
+Glyph for this pass: **`klaut.pro`** (full brand wordmark, one rotatable glass mesh).
 
 Bake:
+
+```bat
+npm run bake:scratch
+```
+
+or:
 
 ```bat
 "%LOCALAPPDATA%\Programs\blender-portable\blender-4.2.16-windows-x64\blender.exe" ^
   --background --python scripts/bake-scratch-mesh.py
 ```
 
-→ `demo/scratch/mesh/letter-K.glb` + `manifest.json`
+→ `demo/scratch/mesh/wordmark-klaut-pro.glb` + `manifest.json`
 
 ## Stages (in order)
 
 | # | Goal | Status |
 |---|------|--------|
-| 1 | Pick one font + bake mesh | ✅ this pass |
+| 1 | Pick one font + bake wordmark mesh | ✅ this pass |
 | 2 | 3D rotatable (OrbitControls) | ✅ `demo/scratch.html` |
 | 3 | Clear refractive glass (IOR / Fresnel / env) | ✅ same page |
 | 4 | Liquid glass (liquify / soft surface) | ✅ slider on page |
@@ -37,3 +43,5 @@ Serve repo root, then open:
 **http://localhost:52780/demo/scratch.html**
 
 Drag to orbit. Use the stage / viscosity / liquify controls.
+
+Drop-modeling research: [`docs/drop-modeling-research.md`](../../docs/drop-modeling-research.md).
