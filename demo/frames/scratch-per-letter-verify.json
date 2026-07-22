@@ -1,0 +1,275 @@
+{
+  "ok": true,
+  "url": "http://localhost:52780/demo/scratch.html",
+  "checks": {
+    "ready": true,
+    "stage5": true,
+    "dripBlobsZero": true,
+    "nineLetters": true,
+    "charsMatch": true,
+    "fontsListed": true,
+    "roundnessFlags": true,
+    "kDisabled": true,
+    "fontSwapOk": true,
+    "noPageErrors": true
+  },
+  "mid": {
+    "ready": true,
+    "frozen": true,
+    "settle": 1,
+    "dripBlobs": 0,
+    "slotCount": 9,
+    "letterChars": [
+      "k",
+      "l",
+      "a",
+      "u",
+      "t",
+      ".",
+      "p",
+      "r",
+      "o"
+    ],
+    "fontId": "arial-black",
+    "fontLabel": "Arial Black",
+    "fonts": [
+      "arial-black",
+      "arial-bold",
+      "bahnschrift",
+      "calibri-bold",
+      "georgia-bold",
+      "impact",
+      "segoe-ui-bold",
+      "tahoma-bold",
+      "trebuchet-bold",
+      "verdana-bold"
+    ],
+    "roundness": {
+      "teardrop": true,
+      "softMinBulb": true,
+      "taubin": true,
+      "dripBlobs": 0
+    },
+    "letterOverrides": [
+      {
+        "enable": true,
+        "sagAmpMul": 1.15,
+        "bulbGrowMul": 1.2,
+        "columnXs": [
+          -4.795034170150757
+        ],
+        "columnHalfW": 0.3117262601852417
+      },
+      {
+        "enable": true,
+        "sagAmpMul": 1.2,
+        "bulbGrowMul": 1.2,
+        "columnXs": [
+          -3.753320574760437
+        ],
+        "columnHalfW": 0.12327209711074828
+      },
+      {
+        "enable": true,
+        "sagAmpMul": 1.25,
+        "bulbGrowMul": 1.2,
+        "columnXs": [
+          -2.642120122909546
+        ],
+        "columnHalfW": 0.3446579217910766
+      },
+      {
+        "enable": true,
+        "columnXs": [
+          -1.130021184682846
+        ],
+        "columnHalfW": 0.3132686227560043
+      },
+      {
+        "enable": true,
+        "columnXs": [
+          0.1387731432914734
+        ],
+        "columnHalfW": 0.22934937477111814
+      },
+      {
+        "enable": true,
+        "sagAmpMul": 0.55,
+        "bulbGrowMul": 1.4,
+        "freezeHeight": 0.35,
+        "columnXs": [
+          1.0201276540756226
+        ],
+        "columnHalfW": 0.1296505808830261
+      },
+      {
+        "enable": true,
+        "sagAmpMul": 0.75,
+        "intensity": 0.55,
+        "columnXs": [
+          2.1034196615219116
+        ],
+        "columnHalfW": 0.3250529170036316
+      },
+      {
+        "enable": true,
+        "sagAmpMul": 0.75,
+        "intensity": 0.55,
+        "columnXs": [
+          3.4069883823394775
+        ],
+        "columnHalfW": 0.23404557704925535
+      },
+      {
+        "enable": true,
+        "sagAmpMul": 0.75,
+        "intensity": 0.55,
+        "columnXs": [
+          4.749577760696411
+        ],
+        "columnHalfW": 0.3435460805892944
+      }
+    ],
+    "badge": "stage 5",
+    "fontOptions": [
+      {
+        "id": "arial-black",
+        "label": "Arial Black"
+      },
+      {
+        "id": "arial-bold",
+        "label": "Arial Bold"
+      },
+      {
+        "id": "bahnschrift",
+        "label": "Bahnschrift"
+      },
+      {
+        "id": "calibri-bold",
+        "label": "Calibri Bold"
+      },
+      {
+        "id": "georgia-bold",
+        "label": "Georgia Bold"
+      },
+      {
+        "id": "impact",
+        "label": "Impact"
+      },
+      {
+        "id": "segoe-ui-bold",
+        "label": "Segoe UI Bold"
+      },
+      {
+        "id": "tahoma-bold",
+        "label": "Tahoma Bold"
+      },
+      {
+        "id": "trebuchet-bold",
+        "label": "Trebuchet MS Bold"
+      },
+      {
+        "id": "verdana-bold",
+        "label": "Verdana Bold"
+      }
+    ],
+    "glyphButtons": 9
+  },
+  "afterDisable": {
+    "overrides": [
+      {
+        "enable": false,
+        "sagAmpMul": 1.15,
+        "bulbGrowMul": 1.2,
+        "columnXs": [
+          -4.795034170150757
+        ],
+        "columnHalfW": 0.3117262601852417
+      },
+      {
+        "enable": true,
+        "sagAmpMul": 1.2,
+        "bulbGrowMul": 1.2,
+        "columnXs": [
+          -3.753320574760437
+        ],
+        "columnHalfW": 0.12327209711074828
+      },
+      {
+        "enable": true,
+        "sagAmpMul": 1.25,
+        "bulbGrowMul": 1.2,
+        "columnXs": [
+          -2.642120122909546
+        ],
+        "columnHalfW": 0.3446579217910766
+      },
+      {
+        "enable": true,
+        "columnXs": [
+          -1.130021184682846
+        ],
+        "columnHalfW": 0.3132686227560043
+      },
+      {
+        "enable": true,
+        "columnXs": [
+          0.1387731432914734
+        ],
+        "columnHalfW": 0.22934937477111814
+      },
+      {
+        "enable": true,
+        "sagAmpMul": 0.55,
+        "bulbGrowMul": 1.4,
+        "freezeHeight": 0.35,
+        "columnXs": [
+          1.0201276540756226
+        ],
+        "columnHalfW": 0.1296505808830261
+      },
+      {
+        "enable": true,
+        "sagAmpMul": 0.75,
+        "intensity": 0.55,
+        "columnXs": [
+          2.1034196615219116
+        ],
+        "columnHalfW": 0.3250529170036316
+      },
+      {
+        "enable": true,
+        "sagAmpMul": 0.75,
+        "intensity": 0.55,
+        "columnXs": [
+          3.4069883823394775
+        ],
+        "columnHalfW": 0.23404557704925535
+      },
+      {
+        "enable": true,
+        "sagAmpMul": 0.75,
+        "intensity": 0.55,
+        "columnXs": [
+          4.749577760696411
+        ],
+        "columnHalfW": 0.3435460805892944
+      }
+    ],
+    "frozen": false,
+    "settle": 0.9362067798590585
+  },
+  "afterFont": {
+    "fontId": "impact",
+    "fontLabel": "Impact",
+    "slotCount": 9,
+    "dripBlobs": 0,
+    "mesh": "./scratch/mesh/wordmark-impact.glb"
+  },
+  "errors": [],
+  "frames": [
+    "scratch-per-letter-default.png",
+    "scratch-per-letter-k-off.png",
+    "scratch-per-letter-impact.png"
+  ]
+}

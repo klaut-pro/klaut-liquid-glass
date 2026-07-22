@@ -36,7 +36,9 @@
         top: 16px;
         z-index: 5;
         pointer-events: auto;
-        width: min(340px, calc(100vw - 32px));
+        width: min(360px, calc(100vw - 32px));
+        max-height: calc(100vh - 32px);
+        overflow: auto;
         padding: 14px 16px 16px;
         border-radius: 14px;
         background: var(--panel);
@@ -77,10 +79,6 @@
         background: rgba(126, 200, 255, 0.18);
         color: #dff2ff;
       }
-      .stages button:disabled {
-        opacity: 0.35;
-        cursor: not-allowed;
-      }
       label.row {
         display: grid;
         grid-template-columns: 96px 1fr 42px;
@@ -92,10 +90,63 @@
       }
       label.row input[type="range"] { width: 100%; }
       label.row span { font-variant-numeric: tabular-nums; color: var(--ink); text-align: right; }
+      label.row.check {
+        grid-template-columns: 96px 1fr;
+      }
+      label.row select {
+        width: 100%;
+        font: inherit;
+        font-size: 12px;
+        padding: 4px 6px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(0, 0, 0, 0.35);
+        color: var(--ink);
+      }
+      .section {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .section h2 {
+        margin: 0 0 8px;
+        font-size: 12px;
+        font-weight: 650;
+        color: var(--accent);
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+      .glyphs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 8px;
+      }
+      .glyphs button {
+        font: inherit;
+        font-size: 13px;
+        min-width: 28px;
+        height: 28px;
+        padding: 0 6px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--ink);
+        cursor: pointer;
+      }
+      .glyphs button.active {
+        border-color: rgba(126, 200, 255, 0.65);
+        background: rgba(126, 200, 255, 0.22);
+      }
+      .glyphs button.off {
+        opacity: 0.4;
+        text-decoration: line-through;
+      }
       .actions {
         display: flex;
         gap: 8px;
         margin-top: 10px;
+        flex-wrap: wrap;
       }
       .actions button {
         font: inherit;
@@ -134,15 +185,20 @@
         color: var(--accent);
         font-variant-numeric: tabular-nums;
       }
+      .mode-pill {
+        font-size: 10px;
+        color: var(--muted);
+        margin: 0 0 6px;
+      }
     </style>
   </head>
   <body>
     <canvas id="c"></canvas>
     <aside class="hud">
       <h1>Scratch pipeline <span class="badge" id="stageBadge">stage 1</span></h1>
-      <p class="sub">
-        Font: <strong>Arial Black</strong> · wordmark <strong>klaut.pro</strong><br />
-        Frozen viscoplastic sag — letter mesh yields, not drip blobs
+      <p class="sub" id="subLine">
+        Font: <strong id="fontLabel">Arial Black</strong> · wordmark <strong>klaut.pro</strong><br />
+        Frozen viscoplastic sag — per-letter melt, no drip blobs
       </p>
       <div class="stages" id="stageButtons">
         <button type="button" data-stage="1">1 Font</button>
@@ -151,36 +207,95 @@
         <button type="button" data-stage="4">4 Liquid</button>
         <button type="button" data-stage="5">5 Sag</button>
       </div>
+
       <label class="row">
-        Gravity
-        <input id="gravity" type="range" min="0" max="1" step="0.01" value="0.72" />
-        <span id="gravityVal">0.72</span>
+        Font
+        <select id="fontSelect" aria-label="Wordmark font"></select>
+        <span></span>
       </label>
-      <label class="row">
-        Freeze ht
-        <input id="freezeHeight" type="range" min="0.15" max="0.9" step="0.01" value="0.55" />
-        <span id="freezeHeightVal">0.55</span>
-      </label>
-      <label class="row">
-        Viscosity
-        <input id="viscosity" type="range" min="0.05" max="1" step="0.01" value="0.55" />
-        <span id="viscosityVal">0.55</span>
-      </label>
-      <label class="row">
-        IOR
-        <input id="ior" type="range" min="1.05" max="1.55" step="0.01" value="1.33" />
-        <span id="iorVal">1.33</span>
-      </label>
+
+      <div class="section">
+        <h2>Master defaults</h2>
+        <p class="mode-pill">Applies to letters without overrides</p>
+        <label class="row">
+          Gravity
+          <input id="gravity" type="range" min="0" max="1" step="0.01" value="0.72" />
+          <span id="gravityVal">0.72</span>
+        </label>
+        <label class="row">
+          Freeze ht
+          <input id="freezeHeight" type="range" min="0.15" max="0.9" step="0.01" value="0.55" />
+          <span id="freezeHeightVal">0.55</span>
+        </label>
+        <label class="row">
+          Viscosity
+          <input id="viscosity" type="range" min="0.05" max="1" step="0.01" value="0.55" />
+          <span id="viscosityVal">0.55</span>
+        </label>
+        <label class="row">
+          Sag amp
+          <input id="sagAmp" type="range" min="0.2" max="2" step="0.01" value="1" />
+          <span id="sagAmpVal">1.00</span>
+        </label>
+        <label class="row">
+          Bulb soft
+          <input id="bulbSoft" type="range" min="0" max="1" step="0.01" value="0.85" />
+          <span id="bulbSoftVal">0.85</span>
+        </label>
+        <label class="row">
+          IOR
+          <input id="ior" type="range" min="1.05" max="1.55" step="0.01" value="1.33" />
+          <span id="iorVal">1.33</span>
+        </label>
+      </div>
+
+      <div class="section">
+        <h2>Per letter</h2>
+        <div class="glyphs" id="glyphButtons"></div>
+        <label class="row check">
+          Melt enable
+          <input id="letterEnable" type="checkbox" checked />
+        </label>
+        <label class="row">
+          L-Gravity
+          <input id="letterGravity" type="range" min="0" max="1" step="0.01" value="0.72" />
+          <span id="letterGravityVal">0.72</span>
+        </label>
+        <label class="row">
+          L-Freeze
+          <input id="letterFreeze" type="range" min="0.15" max="0.9" step="0.01" value="0.55" />
+          <span id="letterFreezeVal">0.55</span>
+        </label>
+        <label class="row">
+          L-Visc
+          <input id="letterVisc" type="range" min="0.05" max="1" step="0.01" value="0.55" />
+          <span id="letterViscVal">0.55</span>
+        </label>
+        <label class="row">
+          L-Sag
+          <input id="letterSag" type="range" min="0.2" max="2.5" step="0.01" value="1" />
+          <span id="letterSagVal">1.00</span>
+        </label>
+        <label class="row">
+          L-Bulb
+          <input id="letterBulb" type="range" min="0.2" max="2.5" step="0.01" value="1" />
+          <span id="letterBulbVal">1.00</span>
+        </label>
+        <div class="actions">
+          <button type="button" id="btnClearLetter">Clear letter override</button>
+        </div>
+      </div>
+
       <div class="actions">
         <button type="button" id="btnResettle">Resettle</button>
         <button type="button" id="btnFreeze">Freeze now</button>
       </div>
       <p class="status" id="meltStatus">settle —</p>
       <p class="hint">
-        Drag to orbit · scroll to zoom · right-drag to pan<br />
-        Stage 5: <code>GravityMeltSim</code> — top frozen, bottom → neck/bulb<br />
-        Freeze ht: fraction from top that stays identity<br />
-        Mesh: <code>demo/scratch/mesh/wordmark-klaut-pro.glb</code>
+        Drag to orbit · scroll to zoom · click a glyph mesh to select<br />
+        Stage 5: <code>GravityMeltSim</code> — master + per-letter overrides<br />
+        Round pendants: teardrop profile + softMin bulb + Taubin smooth<br />
+        Mesh: <code id="meshHint">demo/scratch/mesh/wordmark-klaut-pro.glb</code>
       </p>
     </aside>
 
@@ -197,18 +312,11 @@
       import { OrbitControls } from "three/addons/controls/OrbitControls.js";
       import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-      // Frozen viscoplastic letter sag (docs/drop-modeling-research.md §5c)
       import { GravityMeltSim } from "../dist/field/GravityMeltSim.js";
 
       const WORDMARK = "klaut.pro";
-      const GLB_PATH = "./scratch/mesh/wordmark-klaut-pro.glb";
-      /**
-       * Preferential sag columns as fractions of half-width (−1…1).
-       * Seeds continuous pendant necks under stems — still the same mesh.
-       */
-      const SAG_COLUMN_FRACS = [
-        -0.88, -0.68, -0.48, -0.28, -0.1, 0.05, 0.28, 0.5, 0.74,
-      ];
+      const MESH_DIR = "./scratch/mesh/";
+      const DEFAULT_GLB = "wordmark-klaut-pro.glb";
 
       const canvas = document.getElementById("c");
       const renderer = new THREE.WebGLRenderer({
@@ -288,12 +396,17 @@
       let letterRoot = null;
       /** @type {THREE.Mesh[]} */
       let letterMeshes = [];
+      /** @type {string[]} */
+      let letterChars = [];
       /** @type {{ pos: Float32Array, base: Float32Array, normal: Float32Array }[]} */
       let deformCache = [];
       let wordHalfW = 2.5;
       let wordHalfH = 0.95;
-      /** Local-space X for sag columns (per mesh centroid frame ≈ wordmark local). */
-      let columnXsLocal = [];
+      let currentGlb = DEFAULT_GLB;
+      let currentFontId = "arial-black";
+      let currentFontLabel = "Arial Black";
+      /** @type {{ id: string, label: string, mesh: string, primary?: boolean, letters?: {char:string}[] }[]} */
+      let fontCatalog = [];
 
       const meltSim = new GravityMeltSim();
 
@@ -332,11 +445,43 @@
       let gravityAmt = 0.72;
       let freezeHeight = 0.55;
       let viscosity = 0.55;
-      /** Param signature — resettle when artist knobs change after freeze. */
+      let sagAmpMul = 1;
+      let bulbSoftMin = 0.85;
+      let selectedLetter = 0;
+      /** @type {import("../dist/field/GravityMeltSim.js").LetterMeltOverride[]} */
+      let letterOverrides = [];
       let lastParamKey = "";
+      let syncingLetterUi = false;
+
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+
+      function masterParams() {
+        return {
+          intensity: gravityAmt,
+          viscosity,
+          freezeHeight,
+          falloffPower: 1.55,
+          sagAmpMul,
+          neckPinchMul: 1,
+          bulbGrowMul: 1.45,
+          bulbSoftMin,
+          smoothPasses: 5,
+          oneShot: true,
+        };
+      }
 
       function paramKey() {
-        return `${gravityAmt.toFixed(2)}|${freezeHeight.toFixed(2)}|${viscosity.toFixed(2)}|${stage}`;
+        return JSON.stringify({
+          g: gravityAmt,
+          f: freezeHeight,
+          v: viscosity,
+          s: sagAmpMul,
+          b: bulbSoftMin,
+          stage,
+          font: currentFontId,
+          letters: letterOverrides,
+        });
       }
 
       function applyMaterial() {
@@ -366,25 +511,98 @@
         }
       }
 
+      function pushOverridesToSim() {
+        meltSim.setLetterOverrides(letterOverrides);
+      }
+
       function resettle() {
         if (stage < 5) return;
+        pushOverridesToSim();
         meltSim.reset();
         lastParamKey = paramKey();
       }
 
+      function defaultLetterOverrides(n) {
+        // Concept-ish variation: stronger sag on early letters, milder on .pro
+        return Array.from({ length: n }, (_, i) => {
+          const ch = letterChars[i] || WORDMARK[i] || "?";
+          if (ch === ".") {
+            return { enable: true, sagAmpMul: 0.55, bulbGrowMul: 1.4, freezeHeight: 0.35 };
+          }
+          if (i >= 6) {
+            return { enable: true, sagAmpMul: 0.75, intensity: 0.55 };
+          }
+          if (i <= 2) {
+            return { enable: true, sagAmpMul: 1.15 + i * 0.05, bulbGrowMul: 1.2 };
+          }
+          return { enable: true };
+        });
+      }
+
+      function rebuildGlyphButtons() {
+        const host = document.getElementById("glyphButtons");
+        host.innerHTML = "";
+        letterChars.forEach((ch, i) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = ch === " " ? "␠" : ch;
+          btn.dataset.index = String(i);
+          const ov = letterOverrides[i] || {};
+          if (ov.enable === false) btn.classList.add("off");
+          if (i === selectedLetter) btn.classList.add("active");
+          btn.addEventListener("click", () => selectLetter(i));
+          host.appendChild(btn);
+        });
+      }
+
+      function selectLetter(i) {
+        selectedLetter = Math.max(0, Math.min(letterMeshes.length - 1, i));
+        rebuildGlyphButtons();
+        syncLetterUiFromOverride();
+      }
+
+      function syncLetterUiFromOverride() {
+        syncingLetterUi = true;
+        const ov = letterOverrides[selectedLetter] || {};
+        const en = ov.enable !== false;
+        document.getElementById("letterEnable").checked = en;
+        const g = ov.intensity ?? gravityAmt;
+        const f = ov.freezeHeight ?? freezeHeight;
+        const v = ov.viscosity ?? viscosity;
+        const s = ov.sagAmpMul ?? sagAmpMul;
+        const b = ov.bulbGrowMul ?? 1;
+        document.getElementById("letterGravity").value = String(g);
+        document.getElementById("letterFreeze").value = String(f);
+        document.getElementById("letterVisc").value = String(v);
+        document.getElementById("letterSag").value = String(s);
+        document.getElementById("letterBulb").value = String(b);
+        document.getElementById("letterGravityVal").textContent = Number(g).toFixed(2);
+        document.getElementById("letterFreezeVal").textContent = Number(f).toFixed(2);
+        document.getElementById("letterViscVal").textContent = Number(v).toFixed(2);
+        document.getElementById("letterSagVal").textContent = Number(s).toFixed(2);
+        document.getElementById("letterBulbVal").textContent = Number(b).toFixed(2);
+        syncingLetterUi = false;
+      }
+
+      function patchSelectedLetter(patch) {
+        if (syncingLetterUi) return;
+        letterOverrides[selectedLetter] = {
+          ...(letterOverrides[selectedLetter] || {}),
+          ...patch,
+        };
+        pushOverridesToSim();
+        rebuildGlyphButtons();
+      }
+
       function updateMelt(dt) {
-        if (stage < 5 || gravityAmt < 0.001) {
+        if (stage < 5 || (gravityAmt < 0.001 && !letterOverrides.some((o) => (o.intensity ?? 0) > 0.001))) {
           if (stage < 4) return;
           if (stage === 4) {
-            // Soft liquid look without full sag — mild intensity, high freeze
             const changed = meltSim.step(dt, {
+              ...masterParams(),
               intensity: gravityAmt * 0.25,
-              viscosity,
               freezeHeight: Math.max(freezeHeight, 0.72),
               falloffPower: 1.4,
-              columnXs: columnXsLocal,
-              columnHalfW: wordHalfW * 0.12,
-              oneShot: true,
             });
             if (changed) {
               for (const mesh of letterMeshes) {
@@ -398,22 +616,14 @@
 
         const key = paramKey();
         if (key !== lastParamKey) {
-          // Artist retuned after freeze → resettle to new target
           if (meltSim.isFrozen() || lastParamKey !== "") {
             meltSim.reset();
           }
+          pushOverridesToSim();
           lastParamKey = key;
         }
 
-        const changed = meltSim.step(dt, {
-          intensity: gravityAmt,
-          viscosity,
-          freezeHeight,
-          falloffPower: 1.7,
-          columnXs: columnXsLocal,
-          columnHalfW: wordHalfW * 0.11,
-          oneShot: true,
-        });
+        const changed = meltSim.step(dt, masterParams());
         if (changed) {
           for (const mesh of letterMeshes) {
             mesh.geometry.attributes.position.needsUpdate = true;
@@ -423,9 +633,10 @@
 
         const st = meltSim.getStatus();
         const statusEl = document.getElementById("meltStatus");
+        const enabled = letterOverrides.filter((o) => o.enable !== false).length;
         statusEl.textContent = st.frozen
-          ? `frozen · freezeHt ${st.freezeHeight.toFixed(2)} · sagAmp ${st.maps.sagAmp.toFixed(2)}`
-          : `settling ${(st.settle * 100).toFixed(0)}% · freezeHt ${st.freezeHeight.toFixed(2)}`;
+          ? `frozen · ${enabled}/${st.slotCount} letters · softMin bulb · dripBlobs 0`
+          : `settling ${(st.settle * 100).toFixed(0)}% · ${enabled}/${st.slotCount} letters`;
 
         if (window.__scratch) {
           window.__scratch.frozen = st.frozen;
@@ -434,11 +645,23 @@
           window.__scratch.gravity = gravityAmt;
           window.__scratch.viscosity = viscosity;
           window.__scratch.dripBlobs = 0;
+          window.__scratch.slotCount = st.slotCount;
+          window.__scratch.selectedLetter = selectedLetter;
+          window.__scratch.letterOverrides = letterOverrides;
+          window.__scratch.fontId = currentFontId;
+          window.__scratch.fontLabel = currentFontLabel;
+          window.__scratch.mesh = `${MESH_DIR}${currentGlb}`;
           window.__scratch.maps = {
             sagAmp: st.maps.sagAmp,
             neckPinch: st.maps.neckPinch,
             bulbGrow: st.maps.bulbGrow,
             settleRate: st.maps.settleRate,
+          };
+          window.__scratch.roundness = {
+            teardrop: true,
+            softMinBulb: true,
+            taubin: true,
+            dripBlobs: 0,
           };
         }
       }
@@ -458,28 +681,68 @@
         controls.update();
       }
 
-      async function loadLetter() {
-        const loader = new GLTFLoader();
-        const glbUrl = new URL(GLB_PATH, import.meta.url).href;
-        const gltf = await loader.loadAsync(glbUrl);
-        letterRoot = gltf.scene;
+      function disposeLetterRoot() {
+        if (!letterRoot) return;
+        scene.remove(letterRoot);
         letterRoot.traverse((obj) => {
           if (obj.isMesh) {
-            obj.castShadow = false;
-            obj.receiveShadow = false;
-            letterMeshes.push(obj);
-            const posAttr = obj.geometry.attributes.position;
-            const nAttr = obj.geometry.attributes.normal;
-            const base = posAttr.array.slice(0);
-            const normal = nAttr
-              ? nAttr.array.slice(0)
-              : new Float32Array(base.length);
-            deformCache.push({ pos: posAttr.array, base, normal });
+            obj.geometry?.dispose?.();
           }
         });
+        letterRoot = null;
+        letterMeshes = [];
+        letterChars = [];
+        deformCache = [];
+      }
+
+      function sortMeshesLeftToRight(meshes) {
+        return [...meshes].sort((a, b) => {
+          a.geometry.computeBoundingBox();
+          b.geometry.computeBoundingBox();
+          const ca = a.geometry.boundingBox.getCenter(new THREE.Vector3());
+          const cb = b.geometry.boundingBox.getCenter(new THREE.Vector3());
+          a.localToWorld(ca);
+          b.localToWorld(cb);
+          return ca.x - cb.x;
+        });
+      }
+
+      async function loadWordmark(glbName, fontMeta) {
+        disposeLetterRoot();
+        const loader = new GLTFLoader();
+        const glbUrl = new URL(MESH_DIR + glbName, import.meta.url).href;
+        const gltf = await loader.loadAsync(glbUrl);
+        letterRoot = gltf.scene;
+
+        const found = [];
+        letterRoot.traverse((obj) => {
+          if (obj.isMesh) found.push(obj);
+        });
+        const sorted = sortMeshesLeftToRight(found);
+        letterMeshes = sorted;
+        const metaLetters = fontMeta?.letters;
+        letterChars = sorted.map((_, i) => {
+          if (metaLetters?.[i]?.char) return metaLetters[i].char;
+          return WORDMARK[i] || "?";
+        });
+
+        deformCache = [];
+        for (const obj of letterMeshes) {
+          obj.castShadow = false;
+          obj.receiveShadow = false;
+          obj.userData.letterIndex = letterMeshes.indexOf(obj);
+          const posAttr = obj.geometry.attributes.position;
+          const nAttr = obj.geometry.attributes.normal;
+          if (!nAttr) obj.geometry.computeVertexNormals();
+          const base = posAttr.array.slice(0);
+          const normal = (obj.geometry.attributes.normal?.array || new Float32Array(base.length)).slice(0);
+          deformCache.push({ pos: posAttr.array, base, normal });
+        }
+
         if (!letterMeshes.length) {
           throw new Error("GLB loaded but contained no meshes");
         }
+
         const box = new THREE.Box3().setFromObject(letterRoot);
         const size0 = box.getSize(new THREE.Vector3());
         const targetH = 1.85;
@@ -492,17 +755,36 @@
         const size = box.getSize(new THREE.Vector3());
         wordHalfW = size.x * 0.5;
         wordHalfH = size.y * 0.5;
-        // Columns in local mesh space (letterRoot centered; meshes share root)
-        columnXsLocal = SAG_COLUMN_FRACS.map((f) => f * wordHalfW);
+
+        // Per-letter column seed at each glyph centroid (local)
+        letterOverrides = defaultLetterOverrides(letterMeshes.length);
+        // Attach local column X per letter after scale — use mesh local cx ≈ 0 relative to each mesh
+        for (let i = 0; i < letterMeshes.length; i++) {
+          const m = letterMeshes[i];
+          m.geometry.computeBoundingBox();
+          const c = m.geometry.boundingBox.getCenter(new THREE.Vector3());
+          letterOverrides[i] = {
+            ...letterOverrides[i],
+            columnXs: [c.x],
+            columnHalfW: Math.max((m.geometry.boundingBox.max.x - m.geometry.boundingBox.min.x) * 0.35, 0.04),
+          };
+        }
 
         meltSim.bind(deformCache);
+        pushOverridesToSim();
         scene.add(letterRoot);
         applyMaterial();
         frameWordmarkCamera(size);
+        rebuildGlyphButtons();
+        selectLetter(Math.min(selectedLetter, letterMeshes.length - 1));
+
+        currentGlb = glbName;
+        document.getElementById("meshHint").textContent = `demo/scratch/mesh/${glbName}`;
+        document.getElementById("fontLabel").textContent = currentFontLabel;
 
         window.__scratch = {
           wordmark: WORDMARK,
-          mesh: GLB_PATH,
+          mesh: `${MESH_DIR}${glbName}`,
           size: { x: size.x, y: size.y, z: size.z },
           ready: true,
           dripBlobs: 0,
@@ -513,13 +795,72 @@
           viscosity,
           physics: "frozen-viscoplastic-mesh-sag",
           model: "GravityMeltSim",
+          slotCount: letterMeshes.length,
+          letterChars: [...letterChars],
+          letterOverrides,
+          fontId: currentFontId,
+          fontLabel: currentFontLabel,
+          fonts: fontCatalog.map((f) => f.id),
+          roundness: { teardrop: true, softMinBulb: true, taubin: true, dripBlobs: 0 },
         };
+        lastParamKey = "";
       }
 
-      // UI
+      async function loadFontCatalog() {
+        try {
+          const res = await fetch(new URL(MESH_DIR + "fonts.json", import.meta.url).href);
+          if (res.ok) {
+            const data = await res.json();
+            fontCatalog = data.fonts || [];
+          }
+        } catch {
+          fontCatalog = [];
+        }
+        if (!fontCatalog.length) {
+          fontCatalog = [
+            {
+              id: "arial-black",
+              label: "Arial Black",
+              mesh: DEFAULT_GLB,
+              primary: true,
+              letters: [...WORDMARK].map((char, index) => ({ index, char })),
+            },
+          ];
+        }
+        const sel = document.getElementById("fontSelect");
+        sel.innerHTML = "";
+        for (const f of fontCatalog) {
+          const opt = document.createElement("option");
+          opt.value = f.id;
+          opt.textContent = f.label;
+          sel.appendChild(opt);
+        }
+        const primary = fontCatalog.find((f) => f.primary) || fontCatalog[0];
+        currentFontId = primary.id;
+        currentFontLabel = primary.label;
+        sel.value = currentFontId;
+        return primary;
+      }
+
+      async function switchFont(fontId) {
+        const f = fontCatalog.find((x) => x.id === fontId) || fontCatalog[0];
+        if (!f) return;
+        currentFontId = f.id;
+        currentFontLabel = f.label;
+        document.getElementById("fontLabel").textContent = currentFontLabel;
+        await loadWordmark(f.mesh || DEFAULT_GLB, f);
+        if (stage >= 5) {
+          setStage(5);
+          resettle();
+        }
+      }
+
+      // UI master
       const gravityEl = document.getElementById("gravity");
       const freezeEl = document.getElementById("freezeHeight");
       const viscosityEl = document.getElementById("viscosity");
+      const sagEl = document.getElementById("sagAmp");
+      const bulbEl = document.getElementById("bulbSoft");
       const iorEl = document.getElementById("ior");
       gravityEl.addEventListener("input", () => {
         gravityAmt = Number(gravityEl.value);
@@ -527,12 +868,19 @@
       });
       freezeEl.addEventListener("input", () => {
         freezeHeight = Number(freezeEl.value);
-        document.getElementById("freezeHeightVal").textContent =
-          freezeHeight.toFixed(2);
+        document.getElementById("freezeHeightVal").textContent = freezeHeight.toFixed(2);
       });
       viscosityEl.addEventListener("input", () => {
         viscosity = Number(viscosityEl.value);
         document.getElementById("viscosityVal").textContent = viscosity.toFixed(2);
+      });
+      sagEl.addEventListener("input", () => {
+        sagAmpMul = Number(sagEl.value);
+        document.getElementById("sagAmpVal").textContent = sagAmpMul.toFixed(2);
+      });
+      bulbEl.addEventListener("input", () => {
+        bulbSoftMin = Number(bulbEl.value);
+        document.getElementById("bulbSoftVal").textContent = bulbSoftMin.toFixed(2);
       });
       iorEl.addEventListener("input", () => {
         const ior = Number(iorEl.value);
@@ -540,6 +888,47 @@
         matGlass.ior = ior;
         matLiquid.ior = ior;
       });
+
+      document.getElementById("letterEnable").addEventListener("change", (e) => {
+        patchSelectedLetter({ enable: e.target.checked });
+      });
+      document.getElementById("letterGravity").addEventListener("input", (e) => {
+        const v = Number(e.target.value);
+        document.getElementById("letterGravityVal").textContent = v.toFixed(2);
+        patchSelectedLetter({ intensity: v });
+      });
+      document.getElementById("letterFreeze").addEventListener("input", (e) => {
+        const v = Number(e.target.value);
+        document.getElementById("letterFreezeVal").textContent = v.toFixed(2);
+        patchSelectedLetter({ freezeHeight: v });
+      });
+      document.getElementById("letterVisc").addEventListener("input", (e) => {
+        const v = Number(e.target.value);
+        document.getElementById("letterViscVal").textContent = v.toFixed(2);
+        patchSelectedLetter({ viscosity: v });
+      });
+      document.getElementById("letterSag").addEventListener("input", (e) => {
+        const v = Number(e.target.value);
+        document.getElementById("letterSagVal").textContent = v.toFixed(2);
+        patchSelectedLetter({ sagAmpMul: v });
+      });
+      document.getElementById("letterBulb").addEventListener("input", (e) => {
+        const v = Number(e.target.value);
+        document.getElementById("letterBulbVal").textContent = v.toFixed(2);
+        patchSelectedLetter({ bulbGrowMul: v });
+      });
+      document.getElementById("btnClearLetter").addEventListener("click", () => {
+        const keepCols = {
+          columnXs: letterOverrides[selectedLetter]?.columnXs,
+          columnHalfW: letterOverrides[selectedLetter]?.columnHalfW,
+          enable: true,
+        };
+        letterOverrides[selectedLetter] = keepCols;
+        pushOverridesToSim();
+        syncLetterUiFromOverride();
+        rebuildGlyphButtons();
+      });
+
       document.getElementById("btnResettle").addEventListener("click", resettle);
       document.getElementById("btnFreeze").addEventListener("click", () => {
         meltSim.freeze();
@@ -547,6 +936,33 @@
       for (const btn of document.querySelectorAll("#stageButtons button")) {
         btn.addEventListener("click", () => setStage(Number(btn.dataset.stage)));
       }
+      document.getElementById("fontSelect").addEventListener("change", (e) => {
+        switchFont(e.target.value);
+      });
+
+      // Click glyph to select (don't steal orbit: only on short click)
+      let ptrDown = null;
+      canvas.addEventListener("pointerdown", (ev) => {
+        if (ev.button !== 0) return;
+        ptrDown = { x: ev.clientX, y: ev.clientY, t: performance.now() };
+      });
+      canvas.addEventListener("pointerup", (ev) => {
+        if (!ptrDown || ev.button !== 0) return;
+        const dx = ev.clientX - ptrDown.x;
+        const dy = ev.clientY - ptrDown.y;
+        const dt = performance.now() - ptrDown.t;
+        ptrDown = null;
+        if (dt > 350 || dx * dx + dy * dy > 36) return;
+        const rect = canvas.getBoundingClientRect();
+        pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(pointer, camera);
+        const hits = raycaster.intersectObjects(letterMeshes, false);
+        if (hits.length) {
+          const idx = letterMeshes.indexOf(hits[0].object);
+          if (idx >= 0) selectLetter(idx);
+        }
+      });
 
       addEventListener("resize", () => {
         camera.aspect = innerWidth / innerHeight;
@@ -568,14 +984,15 @@
       }
 
       try {
-        await loadLetter();
+        const primary = await loadFontCatalog();
+        await loadWordmark(primary.mesh || DEFAULT_GLB, primary);
         setStage(5);
         lastParamKey = "";
         frame();
       } catch (err) {
         console.error(err);
         document.querySelector(".sub").textContent =
-          "Failed to load wordmark-klaut-pro.glb — run npm run bake:scratch first.";
+          "Failed to load wordmark GLB — run npm run bake:scratch -- --all-fonts";
         window.__scratch = { wordmark: WORDMARK, ready: false, error: String(err) };
       }
     </script>

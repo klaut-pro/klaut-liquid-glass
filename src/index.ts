@@ -28,6 +28,7 @@ export {
   type MeltViscosityMaps,
   type GravityMeltParams,
   type GravityMeltStatus,
+  type LetterMeltOverride,
 } from "./field/GravityMeltSim.js";
 export { softMin, sdRoundBox } from "./field/SDF.js";
 export {

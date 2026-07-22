@@ -19,7 +19,11 @@ if (!existsSync(blender)) {
   process.exit(1);
 }
 
-const r = spawnSync(blender, ["--background", "--python", script], {
+// Forward CLI after `--` to the Blender Python script
+const passthrough = process.argv.slice(2);
+const args = ["--background", "--python", script, "--", ...passthrough];
+
+const r = spawnSync(blender, args, {
   cwd: root,
   stdio: "inherit",
   shell: false,

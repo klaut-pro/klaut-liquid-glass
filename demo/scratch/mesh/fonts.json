@@ -1,0 +1,438 @@
+{
+  "text": "klaut.pro",
+  "defaultId": "arial-black",
+  "fonts": [
+    {
+      "id": "arial-black",
+      "label": "Arial Black",
+      "mesh": "wordmark-klaut-pro.glb",
+      "fontPath": "C:/Windows/Fonts/ariblk.ttf",
+      "primary": true,
+      "letters": [
+        {
+          "index": 0,
+          "char": "k",
+          "meshName": "letter_0_k"
+        },
+        {
+          "index": 1,
+          "char": "l",
+          "meshName": "letter_1_l"
+        },
+        {
+          "index": 2,
+          "char": "a",
+          "meshName": "letter_2_a"
+        },
+        {
+          "index": 3,
+          "char": "u",
+          "meshName": "letter_3_u"
+        },
+        {
+          "index": 4,
+          "char": "t",
+          "meshName": "letter_4_t"
+        },
+        {
+          "index": 5,
+          "char": ".",
+          "meshName": "letter_5_dot"
+        },
+        {
+          "index": 6,
+          "char": "p",
+          "meshName": "letter_6_p"
+        },
+        {
+          "index": 7,
+          "char": "r",
+          "meshName": "letter_7_r"
+        },
+        {
+          "index": 8,
+          "char": "o",
+          "meshName": "letter_8_o"
+        }
+      ]
+    },
+    {
+      "id": "arial-bold",
+      "label": "Arial Bold",
+      "mesh": "wordmark-arial-bold.glb",
+      "fontPath": "C:/Windows/Fonts/arialbd.ttf",
+      "primary": false,
+      "letters": [
+        {
+          "index": 0,
+          "char": "k",
+          "meshName": "letter_0_k"
+        },
+        {
+          "index": 1,
+          "char": "l",
+          "meshName": "letter_1_l"
+        },
+        {
+          "index": 2,
+          "char": "a",
+          "meshName": "letter_2_a"
+        },
+        {
+          "index": 3,
+          "char": "u",
+          "meshName": "letter_3_u"
+        },
+        {
+          "index": 4,
+          "char": "t",
+          "meshName": "letter_4_t"
+        },
+        {
+          "index": 5,
+          "char": ".",
+          "meshName": "letter_5_dot"
+        },
+        {
+          "index": 6,
+          "char": "p",
+          "meshName": "letter_6_p"
+        },
+        {
+          "index": 7,
+          "char": "r",
+          "meshName": "letter_7_r"
+        },
+        {
+          "index": 8,
+          "char": "o",
+          "meshName": "letter_8_o"
+        }
+      ]
+    },
+    {
+      "id": "bahnschrift",
+      "label": "Bahnschrift",
+      "mesh": "wordmark-bahnschrift.glb",
+      "fontPath": "C:/Windows/Fonts/bahnschrift.ttf",
+      "primary": false,
+      "letters": [
+        {
+          "index": 0,
+          "char": "k",
+          "meshName": "letter_0_k"
+        },
+        {
+          "index": 1,
+          "char": "l",
+          "meshName": "letter_1_l"
+        },
+        {
+          "index": 2,
+          "char": "a",
+          "meshName": "letter_2_a"
+        },
+        {
+          "index": 3,
+          "char": "u",
+          "meshName": "letter_3_u"
+        },
+        {
+          "index": 4,
+          "char": "t",
+          "meshName": "letter_4_t"
+        },
+        {
+          "index": 5,
+          "char": ".",
+          "meshName": "letter_5_dot"
+        },
+        {
+          "index": 6,
+          "char": "p",
+          "meshName": "letter_6_p"
+        },
+        {
+          "index": 7,
+          "char": "r",
+          "meshName": "letter_7_r"
+        },
+        {
+          "index": 8,
+          "char": "o",
+          "meshName": "letter_8_o"
+        }
+      ]
+    },
+    {
+      "id": "impact",
+      "label": "Impact",
+      "mesh": "wordmark-impact.glb",
+      "fontPath": "C:/Windows/Fonts/impact.ttf",
+      "primary": false,
+      "letters": [
+        {
+          "index": 0,
+          "char": "k",
+          "meshName": "letter_0_k"
+        },
+        {
+          "index": 1,
+          "char": "l",
+          "meshName": "letter_1_l"
+        },
+        {
+          "index": 2,
+          "char": "a",
+          "meshName": "letter_2_a"
+        },
+        {
+          "index": 3,
+          "char": "u",
+          "meshName": "letter_3_u"
+        },
+        {
+          "index": 4,
+          "char": "t",
+          "meshName": "letter_4_t"
+        },
+        {
+          "index": 5,
+          "char": ".",
+          "meshName": "letter_5_dot"
+        },
+        {
+          "index": 6,
+          "char": "p",
+          "meshName": "letter_6_p"
+        },
+        {
+          "index": 7,
+          "char": "r",
+          "meshName": "letter_7_r"
+        },
+        {
+          "index": 8,
+          "char": "o",
+          "meshName": "letter_8_o"
+        }
+      ]
+    },
+    {
+      "id": "segoe-ui-bold",
+      "label": "Segoe UI Bold",
+      "mesh": "wordmark-segoe-ui-bold.glb",
+      "fontPath": "C:/Windows/Fonts/segoeuib.ttf",
+      "primary": false,
+      "letters": [
+        {
+          "index": 0,
+          "char": "k",
+          "meshName": "letter_0_k"
+        },
+        {
+          "index": 1,
+          "char": "l",
+          "meshName": "letter_1_l"
+        },
+        {
+          "index": 2,
+          "char": "a",
+          "meshName": "letter_2_a"
+        },
+        {
+          "index": 3,
+          "char": "u",
+          "meshName": "letter_3_u"
+        },
+        {
+          "index": 4,
+          "char": "t",
+          "meshName": "letter_4_t"
+        },
+        {
+          "index": 5,
+          "char": ".",
+          "meshName": "letter_5_dot"
+        },
+        {
+          "index": 6,
+          "char": "p",
+          "meshName": "letter_6_p"
+        },
+        {
+          "index": 7,
+          "char": "r",
+          "meshName": "letter_7_r"
+        },
+        {
+          "index": 8,
+          "char": "o",
+          "meshName": "letter_8_o"
+        }
+      ]
+    },
+    {
+      "id": "tahoma-bold",
+      "label": "Tahoma Bold",
+      "mesh": "wordmark-tahoma-bold.glb",
+      "fontPath": "C:/Windows/Fonts/tahomabd.ttf",
+      "primary": false,
+      "letters": [
+        {
+          "index": 0,
+          "char": "k",
+          "meshName": "letter_0_k"
+        },
+        {
+          "index": 1,
+          "char": "l",
+          "meshName": "letter_1_l"
+        },
+        {
+          "index": 2,
+          "char": "a",
+          "meshName": "letter_2_a"
+        },
+        {
+          "index": 3,
+          "char": "u",
+          "meshName": "letter_3_u"
+        },
+        {
+          "index": 4,
+          "char": "t",
+          "meshName": "letter_4_t"
+        },
+        {
+          "index": 5,
+          "char": ".",
+          "meshName": "letter_5_dot"
+        },
+        {
+          "index": 6,
+          "char": "p",
+          "meshName": "letter_6_p"
+        },
+        {
+          "index": 7,
+          "char": "r",
+          "meshName": "letter_7_r"
+        },
+        {
+          "index": 8,
+          "char": "o",
+          "meshName": "letter_8_o"
+        }
+      ]
+    },
+    {
+      "id": "trebuchet-bold",
+      "label": "Trebuchet MS Bold",
+      "mesh": "wordmark-trebuchet-bold.glb",
+      "fontPath": "C:/Windows/Fonts/trebucbd.ttf",
+      "primary": false,
+      "letters": [
+        {
+          "index": 0,
+          "char": "k",
+          "meshName": "letter_0_k"
+        },
+        {
+          "index": 1,
+          "char": "l",
+          "meshName": "letter_1_l"
+        },
+        {
+          "index": 2,
+          "char": "a",
+          "meshName": "letter_2_a"
+        },
+        {
+          "index": 3,
+          "char": "u",
+          "meshName": "letter_3_u"
+        },
+        {
+          "index": 4,
+          "char": "t",
+          "meshName": "letter_4_t"
+        },
+        {
+          "index": 5,
+          "char": ".",
+          "meshName": "letter_5_dot"
+        },
+        {
+          "index": 6,
+          "char": "p",
+          "meshName": "letter_6_p"
+        },
+        {
+          "index": 7,
+          "char": "r",
+          "meshName": "letter_7_r"
+        },
+        {
+          "index": 8,
+          "char": "o",
+          "meshName": "letter_8_o"
+        }
+      ]
+    },
+    {
+      "id": "verdana-bold",
+      "label": "Verdana Bold",
+      "mesh": "wordmark-verdana-bold.glb",
+      "fontPath": "C:/Windows/Fonts/verdanab.ttf",
+      "primary": false,
+      "letters": [
+        {
+          "index": 0,
+          "char": "k",
+          "meshName": "letter_0_k"
+        },
+        {
+          "index": 1,
+          "char": "l",
+          "meshName": "letter_1_l"
+        },
+        {
+          "index": 2,
+          "char": "a",
+          "meshName": "letter_2_a"
+        },
+        {
+          "index": 3,
+          "char": "u",
+          "meshName": "letter_3_u"
+        },
+        {
+          "index": 4,
+          "char": "t",
+          "meshName": "letter_4_t"
+        },
+        {
+          "index": 5,
+          "char": ".",
+          "meshName": "letter_5_dot"
+        },
+        {
+          "index": 6,
+          "char": "p",
+          "meshName": "letter_6_p"
+        },
+        {
+          "index": 7,
+          "char": "r",
+          "meshName": "letter_7_r"
+        },
+        {
+          "index": 8,
+          "char": "o",
+          "meshName": "letter_8_o"
+        }
+      ]
+    }
+  ]
+}

@@ -269,10 +269,24 @@ Target: \(\Delta y = -\mathrm{sagAmp}\cdot w\cdot(\ldots)\); mid-band radial **n
 Optional Verlet mode attracts toward that target until KE < `freezeKe`, then freeze. Default scratch path is **oneShot** ease → freeze.
 
 **Implementation (scratch `demo/scratch.html`):**
-1. Bind GLB buffers to `GravityMeltSim`
-2. Stage 5: Gravity / Freeze ht / Viscosity sliders; Resettle / Freeze now
-3. Pendant sphere pool **removed** — `dripBlobs: 0`
-4. `DripSim` for **2D field / glassify** only
+1. Bind GLB buffers to `GravityMeltSim` — **one mesh slot per glyph**
+2. Stage 5: master Gravity / Freeze ht / Viscosity / Sag / Bulb-soft + **per-letter** enable & overrides (click glyph or picker)
+3. Font picker swaps pre-baked `wordmark-*.glb` (Blender portable bake)
+4. Roundness: cosine teardrop radial + softMin bulb SDF tip overlay + Taubin smooth on yielded verts
+5. Pendant sphere pool **removed** — `dripBlobs: 0`
+6. `DripSim` for **2D field / glassify** only
+
+**Per-letter API:**
+
+```ts
+meltSim.setLetterOverrides([
+  { enable: true, sagAmpMul: 1.2, viscosity: 0.6 },
+  { enable: false }, // identity / frozen letter
+  { intensity: 0.4, freezeHeight: 0.7, bulbGrowMul: 1.5 },
+]);
+```
+
+Missing fields inherit master defaults. `enable: false` keeps the glyph at rest pose.
 
 **Literature (frozen / yield / hanging):**
 

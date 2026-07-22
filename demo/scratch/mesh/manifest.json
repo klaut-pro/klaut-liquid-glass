@@ -1,24 +1,75 @@
 {
   "font": "Arial Black",
   "fontPath": "C:/Windows/Fonts/ariblk.ttf",
+  "fontId": "arial-black",
   "text": "klaut.pro",
   "char": "klaut.pro",
   "extrude": 0.09,
-  "bevelDepth": 0.014,
-  "bevelResolution": 3,
+  "bevelDepth": 0.02,
+  "bevelResolution": 8,
+  "subdivLevels": 1,
   "targetHeight": 1.15,
   "bakedDimensions": {
-    "x": 5.894514560699463,
-    "y": 0.344801127910614,
-    "z": 1.149999976158142
+    "x": 6.887341234683991,
+    "y": 0.46119531989097595,
+    "z": 1.1500000953674316
   },
   "mesh": "wordmark-klaut-pro.glb",
+  "letters": [
+    {
+      "index": 0,
+      "char": "k",
+      "meshName": "letter_0_k"
+    },
+    {
+      "index": 1,
+      "char": "l",
+      "meshName": "letter_1_l"
+    },
+    {
+      "index": 2,
+      "char": "a",
+      "meshName": "letter_2_a"
+    },
+    {
+      "index": 3,
+      "char": "u",
+      "meshName": "letter_3_u"
+    },
+    {
+      "index": 4,
+      "char": "t",
+      "meshName": "letter_4_t"
+    },
+    {
+      "index": 5,
+      "char": ".",
+      "meshName": "letter_5_dot"
+    },
+    {
+      "index": 6,
+      "char": "p",
+      "meshName": "letter_6_p"
+    },
+    {
+      "index": 7,
+      "char": "r",
+      "meshName": "letter_7_r"
+    },
+    {
+      "index": 8,
+      "char": "o",
+      "meshName": "letter_8_o"
+    }
+  ],
+  "perLetterMeshes": true,
   "legacyMesh": "letter-K.glb",
+  "fontsCatalog": "fonts.json",
   "pipeline": [
-    "1-font: Arial Black (ariblk.ttf) wordmark klaut.pro",
-    "2-mesh: Blender extrude+bevel \u2192 GLB",
+    "1-font: Arial Black wordmark klaut.pro (per-glyph meshes)",
+    "2-mesh: Blender extrude+bevel+subdiv \u2192 GLB",
     "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
-    "4-liquid: vertex liquify (demo)",
-    "5-drip: viscosity-driven pendants (demo)"
+    "4-liquid: GravityMeltSim per-letter overrides",
+    "5-sag: frozen viscoplastic neck/bulb (no drip blobs)"
   ]
 }
