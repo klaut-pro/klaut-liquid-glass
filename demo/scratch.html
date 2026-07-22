@@ -18,21 +18,24 @@
         margin: 0;
         height: 100%;
         overflow: hidden;
-        background: #05070c;
+        background: #9eb0cc;
         color: var(--ink);
       }
       #c {
         position: fixed;
         inset: 0;
+        z-index: 0;
         display: block;
         width: 100%;
         height: 100%;
+        background: #1a2233;
       }
       .hud {
         position: fixed;
         left: 16px;
         top: 16px;
         z-index: 5;
+        pointer-events: auto;
         width: min(340px, calc(100vw - 32px));
         padding: 14px 16px 16px;
         border-radius: 14px;
@@ -168,54 +171,78 @@
         antialias: true,
         alpha: false,
         powerPreference: "high-performance",
+        // Needed so screenshots / some software GL paths keep the last frame visible
+        preserveDrawingBuffer: true,
       });
       renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
       renderer.setSize(innerWidth, innerHeight, false);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.05;
+      // Higher exposure so transmission glass doesn't read as black-on-black
+      renderer.toneMappingExposure = 1.55;
 
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x070a12);
+      // Bright studio wash — glass needs light to refract; dark navy made the K vanish
+      scene.background = new THREE.Color(0x9eb0cc);
+      scene.fog = new THREE.Fog(0x9eb0cc, 14, 32);
 
       const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.05, 40);
-      camera.position.set(2.4, 1.35, 3.2);
+      camera.position.set(2.15, 1.15, 2.85);
 
       const controls = new OrbitControls(camera, canvas);
       controls.enableDamping = true;
       controls.dampingFactor = 0.06;
       controls.minDistance = 1.2;
       controls.maxDistance = 10;
-      controls.target.set(0, 0.1, 0);
+      controls.target.set(0, 0.05, 0);
+
+      // Bright backplate so transmission has colored light to bend
+      const backplate = new THREE.Mesh(
+        new THREE.PlaneGeometry(10, 6),
+        new THREE.MeshStandardMaterial({
+          color: 0xd8e4f5,
+          roughness: 0.88,
+          metalness: 0,
+          emissive: 0x6a86b0,
+          emissiveIntensity: 0.28,
+        }),
+      );
+      backplate.position.set(0, 1.2, -2.4);
+      scene.add(backplate);
 
       // Soft studio-ish plate so glass has something to refract/reflect
       const floor = new THREE.Mesh(
         new THREE.CircleGeometry(6, 64),
         new THREE.MeshStandardMaterial({
-          color: 0x121826,
-          roughness: 0.85,
-          metalness: 0.05,
+          color: 0xd2dcec,
+          roughness: 0.5,
+          metalness: 0.04,
         }),
       );
       floor.rotation.x = -Math.PI / 2;
       floor.position.y = -1.15;
       scene.add(floor);
 
-      const grid = new THREE.GridHelper(8, 24, 0x2a3550, 0x151b2a);
+      const grid = new THREE.GridHelper(8, 24, 0x7a8aa8, 0xb8c4d8);
       grid.position.y = -1.149;
       scene.add(grid);
 
-      const key = new THREE.DirectionalLight(0xfff2e0, 2.2);
+      const key = new THREE.DirectionalLight(0xfff6ea, 3.2);
       key.position.set(3.5, 5.5, 2.5);
       scene.add(key);
-      const fill = new THREE.DirectionalLight(0xb8d4ff, 0.85);
+      const rim = new THREE.DirectionalLight(0xffffff, 1.6);
+      rim.position.set(-2.5, 3.5, 4);
+      scene.add(rim);
+      const fill = new THREE.DirectionalLight(0xb8d4ff, 1.4);
       fill.position.set(-4, 2, -2);
       scene.add(fill);
-      scene.add(new THREE.AmbientLight(0x6a7a99, 0.35));
-      scene.add(new THREE.HemisphereLight(0xdde8ff, 0x1a1520, 0.55));
+      scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+      scene.add(new THREE.HemisphereLight(0xffffff, 0xa8b4c8, 0.85));
 
       const pmrem = new THREE.PMREMGenerator(renderer);
-      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      // Brighter room env for clear specular + refraction on MeshPhysicalMaterial
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.02).texture;
+      scene.environmentIntensity = 1.35;
       pmrem.dispose();
 
       /** @type {THREE.Object3D | null} */
@@ -231,28 +258,32 @@
         metalness: 0.15,
       });
 
+      // Slightly imperfect glass: full transmission + dark env reads as empty canvas.
+      // Keep transmission high but tint + env intensity so the K silhouette is obvious.
       const matGlass = new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
+        color: 0xf2f7ff,
         metalness: 0,
-        roughness: 0.04,
-        transmission: 1,
-        thickness: 0.75,
+        roughness: 0.06,
+        transmission: 0.92,
+        thickness: 0.85,
         ior: 1.33,
         specularIntensity: 1,
-        envMapIntensity: 1.35,
+        envMapIntensity: 2.1,
         clearcoat: 1,
-        clearcoatRoughness: 0.05,
-        attenuationColor: new THREE.Color(0xd8ecff),
-        attenuationDistance: 2.5,
+        clearcoatRoughness: 0.04,
+        attenuationColor: new THREE.Color(0xb8d8ff),
+        attenuationDistance: 1.6,
         transparent: true,
         opacity: 1,
+        side: THREE.DoubleSide,
       });
 
       const matLiquid = matGlass.clone();
-      matLiquid.roughness = 0.08;
-      matLiquid.thickness = 1.05;
-      matLiquid.attenuationColor = new THREE.Color(0xcfe8ff);
-      matLiquid.envMapIntensity = 1.55;
+      matLiquid.roughness = 0.09;
+      matLiquid.thickness = 1.1;
+      matLiquid.transmission = 0.88;
+      matLiquid.attenuationColor = new THREE.Color(0xa8d0ff);
+      matLiquid.envMapIntensity = 2.35;
 
       // Pendant drip blobs (stage 5)
       const dripGroup = new THREE.Group();
@@ -374,7 +405,9 @@
 
       async function loadLetter() {
         const loader = new GLTFLoader();
-        const gltf = await loader.loadAsync("./scratch/mesh/letter-K.glb");
+        // Absolute-from-demo path survives serve's /scratch.html → /scratch redirect
+        const glbUrl = new URL("./scratch/mesh/letter-K.glb", import.meta.url).href;
+        const gltf = await loader.loadAsync(glbUrl);
         letterRoot = gltf.scene;
         letterRoot.traverse((obj) => {
           if (obj.isMesh) {
@@ -388,13 +421,23 @@
             deformCache.push({ pos: posAttr.array, base, normal });
           }
         });
-        // Center / lift slightly above grid
+        if (!letterMeshes.length) {
+          throw new Error("GLB loaded but contained no meshes");
+        }
+        // Center / normalize scale so a tiny or huge bake still fills the frame
         const box = new THREE.Box3().setFromObject(letterRoot);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z) || 1;
+        const target = 2.2;
+        letterRoot.scale.multiplyScalar(target / maxDim);
+        box.setFromObject(letterRoot);
         const center = box.getCenter(new THREE.Vector3());
         letterRoot.position.sub(center);
         letterRoot.position.y += 0.05;
         scene.add(letterRoot);
         applyMaterial();
+        controls.target.copy(letterRoot.position);
+        controls.update();
       }
 
       // UI
