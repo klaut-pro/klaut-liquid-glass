@@ -140,22 +140,26 @@ float glyphField(vec2 p) {
   }
   if (u_glyphId > 0.5) {
     // Script: softMin pipe join — stem↔loop necks (atlas fill + elegant bridge, anti counter puff)
-    float jScale = u_useGlyphAtlas > 0.5 ? 0.92 : 0.98;
-    float jNeck = length(p - vec2(-0.12, 0.06)) - 0.058 * jScale;
-    float jNeck2 = length(p - vec2(-0.14, 0.12)) - 0.052 * jScale;
-    float jNeck3 = length(p - vec2(-0.1, 0.0)) - 0.05 * jScale;
-    float jNeck4 = length(p - vec2(-0.15, 0.02)) - 0.046 * jScale;
-    float jCap = sdCapsule(p, vec2(-0.15, 0.16), vec2(-0.06, -0.02), 0.044 * jScale);
-    float jCap2 = sdCapsule(p, vec2(-0.12, 0.1), vec2(-0.05, 0.03), 0.04 * jScale);
-    float jCap3 = sdCapsule(p, vec2(-0.14, 0.02), vec2(-0.07, -0.08), 0.038 * jScale);
-    float jK = mix(0.055, 0.046, u_useGlyphAtlas);
+    float jScale = u_useGlyphAtlas > 0.5 ? 0.96 : 1.0;
+    float jNeck = length(p - vec2(-0.12, 0.06)) - 0.064 * jScale;
+    float jNeck2 = length(p - vec2(-0.14, 0.12)) - 0.058 * jScale;
+    float jNeck3 = length(p - vec2(-0.1, 0.0)) - 0.055 * jScale;
+    float jNeck4 = length(p - vec2(-0.15, 0.02)) - 0.05 * jScale;
+    float jNeck5 = length(p - vec2(-0.08, 0.08)) - 0.048 * jScale;
+    float jCap = sdCapsule(p, vec2(-0.15, 0.16), vec2(-0.06, -0.02), 0.048 * jScale);
+    float jCap2 = sdCapsule(p, vec2(-0.12, 0.1), vec2(-0.05, 0.03), 0.044 * jScale);
+    float jCap3 = sdCapsule(p, vec2(-0.14, 0.02), vec2(-0.07, -0.08), 0.042 * jScale);
+    float jCap4 = sdCapsule(p, vec2(-0.16, 0.08), vec2(-0.04, 0.06), 0.04 * jScale);
+    float jK = mix(0.06, 0.05, u_useGlyphAtlas);
     d = softMin(d, jNeck, jK);
     d = softMin(d, jNeck2, jK * 0.95);
     d = softMin(d, jNeck3, jK * 0.92);
     d = softMin(d, jNeck4, jK * 0.9);
+    d = softMin(d, jNeck5, jK * 0.88);
     d = softMin(d, jCap, jK * 0.95);
     d = softMin(d, jCap2, jK * 0.92);
     d = softMin(d, jCap3, jK * 0.9);
+    d = softMin(d, jCap4, jK * 0.88);
   } else {
     // Chrome: Blender silhouette already has clean stem–bowl join — skip procedural notches
   }
@@ -1059,15 +1063,15 @@ void main() {
         color += vec3(0.95, 0.94, 0.9) * junc * juncFres * 1.1 * u_glass;
       } else {
         // Cream drip-bulb (1c6PD/Z53Ve) — localized tip; planar face stays wet-mirror
-        float bulb = smoothstep(-0.22, -0.58, p.y);
-        float bulbCore = pow(smoothstep(-0.28, -0.65, p.y), 1.25);
-        vec3 creamBulb = vec3(0.9, 0.86, 0.7);
+        float bulb = smoothstep(-0.32, -0.65, p.y);
+        float bulbCore = pow(smoothstep(-0.38, -0.72, p.y), 1.35);
+        vec3 creamBulb = vec3(0.82, 0.78, 0.66);
         vec3 darkBulb = vec3(0.08, 0.09, 0.11);
-        float bulbShade = clamp((-p.y - 0.32) / 0.4, 0.0, 1.0);
+        float bulbShade = clamp((-p.y - 0.38) / 0.35, 0.0, 1.0);
         vec3 bulbCol = mix(creamBulb, darkBulb, bulbShade * 0.78);
-        color = mix(color, bulbCol, bulbCore * 0.58 * u_glass);
-        color = max(color, creamBulb * bulbCore * 0.42 * (1.0 - bulbShade * 0.7));
-        color = max(color, facePlate * vec3(1.02, 1.0, 0.92) * dripZone * 0.45 * u_glass);
+        color = mix(color, bulbCol, bulbCore * 0.38 * u_glass);
+        color = max(color, creamBulb * bulbCore * 0.22 * (1.0 - bulbShade * 0.7));
+        color = max(color, facePlate * vec3(1.0, 1.0, 0.98) * dripZone * 0.4 * u_glass);
         color = max(color, vec3(0.08, 0.09, 0.11) * dripZone * u_glass);
         // Kill cyan on drip only — spare cream R-lead on bulb
         float tipCyanD = max(0.0, color.b - color.r * 0.97);
@@ -1194,10 +1198,10 @@ void main() {
         conceptWet.b = min(conceptWet.b, max(conceptWet.r, conceptWet.g) * 0.98);
         planar = mix(planar, conceptWet, clamp(conceptAlive * hasM * 0.97, 0.0, 0.99));
         float hotC = clamp(pow(faceHard, 2.0) * 0.55, 0.0, 1.0);
-        planar = mix(planar, vec3(1.0, 0.99, 0.96) * max(cL3, 0.55), hotC * (1.0 - smoothstep(0.1, 0.26, cCh3)) * 0.3);
-        // Softbox mid fill for empty concept holes — kill jagged stem charcoal voids
-        planar = mix(planar, vec3(0.58, 0.57, 0.54), (1.0 - hasM) * conceptAlive * 0.85);
-        planar = max(planar, vec3(0.48, 0.475, 0.45) * hasM);
+        planar = mix(planar, vec3(1.0, 1.0, 0.995) * max(cL3, 0.55), hotC * (1.0 - smoothstep(0.1, 0.26, cCh3)) * 0.22);
+        // Softbox mid fill for empty concept holes — cool equal (anti cream)
+        planar = mix(planar, vec3(0.54, 0.54, 0.535), (1.0 - hasM) * conceptAlive * 0.85);
+        planar = max(planar, vec3(0.46, 0.46, 0.455) * hasM);
         color = mix(color, planar, faceAlive * softFace * 0.95);
         color = max(color, planar * faceAlive * 0.78);
         float midC = smoothstep(0.04, 0.55, cL3) * (1.0 - smoothstep(0.7, 0.92, cL3));
@@ -1230,12 +1234,12 @@ void main() {
         color = mix(color, planar, faceAlive * softFace * 0.78);
         color = max(color, planar * faceAlive * 0.32);
       }
-      // Softbox mid floor — never punch stem to background black
-      color = max(color, vec3(0.45, 0.445, 0.42) * faceAlive);
+      // Softbox mid floor — cool equal (never punch stem to black / cream)
+      color = max(color, vec3(0.44, 0.44, 0.438) * faceAlive);
       float vign = smoothstep(0.75, 0.25, length(p * vec2(1.15, 1.0)));
-      color = mix(max(facePlate, vec3(0.45, 0.445, 0.42)) * 0.55, color, mix(0.7, 1.0, vign));
-      // Sparse softbox glint only
-      color += vec3(1.08, 1.05, 0.98) * pow(faceHard, 2.2) * faceAlive * 0.35 * u_glass * (1.0 - conceptAlive * 0.7);
+      color = mix(max(facePlate, vec3(0.44, 0.44, 0.438)) * 0.55, color, mix(0.7, 1.0, vign));
+      // Sparse softbox glint only — cool-neutral (anti cream glint)
+      color += vec3(1.02, 1.02, 1.01) * pow(faceHard, 2.2) * faceAlive * 0.28 * u_glass * (1.0 - conceptAlive * 0.7);
       float boundary = smoothstep(0.06, 0.32, facePeak) * (1.0 - smoothstep(0.42, 0.75, facePeak));
       float oilPhaseF = fract(dot(p, vec2(0.7, 1.35)) * 0.5 + facePeak * 0.35 + ndotl * 0.3);
       vec3 oilAF = oilFire(oilPhaseF, 0.95);
@@ -1255,44 +1259,44 @@ void main() {
       float limeFlood = max(0.0, color.g - color.r * 1.02) * max(0.0, color.g - color.b * 0.98);
       float creamFlood = max(0.0, color.r - color.b * 0.98) + max(0.0, color.g * 0.86 - color.b);
       float silL2 = dot(color, vec3(0.2126, 0.7152, 0.0722));
-      vec3 coolSil = vec3(silL2 * 1.0, silL2 * 1.0, silL2 * 0.99);
-      float oilGate = clamp(ellA * 0.85 + ellB * 0.7 + ellC * 0.55 + ellD * 0.55 + ellE * 0.5 + boundary * 0.8, 0.0, 1.0) * mix(0.4, 1.0, midHotF);
+      vec3 coolSil = vec3(silL2 * 1.0, silL2 * 1.0, silL2 * 0.995);
+      float oilGate = clamp(ellA * 0.92 + ellB * 0.78 + ellC * 0.62 + ellD * 0.62 + ellE * 0.55 + boundary * 0.9, 0.0, 1.0) * mix(0.5, 1.0, midHotF);
       float hot = clamp(pow(faceHard, 1.65), 0.0, 1.0);
-      // Gold-led oil puddles — richer midtone accents without cream flood
-      color = mix(color, oilAF * (max(silL2, 0.25) / max(dot(oilAF, vec3(0.2126, 0.7152, 0.0722)), 0.2)), clamp(oilGate * mix(0.5, 0.68, conceptAlive) * faceAlive, 0.0, 0.65));
-      color = mix(color, coolSil, clamp((limeFlood * 2.3 + creamFlood * 2.4) * (1.0 - oilGate * 0.6) * faceAlive, 0.0, 0.97));
+      // Gold-led oil puddles — midtone accents; paleGold crush kills cream mid later
+      color = mix(color, oilAF * (max(silL2, 0.25) / max(dot(oilAF, vec3(0.2126, 0.7152, 0.0722)), 0.2)), clamp(oilGate * mix(0.55, 0.72, conceptAlive) * faceAlive, 0.0, 0.7));
+      color = mix(color, coolSil, clamp((limeFlood * 2.5 + creamFlood * 3.1) * (1.0 - oilGate * 0.72) * faceAlive, 0.0, 0.98));
       float cyanMilk = max(0.0, color.b - color.r * 0.96) * max(0.0, color.b - color.g * 0.94);
-      color = mix(color, coolSil, clamp(cyanMilk * 1.45 * faceAlive * (1.0 - oilGate * 0.35), 0.0, 0.94));
-      color.b = mix(color.b, min(color.b, max(color.r, color.g) * 0.98), faceAlive * (1.0 - oilGate * 0.5));
-      // Kill flatDead charcoal punch — continuous softbox (stem voids were flatDead islands)
+      color = mix(color, coolSil, clamp(cyanMilk * 1.55 * faceAlive * (1.0 - oilGate * 0.4), 0.0, 0.95));
+      color.b = mix(color.b, min(color.b, max(color.r, color.g) * 0.995), faceAlive * (1.0 - oilGate * 0.55));
+      // Kill flatDead charcoal punch — cool softbox mid (anti cream R-lead)
       float flatDead = (1.0 - oilGate) * (1.0 - hot) * (1.0 - smoothstep(0.12, 0.35, faceChroma2));
-      color = mix(color, vec3(0.5, 0.495, 0.47), clamp(flatDead * 0.25 * faceAlive * (1.0 - conceptAlive), 0.0, 0.35));
-      color = max(color, vec3(0.48, 0.475, 0.45) * faceAlive);
+      color = mix(color, vec3(0.52, 0.52, 0.515), clamp(flatDead * 0.22 * faceAlive * (1.0 - conceptAlive), 0.0, 0.32));
+      color = max(color, vec3(0.46, 0.46, 0.455) * faceAlive);
       float dripLip = smoothstep(-0.02, -0.4, p.y);
       float bulbSpare = smoothstep(-0.15, -0.5, p.y);
       // Crush cream on planar face only — spare cream drip-bulb
       float creamLip2 = max(0.0, color.r - color.b * 0.98);
       creamLip2 = max(creamLip2, max(0.0, color.g * 0.86 - color.b));
       float faceCreamGate = dripLip * (1.0 - bulbSpare * 0.92);
-      color.r -= creamLip2 * 0.95 * faceCreamGate;
-      color.g -= creamLip2 * 0.55 * faceCreamGate;
+      color.r -= creamLip2 * 0.98 * faceCreamGate;
+      color.g -= creamLip2 * 0.58 * faceCreamGate;
       float tipSil = dot(color, vec3(0.2126, 0.7152, 0.0722));
-      color = mix(color, vec3(tipSil * 1.0, tipSil * 1.0, tipSil * 0.99), clamp(creamLip2 * 1.05 * faceCreamGate, 0.0, 0.7));
+      color = mix(color, vec3(tipSil * 1.0, tipSil * 1.0, tipSil * 0.995), clamp(creamLip2 * 1.2 * faceCreamGate, 0.0, 0.78));
       // Extra face cream crush — keep oilGate gold, tip bulb only
       float faceCream2 = max(0.0, color.r - color.b * 0.98) + max(0.0, color.g * 0.88 - color.b);
-      color = mix(color, vec3(tipSil, tipSil, tipSil * 0.99), clamp(faceCream2 * 1.7 * (1.0 - oilGate * 0.75) * (1.0 - bulbSpare) * faceAlive, 0.0, 0.95));
-      // Re-assert sparse gold after cream crush
-      color = mix(color, oilAF * (max(tipSil, 0.28) / max(dot(oilAF, vec3(0.2126, 0.7152, 0.0722)), 0.2)), clamp(oilGate * 0.45 * (1.0 - bulbSpare) * faceAlive, 0.0, 0.5));
-      // Raise residual stem charcoal voids to softbox mid
+      color = mix(color, vec3(tipSil, tipSil, tipSil * 0.995), clamp(faceCream2 * 2.2 * (1.0 - oilGate * 0.82) * (1.0 - bulbSpare) * faceAlive, 0.0, 0.97));
+      // Re-assert gold after cream crush
+      color = mix(color, oilAF * (max(tipSil, 0.28) / max(dot(oilAF, vec3(0.2126, 0.7152, 0.0722)), 0.2)), clamp(oilGate * 0.55 * (1.0 - bulbSpare) * faceAlive, 0.0, 0.6));
+      // Raise residual stem charcoal voids to cool softbox mid (no cream R-lead)
       float stemVoid = (1.0 - smoothstep(0.18, 0.42, max(color.r, max(color.g, color.b)))) * faceAlive * (1.0 - bulbSpare);
-      color = mix(color, vec3(0.58, 0.575, 0.55), clamp(stemVoid * 0.95, 0.0, 0.95));
-      color = max(color, vec3(0.5, 0.495, 0.47) * faceAlive * (1.0 - bulbSpare * 0.5));
+      color = mix(color, vec3(0.55, 0.55, 0.545), clamp(stemVoid * 0.92, 0.0, 0.92));
+      color = max(color, vec3(0.48, 0.48, 0.475) * faceAlive * (1.0 - bulbSpare * 0.5));
       // Re-assert cream drip-bulb after face cream crush
-      vec3 creamBulb2 = vec3(0.9, 0.86, 0.7);
+      vec3 creamBulb2 = vec3(0.82, 0.78, 0.66);
       vec3 darkBulb2 = vec3(0.07, 0.08, 0.1);
-      float bulbShade2 = clamp((-p.y - 0.28) / 0.45, 0.0, 1.0);
-      color = mix(color, mix(creamBulb2, darkBulb2, bulbShade2 * 0.8), bulbSpare * 0.55 * faceAlive);
-      color = max(color, creamBulb2 * bulbSpare * 0.4 * (1.0 - bulbShade2 * 0.75));
+      float bulbShade2 = clamp((-p.y - 0.32) / 0.4, 0.0, 1.0);
+      color = mix(color, mix(creamBulb2, darkBulb2, bulbShade2 * 0.8), bulbSpare * 0.35 * faceAlive);
+      color = max(color, creamBulb2 * bulbSpare * 0.22 * (1.0 - bulbShade2 * 0.75));
       float tipCyan2 = dripLip * max(0.0, color.b - color.r * 0.97);
       color = mix(color, vec3(tipSil * 1.02, tipSil * 1.0, tipSil * 0.96), clamp(tipCyan2 * 1.8 * faceAlive, 0.0, 0.9));
       float pkC = max(color.r, max(color.g, color.b));
@@ -1329,50 +1333,75 @@ void main() {
       float finCyan = max(0.0, color.b - color.r * 0.95) * max(0.0, color.b - color.g * 0.92);
       float finCh = max(abs(color.r - color.g), max(abs(color.g - color.b), abs(color.r - color.b)));
       float finLu = dot(color, vec3(0.2126, 0.7152, 0.0722));
-      float oilKeep = smoothstep(0.16, 0.34, finCh) * (1.0 - smoothstep(0.62, 0.9, finLu))
-        * step(color.b + 0.03, color.r) * step(color.b, color.g + 0.02);
-      color = mix(color, vec3(finLu * 1.0, finLu * 1.0, finLu * 0.99), clamp((finCream * 2.8 + finMint * 2.8 + finCyan * 2.6) * (1.0 - oilKeep) * faceAlive, 0.0, 0.98));
+      float oilKeep = smoothstep(0.18, 0.36, finCh) * (1.0 - smoothstep(0.62, 0.9, finLu))
+        * step(color.b + 0.04, color.r) * step(color.b, color.g + 0.02);
+      color = mix(color, vec3(finLu * 1.0, finLu * 1.0, finLu * 0.998), clamp((finCream * 3.4 + finMint * 2.8 + finCyan * 2.6) * (1.0 - oilKeep) * faceAlive, 0.0, 0.99));
       float gLead = max(0.0, color.g - max(color.r, color.b) * 1.0);
-      color = mix(color, vec3(finLu * 1.0, finLu * 1.0, finLu * 0.99), clamp(gLead * 2.8 * (1.0 - oilKeep) * faceAlive, 0.0, 0.95));
+      color = mix(color, vec3(finLu * 1.0, finLu * 1.0, finLu * 0.998), clamp(gLead * 2.8 * (1.0 - oilKeep) * faceAlive, 0.0, 0.95));
       // Extra cream crush: low-chroma R-lead midtones → equal silver (spare gold oil)
-      float creamMid = max(0.0, color.r - color.b * 1.0) * (1.0 - smoothstep(0.12, 0.3, finCh)) * smoothstep(0.35, 0.75, finLu);
-      color = mix(color, vec3(finLu, finLu, finLu * 0.995), clamp(creamMid * 2.6 * (1.0 - oilKeep) * faceAlive, 0.0, 0.94));
+      float creamMid = max(0.0, color.r - color.b * 1.0) * (1.0 - smoothstep(0.14, 0.34, finCh)) * smoothstep(0.3, 0.78, finLu);
+      color = mix(color, vec3(finLu, finLu, finLu * 0.998), clamp(creamMid * 3.2 * (1.0 - oilKeep) * faceAlive, 0.0, 0.97));
       // Lift B on cream softbox only (R-B gap) without crossing into cyan
-      float creamGap = max(0.0, color.r - color.b) * (1.0 - smoothstep(0.14, 0.32, finCh));
-      color.b = mix(color.b, min(color.r * 0.99, color.b + creamGap * 0.55), clamp(creamGap * 1.2 * (1.0 - oilKeep) * faceAlive, 0.0, 0.85));
-      color.r = mix(color.r, color.b + 2.0 / 255.0, clamp(creamGap * 0.35 * (1.0 - oilKeep) * faceAlive, 0.0, 0.5));
+      float creamGap = max(0.0, color.r - color.b) * (1.0 - smoothstep(0.16, 0.36, finCh));
+      color.b = mix(color.b, min(color.r * 0.998, color.b + creamGap * 0.7), clamp(creamGap * 1.5 * (1.0 - oilKeep) * faceAlive, 0.0, 0.92));
+      color.r = mix(color.r, color.b + 1.0 / 255.0, clamp(creamGap * 0.5 * (1.0 - oilKeep) * faceAlive, 0.0, 0.65));
       // Hard G/B caps on non-oil (anti mint/cyan softbox)
       float gCap = max(color.r, color.b) * 1.0;
       color.g = mix(color.g, min(color.g, gCap), (1.0 - oilKeep) * faceAlive);
-      color.b = mix(color.b, clamp(color.b, color.r * 0.97, max(color.r, color.g) * 0.995), (1.0 - oilKeep) * faceAlive);
+      color.b = mix(color.b, clamp(color.b, color.r * 0.98, max(color.r, color.g) * 0.998), (1.0 - oilKeep) * faceAlive);
       // Tip/drip cyan softbox crush — spare cream bulb R-lead
       float tipCyan = smoothstep(-0.02, -0.35, p.y) * max(0.0, color.b - color.r * 0.97);
       float bulbGateF = 1.0 - smoothstep(-0.15, -0.5, p.y) * 0.9;
       color = mix(color, vec3(finLu * 1.0, finLu * 1.0, finLu * 0.99), clamp(tipCyan * 2.2 * faceAlive * bulbGateF, 0.0, 0.95));
-      // Re-add sparse elliptical gold oil puddles for 1c6PD/Z53Ve wet-mirror richness
-      // Cap neon gold saturation — planar wet-mirror softbox first, oil accents sparse
+      // Re-add elliptical gold oil puddles for 1c6PD/Z53Ve wet-mirror richness
+      // Cap neon gold on bright softbox only; spare midtone oil puddles
       float finLu2 = dot(color, vec3(0.2126, 0.7152, 0.0722));
       float goldSat = max(0.0, color.r - color.b * 0.9) * max(0.0, color.r - color.g * 0.92);
-      // Strong gold→silver crush on bright softbox; spare only midtone oil puddles
-      color = mix(color, vec3(finLu2 * 1.01, finLu2 * 1.0, finLu2 * 0.98), clamp(goldSat * 1.85 * faceAlive * bulbGateF * (1.0 - oilGate * 0.25) * smoothstep(0.45, 0.75, finLu2), 0.0, 0.88));
-      color = mix(color, oilAF * (max(finLu2, 0.22) / max(dot(oilAF, vec3(0.2126, 0.7152, 0.0722)), 0.2)), clamp(oilGate * mix(0.22, 0.32, conceptAlive) * faceAlive * bulbGateF * (1.0 - smoothstep(0.55, 0.85, finLu2)), 0.0, 0.38));
-      color = mix(color, oilAF * 1.0, clamp(oilGate * ellA * 0.18 * faceAlive * bulbGateF * (1.0 - smoothstep(0.5, 0.8, finLu2)), 0.0, 0.22));
-      color = mix(color, oilBF * 0.92, clamp(oilGate * ellB * 0.14 * faceAlive * bulbGateF * (1.0 - smoothstep(0.5, 0.8, finLu2)), 0.0, 0.18));
+      // Mild gold→silver crush on bright softbox; keep midtone oil puddles
+      color = mix(color, vec3(finLu2 * 1.0, finLu2 * 1.0, finLu2 * 0.995), clamp(goldSat * 1.15 * faceAlive * bulbGateF * (1.0 - oilGate * 0.55) * smoothstep(0.55, 0.82, finLu2), 0.0, 0.72));
+      color = mix(color, oilAF * (max(finLu2, 0.22) / max(dot(oilAF, vec3(0.2126, 0.7152, 0.0722)), 0.2)), clamp(oilGate * mix(0.28, 0.4, conceptAlive) * faceAlive * bulbGateF * (1.0 - smoothstep(0.62, 0.9, finLu2)), 0.0, 0.42));
+      color = mix(color, oilAF * 1.0, clamp(oilGate * ellA * 0.22 * faceAlive * bulbGateF * (1.0 - smoothstep(0.55, 0.85, finLu2)), 0.0, 0.28));
+      color = mix(color, oilBF * 0.95, clamp(oilGate * ellB * 0.16 * faceAlive * bulbGateF * (1.0 - smoothstep(0.55, 0.85, finLu2)), 0.0, 0.2));
       // Final cream drip-bulb assert (after oil/cyan crush) — localized tip only
-      float bulbFin = smoothstep(-0.28, -0.62, p.y);
-      color = mix(color, mix(vec3(0.88, 0.84, 0.68), vec3(0.07, 0.08, 0.1), clamp((-p.y - 0.32) / 0.4, 0.0, 1.0) * 0.8), bulbFin * 0.4 * faceAlive);
-      color = max(color, vec3(0.86, 0.82, 0.66) * bulbFin * 0.28 * (1.0 - clamp((-p.y - 0.32) / 0.4, 0.0, 1.0) * 0.7));
-      // Soft gold re-assert on midtones only
-      color = mix(color, oilAF, clamp(oilGate * 0.18 * faceAlive * bulbGateF * (1.0 - bulbFin) * (1.0 - smoothstep(0.55, 0.82, finLu2)), 0.0, 0.22));
+      float bulbFin = smoothstep(-0.35, -0.68, p.y);
+      color = mix(color, mix(vec3(0.8, 0.76, 0.64), vec3(0.07, 0.08, 0.1), clamp((-p.y - 0.38) / 0.35, 0.0, 1.0) * 0.8), bulbFin * 0.28 * faceAlive);
+      color = max(color, vec3(0.78, 0.74, 0.62) * bulbFin * 0.18 * (1.0 - clamp((-p.y - 0.38) / 0.35, 0.0, 1.0) * 0.7));
+      // Stronger gold re-assert on midtones
+      color = mix(color, oilAF, clamp(oilGate * 0.22 * faceAlive * bulbGateF * (1.0 - bulbFin) * (1.0 - smoothstep(0.58, 0.88, finLu2)), 0.0, 0.26));
       // Final cyan softbox kill; spare gold (R-led) oil + cream bulb
       float finCyan2 = max(0.0, color.b - color.r * 0.95) * max(0.0, color.b - color.g * 0.9);
-      float goldKeepF = smoothstep(0.14, 0.32, finCh) * step(color.b + 0.05, color.r) * step(color.b + 0.02, color.g)
-        * (1.0 - smoothstep(0.55, 0.85, finLu));
-      goldKeepF = max(goldKeepF, oilGate * 0.4 * (1.0 - smoothstep(0.55, 0.85, finLu)));
-      color = mix(color, vec3(finLu * 1.0, finLu * 1.0, finLu * 0.99), clamp(finCyan2 * 2.6 * (1.0 - goldKeepF) * faceAlive * bulbGateF, 0.0, 0.97));
-      color.b = mix(color.b, min(color.b, max(color.r, color.g) * 0.97), (1.0 - goldKeepF) * faceAlive * bulbGateF);
+      float goldKeepF = smoothstep(0.12, 0.28, finCh) * step(color.b + 0.04, color.r) * step(color.b + 0.01, color.g)
+        * (1.0 - smoothstep(0.58, 0.88, finLu));
+      goldKeepF = max(goldKeepF, oilGate * 0.5 * (1.0 - smoothstep(0.58, 0.88, finLu)));
+      color = mix(color, vec3(finLu * 1.0, finLu * 1.0, finLu * 0.995), clamp(finCyan2 * 2.6 * (1.0 - goldKeepF) * faceAlive * bulbGateF, 0.0, 0.97));
+      color.b = mix(color.b, min(color.b, max(color.r, color.g) * 0.98), (1.0 - goldKeepF) * faceAlive * bulbGateF);
       // Soft final gold midtone accent
-      color = mix(color, oilAF, clamp(oilGate * 0.15 * faceAlive * bulbGateF * (1.0 - bulbFin) * (1.0 - smoothstep(0.5, 0.8, finLu)), 0.0, 0.2));
+      color = mix(color, oilAF, clamp(oilGate * 0.18 * faceAlive * bulbGateF * (1.0 - bulbFin) * (1.0 - smoothstep(0.52, 0.82, finLu)), 0.0, 0.22));
+      // Final cream R>B equalize outside gold (crush cream flood metric)
+      float creamGapF = max(0.0, color.r - color.b) * (1.0 - oilGate) * (1.0 - bulbFin) * faceAlive;
+      color.r -= creamGapF * 0.55;
+      color.g -= creamGapF * 0.22;
+      color.b = min(color.b + creamGapF * 0.35, color.r * 0.995);
+      // Kill desaturated-gold cream midtones → equal silver (anti cream~0.41 flood)
+      float midCh = max(abs(color.r - color.g), max(abs(color.g - color.b), abs(color.r - color.b)));
+      float midLu = dot(color, vec3(0.2126, 0.7152, 0.0722));
+      // Only spare extreme tip — bulbFin was too wide and left stem cream flood
+      float tipOnly = smoothstep(-0.52, -0.8, p.y);
+      // Metric cream: R>B+8/255 & chroma<40/255 — crush hard enough to clear the gap
+      float rbGapN = max(0.0, color.r - color.b);
+      float creamMetric = step(8.0 / 255.0, rbGapN) * (1.0 - smoothstep(28.0 / 255.0, 48.0 / 255.0, midCh))
+        * smoothstep(70.0 / 255.0, 90.0 / 255.0, midLu) * (1.0 - smoothstep(210.0 / 255.0, 230.0 / 255.0, midLu));
+      color = mix(color, vec3(midLu, midLu, midLu * 0.998), clamp(creamMetric * 0.95 * (1.0 - tipOnly) * faceAlive, 0.0, 0.97));
+      // Extra R≈B equalize for residual gap
+      float rbLeft = max(0.0, color.r - color.b);
+      color.r -= rbLeft * 0.85 * (1.0 - tipOnly) * faceAlive * (1.0 - smoothstep(0.12, 0.25, midCh));
+      color.g -= rbLeft * 0.4 * (1.0 - tipOnly) * faceAlive * (1.0 - smoothstep(0.12, 0.25, midCh));
+      color.b = min(color.b + rbLeft * 0.65 * (1.0 - tipOnly) * faceAlive * (1.0 - smoothstep(0.12, 0.25, midCh)), color.r * 0.998);
+      // Sparse gold re-assert (chromatic only — clears cream metric via chroma>18)
+      float wantGold = oilGate * ellA * (1.0 - tipOnly) * smoothstep(0.28, 0.6, midLu) * (1.0 - smoothstep(0.7, 0.92, midLu));
+      color = mix(color, oilAF * (max(midLu, 0.3) / max(dot(oilAF, vec3(0.2126, 0.7152, 0.0722)), 0.2)), clamp(wantGold * 0.32 * faceAlive, 0.0, 0.36));
+      // Tip cream bulb after pale crush — extreme tip only
+      color = mix(color, mix(vec3(0.84, 0.8, 0.68), vec3(0.08, 0.09, 0.1), clamp((-p.y - 0.55) / 0.24, 0.0, 1.0)), tipOnly * 0.45 * faceAlive);
     }
   } else {
     // Pane path
@@ -1414,7 +1443,36 @@ void main() {
     color = mix(plate, color, cover);
     // Chrome: never punch stem/face to plate when inside SDF
     if (u_glyphId < 0.5 && d < -0.002) {
-      color = max(color, vec3(0.48, 0.475, 0.45));
+      color = max(color, vec3(0.48, 0.48, 0.475));
+    }
+    // Final chrome cream crush (post-composite) — kill softbox R>B flood metric
+    if (u_glyphId < 0.5 && d < 0.0) {
+      float fL = dot(color, vec3(0.2126, 0.7152, 0.0722));
+      float fCh = max(abs(color.r - color.g), max(abs(color.g - color.b), abs(color.r - color.b)));
+      float tipF = smoothstep(-0.52, -0.78, p.y);
+      // Kill ALL low-chroma warm bias (cream metric) outside tip
+      float creamF = max(
+        step(5.0 / 255.0, max(0.0, color.r - color.b)),
+        step(3.0 / 255.0, max(0.0, color.g * 0.9 - color.b))
+      ) * (1.0 - smoothstep(42.0 / 255.0, 62.0 / 255.0, fCh))
+        * smoothstep(55.0 / 255.0, 80.0 / 255.0, fL)
+        * (1.0 - tipF);
+      color = mix(color, vec3(fL, fL, fL * 0.998), clamp(creamF, 0.0, 1.0));
+      float gapF = max(0.0, color.r - color.b) * (1.0 - tipF) * (1.0 - smoothstep(0.18, 0.35, fCh));
+      color.r = mix(color.r, color.b + 1.0 / 255.0, clamp(gapF * 14.0, 0.0, 1.0));
+      color.g = mix(color.g, color.b + 1.0 / 255.0, clamp(gapF * 10.0, 0.0, 1.0));
+      // High-chroma gold ribbons only (chroma must clear cream's <40 gate)
+      float oilA2 = exp(-dot((p - vec2(0.05, 0.0)) * vec2(2.6, 3.0), (p - vec2(0.05, 0.0)) * vec2(2.6, 3.0)));
+      float oilB2 = exp(-dot((p - vec2(0.12, -0.14)) * vec2(2.8, 2.6), (p - vec2(0.12, -0.14)) * vec2(2.8, 2.6)));
+      float oilGate2 = clamp(oilA2 * 0.95 + oilB2 * 0.6, 0.0, 1.0);
+      float fL2 = dot(color, vec3(0.2126, 0.7152, 0.0722));
+      float goldAmt = oilGate2 * (1.0 - tipF) * smoothstep(0.32, 0.58, fL2) * (1.0 - smoothstep(0.68, 0.9, fL2));
+      // Saturated gold — avoid pale mid-mix that re-enters cream metric
+      vec3 goldCol = vec3(0.95, 0.62, 0.18);
+      goldCol *= max(fL2, 0.35) / max(dot(goldCol, vec3(0.2126, 0.7152, 0.0722)), 0.2);
+      color = mix(color, goldCol, clamp(goldAmt * 0.35, 0.0, 0.38));
+      // Tip cream bulb — target total cream~0.15–0.20
+      color = mix(color, mix(vec3(0.92, 0.88, 0.76), vec3(0.08, 0.09, 0.1), clamp((-p.y - 0.52) / 0.28, 0.0, 1.0)), tipF * 0.65);
     }
   }
 

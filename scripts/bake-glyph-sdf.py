@@ -118,32 +118,32 @@ def fill_script_stem_loop_voids(mask: np.ndarray) -> np.ndarray:
         # Wider stem-facing band — kill jagged bite at loop return (keep right counter core)
         join_band = (
             counter
-            & (xx <= cx0 + max(32, int(0.82 * (cx1 - cx0))))
-            & (yy >= cy0 - 10)
-            & (yy <= cy1 + 10)
+            & (xx <= cx0 + max(36, int(0.88 * (cx1 - cx0))))
+            & (yy >= cy0 - 12)
+            & (yy <= cy1 + 12)
         )
-        grown = binary_dilation(out, iterations=14) & join_band
-        grown2 = binary_dilation(out | grown, iterations=8) & join_band
-        grown3 = binary_dilation(out | grown | grown2, iterations=5) & join_band
+        grown = binary_dilation(out, iterations=16) & join_band
+        grown2 = binary_dilation(out | grown, iterations=9) & join_band
+        grown3 = binary_dilation(out | grown | grown2, iterations=6) & join_band
         out = out | grown | grown2 | grown3
         # Morphological close on stem-side only (bridge jagged bite, keep counter core)
-        se = np.ones((15, 15), dtype=bool)
+        se = np.ones((17, 17), dtype=bool)
         closed = binary_closing(out, structure=se)
         out = out | (closed & join_band)
         # Hairline exterior corridors near join (stem↔loop elegance)
         near_join = (
             (~out)
-            & (xx >= cx0 - 16)
-            & (xx <= cx0 + max(26, int(0.68 * (cx1 - cx0))))
-            & (yy >= cy0 - 12)
-            & (yy <= cy1 + 12)
+            & (xx >= cx0 - 18)
+            & (xx <= cx0 + max(30, int(0.72 * (cx1 - cx0))))
+            & (yy >= cy0 - 14)
+            & (yy <= cy1 + 14)
         )
-        bridge = binary_dilation(out, iterations=7) & near_join
+        bridge = binary_dilation(out, iterations=8) & near_join
         edt_out = distance_transform_edt(~out)
-        bridge = bridge & (edt_out <= 11.0)
+        bridge = bridge & (edt_out <= 12.0)
         out = out | bridge
         # Soft close again after bridge
-        closed2 = binary_closing(out, structure=np.ones((11, 11), dtype=bool))
+        closed2 = binary_closing(out, structure=np.ones((13, 13), dtype=bool))
         out = out | (closed2 & near_join)
         # Final: fill enclosed speckles in join/stem zone (counter core stays open)
         inv2 = ~out
@@ -158,9 +158,9 @@ def fill_script_stem_loop_voids(mask: np.ndarray) -> np.ndarray:
             area2 = int(comp2.sum())
             cx2 = float(xs2.mean())
             # Keep large right-side counter; fill stem/join speckles + left bite
-            if area2 < 220 and cx2 < stem_x_max + 60:
+            if area2 < 280 and cx2 < stem_x_max + 70:
                 out[comp2] = True
-            elif area2 < 120 and cx2 < float(cx0 + 0.6 * (cx1 - cx0)):
+            elif area2 < 150 and cx2 < float(cx0 + 0.65 * (cx1 - cx0)):
                 out[comp2] = True
     return out
 

@@ -31,6 +31,19 @@ Rebake: `npm run bake:glyphs` · `npm run bake:faces` · `npm run bake:env`
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 46 (cream flood crush + saturated gold oil)
+
+- **Root cause:** iter-45 warm soft_fill (R>B) + multi-pass void lift to thr 125 flooded cream (~0.41); pale mid-mix gold re-entered cream metric (chroma<40); gold oil too weak (~0.06)
+- Faceplates: cool-equal softbox/soft_fill; charcoal-only void lift; harder cream equalize; saturated gold ribbons; script join thicken + crest
+- Atlas: wider script stem↔loop join band; shader softMin necks
+- Shader: post-composite cream metric crush + high-chroma gold lobes (anti pale cream); tip bulb localized
+- chromeSansP: cyan0 pink0; tip filled; stem enclosed held; **cream~0.21** (was ~0.41) **gold~0.39** (was ~0.06) — planar oil closer to 1c6PD/Z53Ve but still short of full wet-mirror fidelity
+- scriptProP: silverRatio ~0.68; tip filled; pink0; voidInside ~103; join improved vs ENj9B but tubular elegance still lags
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome pink0 cyan0 cream~0.21 gold~0.39; script pink0 silverRatio ~0.68 tip filled
+
+**Status:** ❌ not READY — chromeSansP cream flood crushed (0.41→~0.21) and gold oil raised (0.06→~0.39) toward 1c6PD/Z53Ve but planar wet-mirror still short; scriptProP silverRatio~0.68 / joins improved without pink but tubular elegance still lags ENj9B. Loop stays armed.
+
 ## Iteration 45 (atlas ink rescue + stem crack + richer oil)
 
 - **Root cause:** chrome stem plate voids were atlas/SwiftShader ink gaps + cover/early-out punching `[8,8,10]` through solid SDF; softbox cream flood washed gold oil; script stem↔loop join still thin vs ENj9B

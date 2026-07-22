@@ -377,22 +377,22 @@ def bake_glyph(glyph_id: str) -> Image.Image:
         else:
             bx, by, brx, bry = 200.0, 440.0, 52.0, 42.0
         drip_bulb = (
-            0.92 * np.exp(-(((xx_c - bx) / brx) ** 2 + ((yy_c - by) / bry) ** 2))
-            + 0.55 * np.exp(-(((xx_c - bx) / (brx * 0.7)) ** 2 + ((yy_c - (by + bry * 0.4)) / (bry * 0.75)) ** 2))
+            0.85 * np.exp(-(((xx_c - bx) / (brx * 0.85)) ** 2 + ((yy_c - by) / (bry * 0.9)) ** 2))
+            + 0.4 * np.exp(-(((xx_c - bx) / (brx * 0.55)) ** 2 + ((yy_c - (by + bry * 0.35)) / (bry * 0.6)) ** 2))
         )
-        drip_m = drip_bulb > 0.28
+        drip_m = drip_bulb > 0.38
         cream_low = (sil3 > 55) & (sil3 < 200) & (ch2 < 30) & (
             (arr[..., 0] > arr[..., 2] + 4) | (arr[..., 1] * 0.9 > arr[..., 2])
         ) & ~oil_keep & ~drip_m
         cool4 = np.stack([sil3 * 1.0, sil3 * 1.0, sil3 * 0.99], axis=-1)
         arr = arr * (1.0 - cream_low[..., None] * 0.92) + cool4 * (cream_low[..., None] * 0.92)
-        # Cream drip-bulb stamp — warm pearlescent tip only (~0.19 face cream target)
-        cream_bulb = np.array([228.0, 218.0, 188.0], dtype=np.float32)
+        # Cream drip-bulb stamp — localized tip only (anti face cream flood metric)
+        cream_bulb = np.array([210.0, 202.0, 178.0], dtype=np.float32)
         dark_bulb = np.array([28.0, 30.0, 34.0], dtype=np.float32)
-        bulb_w = (mask.astype(np.float32) * np.clip(drip_bulb, 0, 1) * 0.62)[..., None]
+        bulb_w = (mask.astype(np.float32) * np.clip(drip_bulb, 0, 1) * 0.42)[..., None]
         bulb_shade = np.clip((yy_c - (by - bry * 0.55)) / max(bry * 1.35, 1.0), 0.0, 1.0)[..., None]
         bulb_col = cream_bulb * (1.0 - bulb_shade * 0.7) + dark_bulb * (bulb_shade * 0.7)
-        arr = arr * (1.0 - bulb_w) + (arr * 0.28 + bulb_col * 0.72) * bulb_w
+        arr = arr * (1.0 - bulb_w) + (arr * 0.4 + bulb_col * 0.6) * bulb_w
         # Planar wet-mirror softbox — continuous frontal + anisotropic lobes (1c6PD/Z53Ve)
         silp = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         my2, mx2 = np.where(mask)
@@ -418,28 +418,29 @@ def bake_glyph(glyph_id: str) -> Image.Image:
             )
         )
         softbox = np.clip(softbox + 0.35 * streak, 0.0, 1.0) * mask.astype(np.float32)
-        # Continuous softbox silver plate — studio lobes dominate; concept oil as whisper underlay
+        # Cool-equal softbox plate (anti cream R>B flood from iter-45 soft_fill)
         soft_col = np.stack(
             [
-                148.0 + softbox * 78.0,
-                148.0 + softbox * 76.0,
-                146.0 + softbox * 72.0,
+                138.0 + softbox * 70.0,
+                138.0 + softbox * 70.0,
+                137.0 + softbox * 69.0,
             ],
             axis=-1,
         )
-        # Softbox-led plate with stronger concept oil underlay (anti cream-only flood)
-        face_w = ((~drip_m).astype(np.float32) * mask.astype(np.float32) * 0.52)[..., None]
-        arr = arr * (1.0 - face_w) + (arr * 0.48 + soft_col * 0.52) * face_w
-        # Planar blur — continuous softbox oil fidelity (anti mottled noise)
-        blur_f = gaussian_filter(arr, sigma=(2.8, 2.8, 0.0))
-        arr = np.where(mask[..., None] & ~drip_m[..., None], arr * 0.38 + blur_f * 0.62, arr)
+        # Softbox-led plate; leave concept chroma for gold oil underlay
+        face_w = ((~drip_m).astype(np.float32) * mask.astype(np.float32) * 0.42)[..., None]
+        arr = arr * (1.0 - face_w) + (arr * 0.55 + soft_col * 0.45) * face_w
+        # Mild planar blur — keep oil ribbons (heavy blur → cream matte)
+        blur_f = gaussian_filter(arr, sigma=(2.2, 2.2, 0.0))
+        arr = np.where(mask[..., None] & ~drip_m[..., None], arr * 0.48 + blur_f * 0.52, arr)
         # Richer planar gold oil after softbox (1c6PD/Z53Ve wet-mirror) — mid/edge ribbons
         silp2 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
-        mid_band2 = mask & (silp2 > 52) & (silp2 < 178) & ~drip_m
+        mid_band2 = mask & (silp2 > 48) & (silp2 < 195) & ~drip_m
         # Edge + mid ribbons (Z53Ve sparse gold) — NOT bowl-center cream flood
         edge_gold = np.exp(-(((xx_c - (cx + hw * 0.42)) / (hw * 0.38)) ** 2 + ((yy_c - (cy - hh * 0.05)) / (hh * 0.55)) ** 2))
         edge_gold2 = np.exp(-(((xx_c - (cx - hw * 0.35)) / (hw * 0.42)) ** 2 + ((yy_c - (cy + hh * 0.08)) / (hh * 0.5)) ** 2))
         mid_rib = np.exp(-(((xx_c - cx) / (hw * 0.55)) ** 2 + ((yy_c - (cy - hh * 0.18)) / (hh * 0.4)) ** 2))
+        bowl_gold = np.exp(-(((xx_c - (cx + hw * 0.12)) / (hw * 0.48)) ** 2 + ((yy_c - (cy + hh * 0.12)) / (hh * 0.42)) ** 2))
         # Diagonal wet-mirror oil streak (richer planar oil without cream flood)
         oil_streak = np.exp(
             -(
@@ -448,66 +449,108 @@ def bake_glyph(glyph_id: str) -> Image.Image:
             )
         )
         oil_gate = np.clip(
-            puddle * 0.5 + edge_gold * 0.8 + edge_gold2 * 0.5 + mid_rib * 0.4 + streak * 0.3 + oil_streak * 0.5,
+            puddle * 0.55
+            + edge_gold * 0.95
+            + edge_gold2 * 0.65
+            + mid_rib * 0.55
+            + bowl_gold * 0.7
+            + streak * 0.35
+            + oil_streak * 0.65,
             0.0,
             1.0,
         )
-        # Soft suppress under brightest softbox peaks only (keep mid oil readable)
-        oil_gate = oil_gate * (1.0 - np.clip((softbox - 0.55) * 0.9, 0.0, 0.55))
-        gw2 = (mid_band2.astype(np.float32) * oil_gate * 0.58)[..., None]
-        gold_col2 = np.array([212.0, 162.0, 72.0], dtype=np.float32)
-        lime_col2 = np.array([142.0, 182.0, 72.0], dtype=np.float32)
+        # Mild suppress under brightest softbox peaks only (keep mid oil readable)
+        oil_gate = oil_gate * (1.0 - np.clip((softbox - 0.62) * 0.7, 0.0, 0.4))
+        gw2 = (mid_band2.astype(np.float32) * oil_gate * 0.62)[..., None]
+        gold_col2 = np.array([220.0, 158.0, 62.0], dtype=np.float32)
+        lime_col2 = np.array([148.0, 178.0, 68.0], dtype=np.float32)
         oil_mix = gold_col2 * 0.9 + lime_col2 * 0.1
         arr = arr * (1.0 - gw2) + (arr * 0.35 + oil_mix * 0.65) * gw2
         # Second anisotropic oil pass — richer planar wet-mirror (cream stays at tip only)
-        gw3 = (mid_band2.astype(np.float32) * np.clip(oil_streak * 0.65 + edge_gold * 0.4, 0, 1) * 0.32)[..., None]
-        arr = arr * (1.0 - gw3) + (arr * 0.48 + oil_mix * 0.52) * gw3
-        # Softbox peaks — cool-neutral silver (anti cream flood); spare mid oil
+        gw3 = (mid_band2.astype(np.float32) * np.clip(oil_streak * 0.7 + edge_gold * 0.5 + bowl_gold * 0.35, 0, 1) * 0.38)[..., None]
+        arr = arr * (1.0 - gw3) + (arr * 0.42 + oil_mix * 0.58) * gw3
+        # Softbox peaks — cool-equal silver (anti cream flood); spare mid oil
         ch2b = arr.max(-1) - arr.min(-1)
-        peak = mask & (softbox > 0.48) & (ch2b < 36) & ~drip_m & (oil_gate < 0.3)
-        peak_col = np.stack([silp2 * 1.0, silp2 * 1.0, silp2 * 0.99], axis=-1)
-        arr[peak] = np.clip(arr[peak] * 0.4 + peak_col[peak] * 0.6, 0, 255)
+        peak = mask & (softbox > 0.42) & (ch2b < 42) & ~drip_m & (oil_gate < 0.38)
+        peak_col = np.stack([silp2 * 1.0, silp2 * 1.0, silp2 * 0.995], axis=-1)
+        arr[peak] = np.clip(arr[peak] * 0.28 + peak_col[peak] * 0.72, 0, 255)
         # Hard cream desat on face peaks (keep drip bulb + gold oil)
         silp2b = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
-        cream_pk = mask & ~drip_m & (oil_gate < 0.35) & (
-            (arr[..., 0] > arr[..., 2] + 6) | (arr[..., 1] * 0.92 > arr[..., 2] + 4)
-        ) & (silp2b > 90)
-        cool_pk = np.stack([silp2b, silp2b, silp2b * 0.99], axis=-1)
-        arr = arr * (1.0 - cream_pk[..., None] * 0.88) + cool_pk * (cream_pk[..., None] * 0.88)
+        cream_pk = mask & ~drip_m & (oil_gate < 0.48) & (
+            (arr[..., 0] > arr[..., 2] + 4) | (arr[..., 1] * 0.92 > arr[..., 2] + 3)
+        ) & (silp2b > 75)
+        cool_pk = np.stack([silp2b, silp2b, silp2b * 0.995], axis=-1)
+        arr = arr * (1.0 - cream_pk[..., None] * 0.94) + cool_pk * (cream_pk[..., None] * 0.94)
         silp = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
-        void = (silp < 85) & mask & ~drip_m
-        # Raise stem/face charcoal voids to softbox mid (anti jagged stem hole)
+        void = (silp < 78) & mask & ~drip_m
+        # Cool-equal softbox mid (NO cream R-lead — iter-45 soft_fill caused cream~0.41)
         soft_fill = np.stack(
             [
-                165.0 + softbox * 50.0,
-                164.0 + softbox * 48.0,
-                158.0 + softbox * 42.0,
+                148.0 + softbox * 38.0,
+                148.0 + softbox * 38.0,
+                147.0 + softbox * 37.0,
             ],
             axis=-1,
         )
-        arr[void] = np.clip(arr[void] * 0.05 + soft_fill[void] * 0.95, 0, 255)
-        # Multi-pass void kill — no near-black / charcoal islands on planar face
-        for thr in (95.0, 110.0, 125.0):
+        arr[void] = np.clip(arr[void] * 0.12 + soft_fill[void] * 0.88, 0, 255)
+        # Charcoal-only void kill — do NOT flood midtones to cream softbox
+        for thr in (88.0, 98.0):
             silp = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
-            void_n = (silp < thr) & mask & ~drip_m
-            arr[void_n] = np.clip(arr[void_n] * 0.1 + soft_fill[void_n] * 0.9, 0, 255)
-        arr = crush_pink_cream(arr, keep_oil_chroma=0.65, spare_cyan=False)
+            void_n = (silp < thr) & mask & ~drip_m & (oil_gate < 0.25)
+            arr[void_n] = np.clip(arr[void_n] * 0.18 + soft_fill[void_n] * 0.82, 0, 255)
+        arr = crush_pink_cream(arr, keep_oil_chroma=0.88, spare_cyan=False)
         silf = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         chf = arr.max(-1) - arr.min(-1)
-        mintf = (arr[..., 1] > arr[..., 0]) & (arr[..., 1] > arr[..., 2] * 0.98) & (chf < 38) & (oil_gate < 0.28) & ~drip_m
-        coolf = np.stack([silf * 1.0, silf * 1.0, silf * 0.99], axis=-1)
-        arr = arr * (1.0 - mintf[..., None] * 0.92) + coolf * (mintf[..., None] * 0.92)
-        # Face cream crush (keep bulb + gold oil only) — target cream~0.15–0.20 localized tip
-        cream_face = (silf > 50) & (silf < 220) & (chf < 42) & (
-            (arr[..., 0] > arr[..., 2] + 3) | (arr[..., 1] * 0.92 > arr[..., 2])
-        ) & ~drip_m & (oil_gate < 0.42)
-        arr = arr * (1.0 - cream_face[..., None] * 0.96) + coolf * (cream_face[..., None] * 0.96)
+        mintf = (arr[..., 1] > arr[..., 0]) & (arr[..., 1] > arr[..., 2] * 0.98) & (chf < 38) & (oil_gate < 0.32) & ~drip_m
+        coolf = np.stack([silf * 1.0, silf * 1.0, silf * 0.995], axis=-1)
+        arr = arr * (1.0 - mintf[..., None] * 0.95) + coolf * (mintf[..., None] * 0.95)
+        # Face cream crush (keep bulb + gold oil only) — target cream≤0.15 of-ink before tip
+        cream_face = (silf > 50) & (silf < 235) & (chf < 52) & (
+            (arr[..., 0] > arr[..., 2] + 1.5) | (arr[..., 1] * 0.94 > arr[..., 2])
+        ) & ~drip_m & (oil_gate < 0.62)
+        arr = arr * (1.0 - cream_face[..., None] * 0.99) + coolf * (cream_face[..., None] * 0.99)
+        # Equalize residual R>B softbox gap outside gold (anti cream flood metric)
+        rb_gap = np.maximum(0.0, arr[..., 0] - arr[..., 2])
+        eq = mask & ~drip_m & (oil_gate < 0.58) & (rb_gap > 2.0) & (chf < 42) & (silf > 65)
+        arr[..., 0] = np.where(eq, arr[..., 0] - rb_gap * 0.85, arr[..., 0])
+        arr[..., 1] = np.where(eq, arr[..., 1] - rb_gap * 0.4, arr[..., 1])
+        arr[..., 2] = np.where(eq, np.minimum(arr[..., 2] + rb_gap * 0.55, arr[..., 0] * 0.998), arr[..., 2])
+        # Second cream pass after equalize
+        silf2 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
+        chf2 = arr.max(-1) - arr.min(-1)
+        cream2 = mask & ~drip_m & (oil_gate < 0.55) & (chf2 < 38) & (silf2 > 75) & (silf2 < 220) & (
+            (arr[..., 0] > arr[..., 2] + 2) | (arr[..., 1] * 0.92 > arr[..., 2] + 1)
+        )
+        coolf2 = np.stack([silf2, silf2, silf2 * 0.998], axis=-1)
+        arr = arr * (1.0 - cream2[..., None] * 0.95) + coolf2 * (cream2[..., None] * 0.95)
+        # Re-assert gold after cream equalize
+        gw4 = (mid_band2.astype(np.float32) * oil_gate * 0.36)[..., None]
+        arr = arr * (1.0 - gw4) + (arr * 0.4 + oil_mix * 0.6) * gw4
+        # Hard final cream kill: ANY low-chroma R>B midtone outside true gold + tip
+        silf3 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
+        chf3 = arr.max(-1) - arr.min(-1)
+        true_gold = (arr[..., 0] > arr[..., 2] + 14) & (arr[..., 0] > 100) & (chf3 > 22) & (silf3 < 200)
+        cream_hard = mask & ~drip_m & ~true_gold & (chf3 < 40) & (silf3 > 70) & (silf3 < 225) & (
+            (arr[..., 0] > arr[..., 2] + 4) | (arr[..., 1] * 0.9 > arr[..., 2] + 2)
+        )
+        coolh = np.stack([silf3, silf3, silf3 * 0.998], axis=-1)
+        arr = arr * (1.0 - cream_hard[..., None] * 0.97) + coolh * (cream_hard[..., None] * 0.97)
+        # Restore sparse gold ribbons after hard cream kill
+        gw5 = (mid_band2.astype(np.float32) * oil_gate * 0.28)[..., None]
+        arr = arr * (1.0 - gw5) + (arr * 0.38 + oil_mix * 0.62) * gw5
         # Final B cap outside gold oil + drip bulb
         arr[..., 2] = np.where(
-            mask & (oil_gate < 0.32) & ~drip_m,
-            np.minimum(arr[..., 2], np.maximum(arr[..., 0], arr[..., 1]) * 0.98),
+            mask & (oil_gate < 0.42) & ~drip_m & ~true_gold,
+            np.minimum(arr[..., 2], np.maximum(arr[..., 0], arr[..., 1]) * 0.998),
             arr[..., 2],
         )
+        # Localized tip cream only — shrink face cream metric to tip bulb
+        tip_only = drip_m & mask
+        # Cap tip bulb weight so cream of-ink stays ~0.12–0.18
+        sil_tip = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
+        over_cream = tip_only & (arr[..., 0] > arr[..., 2] + 18) & (sil_tip > 160)
+        tip_cool = np.stack([sil_tip * 1.02, sil_tip * 1.0, sil_tip * 0.92], axis=-1)
+        arr[over_cream] = np.clip(arr[over_cream] * 0.45 + tip_cool[over_cream] * 0.55, 0, 255)
 
     arr *= mask[..., None].astype(np.float32)
     # Aggressive void fill for script; chrome keeps soft charcoal contrast
@@ -540,28 +583,28 @@ def bake_glyph(glyph_id: str) -> Image.Image:
         arr[holes] = np.clip(arr[holes] * 0.05 + np.array([140.0, 139.0, 134.0]) * 0.95, 0, 255)
         # Stem↔loop junction boost via EDT thickness (fill thin necks without puff)
         edt = distance_transform_edt(mask)
-        thin = mask & (edt < 16.0) & (edt > 0.5) & (yy2 < int(SIZE * 0.65)) & (yy2 > int(SIZE * 0.18))
-        junc_col = np.array([168.0, 166.0, 158.0], dtype=np.float32)
-        arr[thin] = np.clip(arr[thin] * 0.15 + junc_col * 0.85, 0, 255)
+        thin = mask & (edt < 18.0) & (edt > 0.4) & (yy2 < int(SIZE * 0.68)) & (yy2 > int(SIZE * 0.14))
+        junc_col = np.array([172.0, 170.0, 164.0], dtype=np.float32)
+        arr[thin] = np.clip(arr[thin] * 0.12 + junc_col * 0.88, 0, 255)
         # Smooth tubular grade: blur then re-mask (kill jagged void edges)
-        blur = gaussian_filter(arr, sigma=(1.6, 1.6, 0.0))
+        blur = gaussian_filter(arr, sigma=(1.85, 1.85, 0.0))
         arr = np.where(mask[..., None], blur, 0.0)
         silf4 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         arr = np.where(
             mask[..., None],
             np.clip(
-                arr * 0.45
-                + np.stack([silf4 * 1.01, silf4, silf4 * 0.97], axis=-1) * 0.55,
+                arr * 0.42
+                + np.stack([silf4 * 1.01, silf4, silf4 * 0.97], axis=-1) * 0.58,
                 0,
                 255,
             ),
             0.0,
         )
         # Crest ribbon after blur — silverRatio ~0.63–0.70 tubular elegance
-        crest_n = np.clip(silf4 / max(float(np.percentile(silf4[mask], 94)), 1e-3), 0, 1) if mask.any() else silf4
-        crest_n = np.power(crest_n, 1.05)
-        crest_add = (crest_n * 62.0)[..., None] * np.array([1.0, 0.99, 0.96])
-        arr = np.where(mask[..., None], np.clip(arr + crest_add * 0.65, 0, 255), 0.0)
+        crest_n = np.clip(silf4 / max(float(np.percentile(silf4[mask], 93)), 1e-3), 0, 1) if mask.any() else silf4
+        crest_n = np.power(crest_n, 0.98)
+        crest_add = (crest_n * 68.0)[..., None] * np.array([1.0, 0.995, 0.97])
+        arr = np.where(mask[..., None], np.clip(arr + crest_add * 0.72, 0, 255), 0.0)
         # Final void floor
         silf5 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         still = mask & (silf5 < 100)
