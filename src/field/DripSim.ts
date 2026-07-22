@@ -12,7 +12,8 @@
  * no lateral chaos — clear pendant morphology for visual QA.
  */
 
-export const MAX_DRIP_BLOBS = 48;
+/** Soft-body letter drips need denser filament samples than pane field blobs. */
+export const MAX_DRIP_BLOBS = 96;
 
 export type DripBlob = {
   /** Normalized field coords (same space as shader `p`). */
@@ -30,6 +31,12 @@ export type DripEmitterSpec = {
    */
   x: number;
   normalized?: boolean;
+  /**
+   * Per-glyph lip Y in field / mesh space (overrides global `DripControl.attachY`).
+   * Soft-body demos resample this from deformed letter bottoms each frame so
+   * pendants emerge from the sagging surface, not a shared baseline.
+   */
+  attachY?: number;
   /** 0–1 intensity multiplier (scales drip for this emitter only). */
   intensity?: number;
   /** Optional viscosity override for this emitter. */
@@ -61,15 +68,21 @@ export type DripControl = {
   isolate?: boolean;
   /** Global: no sin wobble on any emitter. */
   deterministic?: boolean;
-  /** Auto-mode emitter count (1–8). Ignored in controlled mode. */
+  /** Auto-mode emitter count (1–16). Ignored in controlled mode. */
   emitterCount?: number;
   /**
    * Field-space Y where pendants attach (default: pane bottom ≈ -halfH*0.92).
-   * Glyph QA sets this to the letterform stem lip.
+   * Glyph QA sets this to the letterform stem lip. Per-emitter `attachY` wins.
    */
   attachY?: number;
   /** Hold emitters in current phase (no fill/stretch advance) — QA freeze-frame. */
   freeze?: boolean;
+  /**
+   * When true (typical for isolate / soft-letter demos), skip free-falling
+   * detached blobs and recycle the emitter into fill — pendants stay rooted
+   * on the deformed lip instead of floating mid-air.
+   */
+  suppressFrees?: boolean;
 };
 
 export type DripSimParams = {
@@ -137,9 +150,16 @@ export type DripViscosityMaps = {
   /** softMin / metaball merge radius proxy (shader + free-drop coalesce). */
   mergeK: number;
   cooldown: number;
+  /** Soft-letter bottom sag amplitude (× liquify × halfH). High Oh → thicker. */
+  sagAmp: number;
+  /** Drainage rate into the lip. Low Oh → faster watery drip. */
+  sagRate: number;
 };
 
-/** Ohnesorge-ish mapping: high viscosity → slow fill, long stretch, thick blobs. */
+/**
+ * Ohnesorge-ish mapping: high viscosity → slow fill, long stretch, thick blobs.
+ * sagAmp / sagRate couple soft-letter gravity drainage (Rank-1 mesh + continuum).
+ */
 export function viscosityMaps(viscosity: number, drip: number): DripViscosityMaps {
   const v = clamp01(viscosity);
   const d = Math.max(drip, 0.02);
@@ -156,6 +176,8 @@ export function viscosityMaps(viscosity: number, drip: number): DripViscosityMap
     gravity: mix(1.35, 0.38, v),
     mergeK: mix(0.04, 0.28, v),
     cooldown: mix(0.12, 0.85, v),
+    sagAmp: mix(0.055, 0.16, v),
+    sagRate: mix(1.35, 0.28, v) * d,
   };
 }
 
@@ -166,7 +188,7 @@ export class DripSim {
   private control: DripControl = { mode: "auto", deterministic: false, isolate: false };
 
   constructor(emitterCount = 5) {
-    this.emitterCount = Math.max(1, Math.min(8, emitterCount));
+    this.emitterCount = Math.max(1, Math.min(16, emitterCount));
     this.resetEmitters(0.48);
   }
 
@@ -180,11 +202,45 @@ export class DripSim {
       emitterCount: control?.emitterCount,
       attachY: control?.attachY,
       freeze: control?.freeze ?? false,
+      suppressFrees: control?.suppressFrees ?? false,
     };
     if (typeof this.control.emitterCount === "number") {
-      this.emitterCount = Math.max(1, Math.min(8, this.control.emitterCount));
+      this.emitterCount = Math.max(1, Math.min(16, this.control.emitterCount));
     }
     this.rebuildFromControl(0.48);
+  }
+
+  /**
+   * Live-update emitter lip positions without resetting phase/mass.
+   * Soft-letter demos call this after gravity sag so pendants track deformed verts.
+   */
+  updateEmitterLips(
+    lips: Array<{ x: number; attachY: number; normalized?: boolean }>,
+    halfW: number,
+  ): void {
+    if (!lips.length || !this.emitters.length) return;
+    const n = Math.min(lips.length, this.emitters.length);
+    for (let i = 0; i < n; i++) {
+      const lip = lips[i]!;
+      const em = this.emitters[i]!;
+      const norm = lip.normalized !== false;
+      em.x = norm ? lip.x * halfW : lip.x;
+      if (em.spec) {
+        em.spec.x = lip.x;
+        em.spec.normalized = lip.normalized;
+        em.spec.attachY = lip.attachY;
+      }
+    }
+    if (this.control.emitters) {
+      for (let i = 0; i < n; i++) {
+        const lip = lips[i]!;
+        const spec = this.control.emitters[i];
+        if (!spec) continue;
+        spec.x = lip.x;
+        spec.normalized = lip.normalized;
+        spec.attachY = lip.attachY;
+      }
+    }
   }
 
   getControl(): DripControl {
@@ -282,16 +338,22 @@ export class DripSim {
     }
 
     const isolate = this.control.isolate === true;
+    const suppressFrees =
+      this.control.suppressFrees === true || isolate;
     const globalDeterministic = this.control.deterministic === true;
+    // Prefer letter height for radii/stretch — wide wordmarks must not use halfW
     const minDim = Math.min(halfW, halfH);
-    const bottomY =
+    const globalBottomY =
       typeof this.control.attachY === "number" ? this.control.attachY : -halfH * 0.92;
     const sag = liquify * halfH * 0.18;
+    const lipY = (em: Emitter) =>
+      typeof em.spec?.attachY === "number" ? em.spec.attachY : globalBottomY;
 
     // --- Liquify body: soft accumulation bulges (skipped when isolating drips) ---
     if (liquify > 0.001 && !isolate) {
       for (const em of this.emitters) {
         if (!em.enabled) continue;
+        const bottomY = lipY(em);
         const bulge = 0.55 + 0.45 * em.mass;
         blobs.push({
           x: em.x + (em.locked || globalDeterministic ? 0 : Math.sin(em.seed * 12.0) * 0.01),
@@ -304,8 +366,12 @@ export class DripSim {
 
     if (drip < 0.001) {
       const maps = viscosityMaps(viscosity, Math.max(drip, 0.02));
-      this.mergeFrees(dt, maps.mergeK, halfH);
-      this.integrateFrees(dt, maps, halfH, halfW, blobs, minDim, bottomY);
+      if (!suppressFrees) {
+        this.mergeFrees(dt, maps.mergeK, halfH);
+        this.integrateFrees(dt, maps, halfH, halfW, blobs, minDim, globalBottomY);
+      } else {
+        this.frees = [];
+      }
       return this.trim(blobs);
     }
 
@@ -319,6 +385,7 @@ export class DripSim {
       const locked = em.locked || globalDeterministic;
       const wobble = locked ? 0 : Math.sin(em.seed * 40 + em.mass * 8) * 0.012 * halfW;
       const freeze = this.control.freeze === true;
+      const bottomY = lipY(em);
 
       if (em.phase === "cooldown" && !freeze) {
         em.cooldown -= dt;
@@ -336,6 +403,13 @@ export class DripSim {
         const grow = clamp01(em.mass / maps.criticalMass);
         const pendR = maps.dropR * minDim * (0.45 + 0.55 * grow) * (0.5 + 0.5 * emDrip);
         const pendY = bottomY - grow * halfH * 0.12 * (0.4 + emDrip);
+        // Root blob sits slightly inside the letter lip so softMin merges with mesh
+        blobs.push({
+          x: em.x + wobble * 0.2,
+          y: bottomY + minDim * 0.04,
+          r: pendR * mix(1.05, 1.25, emVisc),
+          w: emDrip * (0.55 + 0.45 * grow),
+        });
         blobs.push({
           x: em.x + wobble,
           y: pendY,
@@ -380,63 +454,99 @@ export class DripSim {
         freezeNeckFloor,
         1 - t * maps.neckThinRate * (0.35 + 0.65 * t) * (freeze ? 0.48 : 1),
       );
-      const stretch = t * maps.stretchLen * halfH * em.stretchScale;
+      // Cap stretch so necks stay readable under wide wordmarks.
+      // Isolate/soft-letter: short pendants with fat overlapping blobs so the
+      // tip reads as emerging from the sagging lip (sphere-proxy softMin).
+      const stretchCap = isolate ? 0.22 : 0.85;
+      const stretch =
+        Math.min(t, 1) * maps.stretchLen * halfH * em.stretchScale * stretchCap;
       const tipY = bottomY - stretch;
-      const tipR = maps.dropR * minDim * (0.78 + 0.38 * emDrip) * (1.05 - 0.12 * t);
+      const tipR =
+        maps.dropR * minDim * (0.7 + 0.28 * emDrip) * (1.05 - 0.1 * t);
+      const neckFloor = isolate
+        ? Math.max(freezeNeckFloor, 0.55)
+        : freezeNeckFloor;
+      em.neckR = Math.max(em.neckR, neckFloor);
+
+      if (isolate) {
+        // 4 fat overlapping blobs: root inside lip → bridge → neck → tip bulb
+        const rRoot = tipR * mix(1.55, 1.95, emVisc);
+        const rMid = tipR * mix(0.95, 1.25, emVisc);
+        const rTip = tipR * mix(1.05, 1.35, emVisc);
+        blobs.push({
+          x: em.x,
+          y: bottomY + rRoot * 0.55,
+          r: rRoot,
+          w: emDrip * 1.5,
+        });
+        blobs.push({
+          x: em.x,
+          y: mix(bottomY, tipY, 0.28),
+          r: rMid,
+          w: emDrip * 1.35,
+        });
+        blobs.push({
+          x: em.x,
+          y: mix(bottomY, tipY, 0.62),
+          r: rMid * 0.92,
+          w: emDrip * 1.25,
+        });
+        blobs.push({
+          x: em.x,
+          y: tipY,
+          r: rTip,
+          w: emDrip * 1.4,
+        });
+      } else {
       const neckY = mix(bottomY, tipY, 0.4);
       const neckR =
-        tipR * mix(0.16, 0.38, emVisc) * Math.max(em.neckR, freezeNeckFloor);
+        tipR * mix(0.28, 0.55, emVisc) * Math.max(em.neckR, neckFloor);
 
-      // Lip anchor — blends into glyph stem (root sits inside letterform)
+      // Lip anchor — large root seated inside the sagging letter bottom
       blobs.push({
         x: em.x + wobble * 0.2,
-        y: bottomY + minDim * 0.06,
-        r: tipR * mix(1.15, 1.35, emVisc),
-        w: emDrip * 1.25,
+        y: bottomY + minDim * 0.08,
+        r: tipR * mix(1.35, 1.7, emVisc),
+        w: emDrip * 1.45,
       });
       blobs.push({
         x: em.x + wobble * 0.12,
-        y: bottomY - stretch * 0.04,
-        r: tipR * mix(0.72, 0.92, emVisc),
-        w: emDrip * 1.05,
+        y: bottomY - stretch * 0.02,
+        r: tipR * mix(0.85, 1.1, emVisc),
+        w: emDrip * 1.15,
       });
-      // Stem–bulb junction bridge — kill void gap at neck
       blobs.push({
         x: em.x + wobble * 0.06,
-        y: mix(bottomY, tipY, 0.18),
-        r: tipR * mix(0.55, 0.72, emVisc) * Math.max(em.neckR, freezeNeckFloor),
-        w: emDrip * 1.15,
+        y: mix(bottomY, tipY, 0.22),
+        r: tipR * mix(0.65, 0.85, emVisc) * Math.max(em.neckR, neckFloor),
+        w: emDrip * 1.2,
       });
       blobs.push({
         x: em.x + wobble * 0.08,
         y: neckY,
-        r: neckR * 0.85,
-        w: emDrip * Math.max(0.55, em.neckR),
+        r: neckR,
+        w: emDrip * Math.max(0.7, em.neckR),
       });
 
-      // Viscous filament — thick lip → elegant tubular mid → round bulb (ENj9B)
-      // Live path uses denser samples so Three.js mesh blobs read as continuous necks
       {
-        const segments = freeze ? 24 : 12;
+        const segments = freeze ? 24 : 10;
         for (let si = 1; si < segments; si++) {
           const ft = si / segments;
           let profile: number;
-          if (ft < 0.28) {
-            profile = mix(0.68, 0.26, ft / 0.28);
-          } else if (ft < 0.7) {
-            // Mid-filament — continuous tubular chrome elegance (ENj9B join)
-            profile = mix(0.36, 0.32, (ft - 0.28) / 0.42);
+          if (ft < 0.35) {
+            profile = mix(0.95, 0.42, ft / 0.35);
+          } else if (ft < 0.72) {
+            profile = mix(0.42, 0.38, (ft - 0.35) / 0.37);
           } else {
-            profile = mix(0.28, 1.35, Math.pow((ft - 0.7) / 0.3, 1.1));
+            profile = mix(0.38, 1.25, Math.pow((ft - 0.72) / 0.28, 1.05));
           }
           const sy = mix(bottomY, tipY, ft);
-          const sr = tipR * profile * Math.max(em.neckR, freezeNeckFloor);
+          const sr = tipR * profile * Math.max(em.neckR, neckFloor);
           blobs.push({
             x: em.x + wobble * 0.01,
             y: sy,
-            r: Math.max(sr, tipR * (freeze ? 0.1 : 0.05)),
-            // Keep mid-filament weight high so trim never drops the neck
-            w: emDrip * mix(1.3, 1.08, ft) * Math.max(0.7, em.neckR),
+            r: Math.max(sr, tipR * (freeze ? 0.12 : 0.05)),
+            w: emDrip * mix(1.35, 1.1, ft) * Math.max(0.75, em.neckR),
           });
         }
       }
@@ -444,17 +554,15 @@ export class DripSim {
       blobs.push({
         x: em.x,
         y: mix(bottomY, tipY, 0.55),
-        r: tipR * mix(0.08, 0.14, emVisc) * Math.max(em.neckR, freezeNeckFloor),
-        w: emDrip * 0.58 * Math.max(0.4, em.neckR),
+        r: tipR * mix(0.2, 0.32, emVisc) * Math.max(em.neckR, neckFloor),
+        w: emDrip * 0.7 * Math.max(0.5, em.neckR),
       });
-      // Tip bulb — rounder elegant pendant
       blobs.push({
         x: em.x + wobble,
         y: tipY,
-        r: tipR * (freeze ? 1.22 : 1.0),
-        w: emDrip * 1.32,
+        r: tipR * (freeze ? 1.15 : 1.0),
+        w: emDrip * 1.25,
       });
-      // Soft shoulder under bulb for spherical read
       if (freeze) {
         blobs.push({
           x: em.x,
@@ -462,7 +570,6 @@ export class DripSim {
           r: tipR * 0.78,
           w: emDrip * 0.9,
         });
-        // Upper bulb shoulder — continuous merge into filament
         blobs.push({
           x: em.x,
           y: tipY - tipR * 0.42,
@@ -470,41 +577,53 @@ export class DripSim {
           w: emDrip * 0.95,
         });
       }
+      } // end non-isolate
 
-      // Pinch-off when neck thins below Oh-dependent threshold (or stretch completes)
-      if (!freeze && (em.neckR < maps.detachNeck || t >= 1)) {
-        this.frees.push({
-          x: em.x + wobble,
-          y: tipY,
-          vx: locked ? 0 : (em.seed - 0.5) * 0.08 * halfW,
-          vy: -maps.gravity * 0.15,
-          r: tipR,
-          mass: tipR,
-        });
-        // Low-viscosity satellite bead (Rayleigh–Plateau secondary)
-        if (emVisc < 0.35 && tipR > 1e-4) {
+      // Pinch-off: recycle into fill when suppressFrees (soft-letter demos)
+      // In isolate, also hold mid-stretch longer by raising detach threshold
+      const detachAt = isolate ? maps.detachNeck * 0.55 : maps.detachNeck;
+      if (!freeze && (em.neckR < detachAt || t >= 1)) {
+        if (!suppressFrees) {
           this.frees.push({
-            x: em.x + wobble * 0.4,
-            y: mix(bottomY, tipY, 0.55),
-            vx: locked ? 0 : (em.seed - 0.5) * 0.04 * halfW,
-            vy: -maps.gravity * 0.08,
-            r: tipR * 0.32,
-            mass: tipR * 0.28,
+            x: em.x + wobble,
+            y: tipY,
+            vx: locked ? 0 : (em.seed - 0.5) * 0.08 * halfW,
+            vy: -maps.gravity * 0.15,
+            r: tipR,
+            mass: tipR,
           });
+          if (emVisc < 0.35 && tipR > 1e-4) {
+            this.frees.push({
+              x: em.x + wobble * 0.4,
+              y: mix(bottomY, tipY, 0.55),
+              vx: locked ? 0 : (em.seed - 0.5) * 0.04 * halfW,
+              vy: -maps.gravity * 0.08,
+              r: tipR * 0.32,
+              mass: tipR * 0.28,
+            });
+          }
         }
-        em.phase = "cooldown";
-        em.cooldown = maps.cooldown * (0.85 + em.seed * 0.3);
-        em.mass = 0;
-        em.stretchT = 0;
-        em.neckR = 1;
+        if (isolate || suppressFrees) {
+          // Soft-letter loop: re-seed mid-stretch pendant instead of empty cooldown
+          em.phase = "stretch";
+          em.stretchT = 0.22 + em.seed * 0.18;
+          em.mass = maps.criticalMass;
+          em.neckR = 1;
+          em.cooldown = 0;
+        } else {
+          em.phase = "cooldown";
+          em.cooldown = maps.cooldown * (0.85 + em.seed * 0.3);
+          em.mass = 0;
+          em.stretchT = 0;
+          em.neckR = 1;
+        }
       }
     }
 
     const mapsMerge = viscosityMaps(viscosity, drip);
-    // Freeze QA: never draw free-falling detached blobs
-    if (!this.control.freeze) {
+    if (!this.control.freeze && !suppressFrees) {
       this.mergeFrees(dt, mapsMerge.mergeK, halfH);
-      this.integrateFrees(dt, mapsMerge, halfH, halfW, blobs, minDim, bottomY);
+      this.integrateFrees(dt, mapsMerge, halfH, halfW, blobs, minDim, globalBottomY);
     } else {
       this.frees = [];
     }

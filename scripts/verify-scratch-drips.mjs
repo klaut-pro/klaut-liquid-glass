@@ -1,5 +1,6 @@
 /**
- * Verify stage-5 continuum drips on scratch wordmark demo.
+ * Verify stage-5 soft-letter continuum drips on scratch wordmark.
+ * Checks lips exist, pendants hang from letters, multi-angle screenshots.
  * Usage: node scripts/verify-scratch-drips.mjs [url]
  */
 import { mkdir, writeFile } from "node:fs/promises";
@@ -36,7 +37,6 @@ async function main() {
     timeout: 30000,
   });
 
-  // Ensure stage 5 + mid viscosity, then wait for sim to advance
   await page.evaluate(() => {
     document.querySelector('[data-stage="5"]')?.click();
     const v = document.getElementById("viscosity");
@@ -50,19 +50,60 @@ async function main() {
       l.dispatchEvent(new Event("input", { bubbles: true }));
     }
   });
-  await page.waitForTimeout(2200);
+  await page.waitForTimeout(2500);
 
-  const mid = await page.evaluate(() => ({
-    ...window.__scratch,
-    badge: document.getElementById("stageBadge")?.textContent,
-  }));
+  const mid = await page.evaluate(() => {
+    const s = window.__scratch;
+    const lips = s?.lips || [];
+    // Gap check: each lip should have a nearby blob root (within ~0.35 of halfH)
+    const halfH = (s?.size?.y || 1.85) * 0.5;
+    return {
+      ...s,
+      badge: document.getElementById("stageBadge")?.textContent,
+      lipCount: lips.length,
+      lipYs: lips.map((l) => l.attachY),
+      halfH,
+    };
+  });
 
   await page.screenshot({
     path: join(outDir, "scratch-drips-mid.png"),
     fullPage: false,
   });
 
-  // Low viscosity — watery long necks / faster pinch
+  // Orbit left
+  await page.evaluate(() => {
+    const c = document.getElementById("c");
+    c.dispatchEvent(
+      new PointerEvent("pointerdown", { clientX: 700, clientY: 450, buttons: 1, pointerId: 1 }),
+    );
+    c.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 520, clientY: 430, buttons: 1, pointerId: 1 }),
+    );
+    c.dispatchEvent(
+      new PointerEvent("pointerup", { clientX: 520, clientY: 430, pointerId: 1 }),
+    );
+  });
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: join(outDir, "scratch-drips-angle-left.png") });
+
+  // Orbit right / slightly up
+  await page.evaluate(() => {
+    const c = document.getElementById("c");
+    c.dispatchEvent(
+      new PointerEvent("pointerdown", { clientX: 700, clientY: 450, buttons: 1, pointerId: 1 }),
+    );
+    c.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 920, clientY: 380, buttons: 1, pointerId: 1 }),
+    );
+    c.dispatchEvent(
+      new PointerEvent("pointerup", { clientX: 920, clientY: 380, pointerId: 1 }),
+    );
+  });
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: join(outDir, "scratch-drips-angle-right.png") });
+
+  // Low viscosity
   await page.evaluate(() => {
     const v = document.getElementById("viscosity");
     if (v) {
@@ -74,7 +115,7 @@ async function main() {
   const low = await page.evaluate(() => ({ ...window.__scratch }));
   await page.screenshot({ path: join(outDir, "scratch-drips-low-visc.png") });
 
-  // High viscosity — honey bulbs / delayed detach
+  // High viscosity
   await page.evaluate(() => {
     const v = document.getElementById("viscosity");
     if (v) {
@@ -88,6 +129,9 @@ async function main() {
 
   await browser.close();
 
+  const lipsOk = (mid.lipCount ?? 0) >= 5;
+  const sagMaps =
+    typeof mid.maps?.sagAmp === "number" && typeof mid.maps?.sagRate === "number";
   const report = {
     url,
     http: health.status,
@@ -98,8 +142,11 @@ async function main() {
     ok:
       mid.ready &&
       mid.badge === "stage 5" &&
-      (mid.dripBlobs ?? 0) > 4 &&
+      (mid.dripBlobs ?? 0) > 8 &&
       (high.dripBlobs ?? 0) > 4 &&
+      lipsOk &&
+      sagMaps &&
+      mid.physics === "rank1-soft-letter+continuum" &&
       errors.length === 0,
   };
   await writeFile(join(outDir, "scratch-drips-verify.json"), JSON.stringify(report, null, 2));

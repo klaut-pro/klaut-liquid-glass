@@ -147,7 +147,8 @@
       </label>
       <p class="hint">
         Drag to orbit · scroll to zoom · right-drag to pan<br />
-        Stage 5: continuum emitters + softMin necks (<code>DripSim</code>)<br />
+        Stage 5: soft-letter gravity sag + continuum necks (<code>DripSim</code>)<br />
+        Viscosity: high = thick slow sag · low = watery drip<br />
         Mesh: <code>demo/scratch/mesh/wordmark-klaut-pro.glb</code>
       </p>
     </aside>
@@ -318,10 +319,19 @@
       matLiquid.envMapIntensity = 2.35;
 
       // Stage 5: DripSim metaball blobs as glass spheres (softMin-style overlap)
+      // Kept as a scene group; positions are world-space lip samples (OrbitControls
+      // moves the camera, not the mesh). letterRoot still owns the soft verts.
       const dripGroup = new THREE.Group();
+      dripGroup.name = "dripPendants";
       dripGroup.visible = false;
       scene.add(dripGroup);
       const dripMat = matLiquid.clone();
+      // Slightly denser so necks read against the bright studio wash
+      dripMat.transmission = 0.82;
+      dripMat.thickness = 1.05;
+      dripMat.attenuationColor = new THREE.Color(0x9ec8ff);
+      dripMat.attenuationDistance = 1.1;
+      dripMat.envMapIntensity = 2.5;
       const dripSphereGeo = new THREE.SphereGeometry(1, 22, 16);
       /** @type {THREE.Mesh[]} */
       const dripPool = [];
@@ -334,10 +344,11 @@
       }
 
       /**
-       * Refine emitter X from mesh bottom-edge samples (descenders hang lower).
-       * Falls back to WORDMARK_EMITTER_FRACS when sampling is sparse.
+       * Sample lowest verts per X-column from REST pose (deformCache.base).
+       * Using live deformed verts made lips chase pendant seeds and left a gap
+       * between the readable letter baseline and the drip spheres.
        */
-      function sampleBottomEmitters(meshes) {
+      function sampleBottomLips(meshes) {
         const v = new THREE.Vector3();
         let minY = Infinity;
         let maxY = -Infinity;
@@ -345,11 +356,15 @@
         let maxX = -Infinity;
         /** @type {{ x: number, y: number }[]} */
         const pts = [];
-        for (const mesh of meshes) {
-          const pos = mesh.geometry.attributes.position;
+        for (let mi = 0; mi < meshes.length; mi++) {
+          const mesh = meshes[mi];
+          const entry = deformCache[mi];
+          if (!entry) continue;
+          const base = entry.base;
           mesh.updateWorldMatrix(true, false);
-          for (let i = 0; i < pos.count; i++) {
-            v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
+          const mw = mesh.matrixWorld;
+          for (let i = 0; i < base.length; i += 3) {
+            v.set(base[i], base[i + 1], base[i + 2]).applyMatrix4(mw);
             pts.push({ x: v.x, y: v.y });
             minY = Math.min(minY, v.y);
             maxY = Math.max(maxY, v.y);
@@ -359,46 +374,74 @@
         }
         const halfW = Math.max((maxX - minX) * 0.5, 0.5);
         const halfH = Math.max((maxY - minY) * 0.5, 0.4);
-        const attachY = minY + (maxY - minY) * 0.04;
-        const band = minY + (maxY - minY) * 0.18;
-        const bottom = pts.filter((p) => p.y <= band);
         const bins = WORDMARK_EMITTER_FRACS.length;
-        /** @type {{ x: number, y: number, n: number }[]} */
-        const accum = Array.from({ length: bins }, () => ({ x: 0, y: 0, n: 0 }));
-        for (const p of bottom) {
-          const nx = ((p.x - minX) / Math.max(maxX - minX, 1e-6)) * (bins - 1);
-          const bi = Math.min(bins - 1, Math.max(0, Math.round(nx)));
-          accum[bi].x += p.x;
-          accum[bi].y += p.y;
-          accum[bi].n += 1;
+        const span = Math.max(maxX - minX, 1e-6);
+        /** @type {{ x: number, y: number, n: number, minY: number }[]} */
+        const accum = Array.from({ length: bins }, () => ({
+          x: 0,
+          y: 0,
+          n: 0,
+          minY: Infinity,
+        }));
+        // Bottom 14% of rest pose — true glyph lips / baseline
+        const band = minY + (maxY - minY) * 0.14;
+        const binW = span / bins;
+        for (const p of pts) {
+          if (p.y > band) continue;
+          const bi = Math.min(
+            bins - 1,
+            Math.max(0, Math.floor(((p.x - minX) / span) * bins)),
+          );
+          const a = accum[bi];
+          const cx = minX + (bi + 0.5) * binW;
+          const w = 1 / (1 + Math.abs(p.x - cx) / Math.max(binW * 0.35, 1e-3));
+          a.n += w;
+          a.x += p.x * w;
+          a.y += p.y * w;
+          a.minY = Math.min(a.minY, p.y);
         }
-        const emitters = WORDMARK_EMITTER_FRACS.map((spec, i) => {
+        // Mild sag offset so attach tracks soft-letter drainage without chasing tips
+        const maps = viscosityMaps(viscosity, Math.max(0.55 + liquifyAmt * 0.45, 0.35));
+        const sagLift = maps.sagAmp * liquifyAmt * halfH * 0.55;
+        const lips = WORDMARK_EMITTER_FRACS.map((spec, i) => {
           const a = accum[i];
-          const useSample = a.n >= 4;
+          const useSample = a.n >= 2.5;
           const worldX = useSample ? a.x / a.n : spec.x * halfW;
-          // Prefer lower lips (descenders) — boost intensity when bin sits low
-          const lipY = useSample ? a.y / a.n : attachY;
-          const hang = THREE.MathUtils.clamp((attachY - lipY) / Math.max(halfH, 1e-3), 0, 1);
-          const startStretch = i % 3 === 0 || hang > 0.08;
+          const restLip = useSample
+            ? (a.y / a.n) * 0.55 + a.minY * 0.45
+            : minY + (maxY - minY) * 0.06;
+          const hang = THREE.MathUtils.clamp(
+            (minY + (maxY - minY) * 0.1 - restLip) / Math.max(halfH, 1e-3),
+            0,
+            1,
+          );
           return {
             x: worldX,
+            // Sit slightly under rest lip so root embeds after soft sag
+            attachY: restLip - sagLift * (0.65 + 0.5 * hang),
             normalized: false,
             intensity: spec.intensity * (1 + hang * 0.35),
             phaseOffset: (i * 0.13) % 1,
-            stretchScale: 1 + hang * 0.25,
-            locked: false,
+            stretchScale: 1 + hang * 0.15,
+            locked: true,
             enabled: true,
-            // Seed pendants mid-stretch so stage-5 reads immediately
-            startInStretch: startStretch,
-            stretchT: startStretch ? 0.38 + (i % 4) * 0.1 : 0,
+            startInStretch: true,
+            stretchT: 0.4 + (i % 5) * 0.06,
           };
         });
-        return { emitters, halfW, halfH, attachY, minY, maxY };
+        return {
+          lips,
+          halfW,
+          halfH,
+          attachY: lips.reduce((s, l) => s + l.attachY, 0) / lips.length,
+          minY,
+          maxY,
+        };
       }
 
       function configureDripSim() {
         const sampled = letterMeshes.length
-          ? sampleBottomEmitters(letterMeshes)
+          ? sampleBottomLips(letterMeshes)
           : null;
         if (sampled) {
           wordHalfW = sampled.halfW;
@@ -407,14 +450,16 @@
           dripSim.setControl({
             mode: "controlled",
             isolate: true,
-            deterministic: false,
+            suppressFrees: true,
+            deterministic: true,
             attachY: sampled.attachY,
-            emitters: sampled.emitters,
+            emitters: sampled.lips,
           });
         } else {
           dripSim.setControl({
             mode: "controlled",
             isolate: true,
+            suppressFrees: true,
             attachY: wordAttachY,
             emitters: WORDMARK_EMITTER_FRACS.map((spec, i) => ({
               x: spec.x,
@@ -426,6 +471,24 @@
           });
         }
         dripSim.reset();
+      }
+
+      /** Push live lip positions into DripSim without resetting phase. */
+      function syncEmitterLipsFromMesh() {
+        if (!letterMeshes.length) return null;
+        const sampled = sampleBottomLips(letterMeshes);
+        wordHalfW = sampled.halfW;
+        wordHalfH = sampled.halfH;
+        wordAttachY = sampled.attachY;
+        dripSim.updateEmitterLips(
+          sampled.lips.map((l) => ({
+            x: l.x,
+            attachY: l.attachY,
+            normalized: false,
+          })),
+          wordHalfW,
+        );
+        return sampled;
       }
 
       let stage = 3; // ship with glass on by default (stages 1–3 done)
@@ -468,15 +531,40 @@
         }
       }
 
-      function applyLiquify(t) {
+      /**
+       * Coupled soft-letter gravity drainage (Rank-1):
+       * Viscosity (Oh) → sagAmp (thick honey bulge) + sagRate (watery drain speed).
+       * Bottom / downward-facing verts soften under g; pendants emerge from that lip.
+       */
+      function applyGravitySag(t, dripAmt) {
         if (stage < 4 || liquifyAmt < 0.001) {
           if (stage < 4) resetDeform();
           return;
         }
+        const maps = viscosityMaps(viscosity, Math.max(dripAmt, 0.35));
         const amt = liquifyAmt;
+        // High Oh: thicker slower sag; low Oh: faster drainage into the pendant
+        const sagAmp = maps.sagAmp * amt * wordHalfH * 0.85;
+        const dripPull = maps.sagRate * amt * 0.07 * wordHalfH;
+        const ripAmp = 0.018 * amt * (0.35 + 0.65 * (1 - viscosity));
+        const lips = dripSim.getControl().emitters || [];
+        const lipXs = lips.map((e) =>
+          e.normalized === false ? e.x : e.x * wordHalfW,
+        );
+
         for (let mi = 0; mi < letterMeshes.length; mi++) {
           const mesh = letterMeshes[mi];
           const { pos, base, normal } = deformCache[mi];
+          let lo = Infinity;
+          let hi = -Infinity;
+          for (let i = 1; i < base.length; i += 3) {
+            lo = Math.min(lo, base[i]);
+            hi = Math.max(hi, base[i]);
+          }
+          const span = Math.max(hi - lo, 1e-4);
+          mesh.updateWorldMatrix(true, false);
+          const world = new THREE.Vector3();
+
           for (let i = 0; i < pos.length; i += 3) {
             const x = base[i];
             const y = base[i + 1];
@@ -484,17 +572,37 @@
             const nx = normal[i];
             const ny = normal[i + 1];
             const nz = normal[i + 2];
-            // Soft viscous ripple + downward melt bias (metaball-ish read)
-            const w =
-              Math.sin(x * 2.4 + t * 1.1) *
-                Math.cos(z * 3.6 + t * 0.85) *
-                0.55 +
-              Math.sin((x + z) * 1.6 - t * 0.7) * 0.35;
-            const melt = Math.max(0, -y) * 0.1 * amt;
-            const push = (0.035 * amt * w - melt * 0.35) * (0.55 + 0.45 * Math.max(0, -ny));
-            pos[i] = x + nx * push;
-            pos[i + 1] = y + ny * push * 0.85 - melt;
-            pos[i + 2] = z + nz * push;
+            const bottomW = THREE.MathUtils.clamp((hi - y) / span, 0, 1);
+            const bottomW2 = bottomW * bottomW;
+            const downFace = Math.max(0, -ny);
+            const drain = bottomW2 * (0.45 + 0.55 * downFace);
+
+            // Pendant seed columns — letter itself forms the upper neck
+            world.set(x, y, z).applyMatrix4(mesh.matrixWorld);
+            let near = 1;
+            for (const lx of lipXs) {
+              const d =
+                Math.abs(world.x - lx) / Math.max(wordHalfW * 0.11, 0.12);
+              near = Math.min(near, d);
+            }
+            const column = Math.max(0, 1 - near);
+            const column3 = column * column * column;
+
+            const rip =
+              Math.sin(x * 2.2 + t * maps.sagRate * 0.55) *
+                Math.cos(z * 3.1 + t * 0.7) *
+                ripAmp *
+                (0.4 + 0.6 * bottomW);
+            const sag = sagAmp * drain;
+            const lipSeed =
+              dripPull *
+              Math.pow(bottomW, 2.4) *
+              (0.35 + 0.65 * downFace) *
+              (0.2 + 2.0 * column3);
+            const pushN = rip * (0.5 + 0.5 * Math.max(0, ny));
+            pos[i] = x + nx * pushN;
+            pos[i + 1] = y - sag - lipSeed + ny * pushN * 0.35;
+            pos[i + 2] = z + nz * pushN;
           }
           mesh.geometry.attributes.position.needsUpdate = true;
           mesh.geometry.computeVertexNormals();
@@ -506,8 +614,9 @@
           for (const m of dripPool) m.visible = false;
           return;
         }
-        // Viscosity slider → Oh maps (rate, neck length, blob size) via DripSim
         const dripAmt = THREE.MathUtils.clamp(0.55 + liquifyAmt * 0.45, 0.35, 1);
+        // Resample lips from *deformed* mesh so emitters ride the sagging surface
+        syncEmitterLipsFromMesh();
         const blobs = dripSim.step(Math.min(dt, 0.05), {
           drip: dripAmt,
           liquify: liquifyAmt,
@@ -517,8 +626,9 @@
           reducedMotion: false,
         });
         const maps = viscosityMaps(viscosity, dripAmt);
-        // softMin k → slight radius plump when blobs sit close (metaball read)
         const k = maps.mergeK * wordHalfH;
+        // Cap sphere size so softMin plump can't birth a hero-orb in front of the mark
+        const maxR = wordHalfH * (0.2 + 0.12 * viscosity);
         for (let i = 0; i < dripPool.length; i++) {
           const mesh = dripPool[i];
           const b = blobs[i];
@@ -526,32 +636,44 @@
             mesh.visible = false;
             continue;
           }
-          let r = b.r * (0.85 + 0.35 * b.w);
-          // Neighbor plump (CPU softMin proxy — spheres overlap into a neck)
+          let r = b.r * (0.8 + 0.25 * b.w);
+          // Only nearest-neighbor plump (true softMin neck) — avoid N² blow-up
+          let bestH = 0;
           for (let j = 0; j < blobs.length; j++) {
             if (j === i) continue;
             const o = blobs[j];
             if (!o || o.w < 0.04) continue;
             const d = Math.hypot(b.x - o.x, b.y - o.y);
-            const reach = b.r + o.r + k * 2.2;
+            const reach = b.r + o.r + k * 1.6;
             if (d < reach && d > 1e-5) {
               const h = Math.max(0, 1 - d / reach);
-              r += k * h * h * 0.55;
+              bestH = Math.max(bestH, h);
             }
           }
+          r += k * bestH * bestH * 0.4;
+          r = Math.min(r, maxR);
           mesh.visible = true;
-          mesh.position.set(b.x, b.y, 0.06);
-          mesh.scale.setScalar(Math.max(r, 0.012));
+          // World-space coords from deformed lip samples (OrbitControls moves camera)
+          mesh.position.set(b.x, b.y, 0.03);
+          mesh.scale.setScalar(Math.max(r, 0.01));
         }
         if (window.__scratch) {
           window.__scratch.dripBlobs = blobs.length;
           window.__scratch.viscosity = viscosity;
+          window.__scratch.attachY = wordAttachY;
           window.__scratch.maps = {
             stretchLen: maps.stretchLen,
             dropR: maps.dropR,
             detachNeck: maps.detachNeck,
             mergeK: maps.mergeK,
+            sagAmp: maps.sagAmp,
+            sagRate: maps.sagRate,
           };
+          const ctrl = dripSim.getControl();
+          window.__scratch.lips = (ctrl.emitters || []).map((e) => ({
+            x: e.x,
+            attachY: e.attachY,
+          }));
         }
       }
 
@@ -607,6 +729,8 @@
         wordHalfH = size.y * 0.5;
         configureDripSim();
         scene.add(letterRoot);
+        // Keep dripGroup in scene (world space); lips resampled from deformed mesh
+        if (dripGroup.parent !== scene) scene.add(dripGroup);
         applyMaterial();
         frameWordmarkCamera(size);
         // Expose for Playwright readability checks
@@ -618,6 +742,7 @@
           emitters: dripSim.getControl().emitters?.length ?? 0,
           ready: true,
           dripBlobs: 0,
+          physics: "rank1-soft-letter+continuum",
         };
       }
 
@@ -659,7 +784,9 @@
         const dt = clock.getDelta();
         const t = clock.getElapsedTime();
         controls.update();
-        applyLiquify(t);
+        const dripAmt = THREE.MathUtils.clamp(0.55 + liquifyAmt * 0.45, 0.35, 1);
+        // Soft-letter sag first — then drips sample the deformed lips
+        applyGravitySag(t, dripAmt);
         updateDrips(dt);
         renderer.render(scene, camera);
         requestAnimationFrame(frame);

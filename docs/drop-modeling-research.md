@@ -196,22 +196,55 @@ Blender bake: Arial Black "klaut.pro" → wordmark-klaut-pro.glb
         ↓
 Three.js MeshPhysicalMaterial glass (scratch)  |  Engine SDF glassify (product)
         ↓
-Viscosity UI → Oh-like maps (rate, neck length, tip R, softMin k)
+Viscosity UI → Oh-like maps (rate, neck length, tip R, softMin k, sagAmp, sagRate)
         ↓
-Emitters on letter bottoms → DripSim phases
+Soft-letter gravity sag (bottom verts drain) → resample per-glyph lips
         ↓
-Blobs/capsules → smoothMin into field OR pendant meshes under GLB
+Emitters on deformed letter bottoms → DripSim fill→stretch (suppress frees)
+        ↓
+Glass pendant blobs parented to wordmark (softMin necks into lip)
         ↓
 Glass shade (Snell / Fresnel / thin-film) — same material family
 ```
 
 **Viscosity cheat sheet (keep):**
 
-| viscosity | stretch | speed | softMin k | look |
-|-----------|---------|-------|-----------|------|
-| low (~0.1) | long | fast | small | watery pinch, satellites |
-| mid (~0.45) | medium | mid | mid | default syrup glass |
-| high (~0.9) | short | slow | large | honey bulbs, delayed detach |
+| viscosity | stretch | speed | softMin k | letter sag | look |
+|-----------|---------|-------|-----------|------------|------|
+| low (~0.1) | long | fast | small | thin/fast drain | watery pinch, quick drip |
+| mid (~0.45) | medium | mid | mid | medium | default syrup glass |
+| high (~0.9) | short* | slow | large | thick/slow | honey bulbs, delayed detach |
+
+\*stretchLen still rises with Oh in `viscosityMaps`; live demos cap stretch so necks stay readable under the wide wordmark.
+
+---
+
+## 5b. Soft-letter coupling (2026-07 update)
+
+**Problem we hit:** treating drips as free spheres under a rigid mesh made pendants float mid-air (shared baseline `attachY` at the descender floor + unparented blob group).
+
+**Physics read (Rank 1 deepen):** gravity drains liquid toward glyph lips; the **letter softens/sags** under that load; pendants **emerge from the deformed surface**. Viscosity (Oh) couples:
+
+| Map | High Oh (syrup) | Low Oh (water) |
+|-----|-----------------|----------------|
+| `sagAmp` | thicker lip bulge | thinner |
+| `sagRate` | slow drainage | fast drainage into pendant |
+| stretch / detach | long delayed necks | faster pinch |
+
+**Implementation (scratch):**
+1. `applyGravitySag` — bottom-biased vertex pull using `sagAmp`/`sagRate`.
+2. `sampleBottomLips` — per X-column lowest verts in **world space after deform**.
+3. `DripSim.updateEmitterLips` + per-emitter `attachY` — pendants track the live lip.
+4. Pendant meshes **parented to `letterRoot`**, same `MeshPhysicalMaterial` glass.
+5. `suppressFrees` / isolate — no mid-air detached spheres.
+
+**Citations added:**
+- Charitatos & Kumar / soft-substrate spreading — JFM 2023 https://doi.org/10.1017/jfm.2023.673 (soft interface ↔ contact drainage)
+- Droplet settling on soft layers — JFM 2021 https://doi.org/10.1017/jfm.2021.1112 (coupled droplet–soft-coat dynamics)
+- Spreading, pinching, coalescence in Ohnesorge units — Soft Matter 2022 https://doi.org/10.1039/D2SM00069E
+- Weta SIGGRAPH 2019 drips — viscosity band near solids / adhesion (already §2.3)
+
+Not adopting MLS-MPM for logo drips (still Rank 3); Rank 1 soft-mesh + continuum remains the production path.
 
 ---
 
@@ -230,9 +263,11 @@ Glass shade (Snell / Fresnel / thin-film) — same material family
 | 9 | Matsuoka Codrops WebGPU fluids | 2025 | MLS-MPM + SSFR browser ceiling |
 | 10 | KRÜSS / tensiometry docs | — | Pendant morphology ↔ σ, g |
 | 11 | In-repo `DripSim.ts` + liquid-glass-research.md | 2026 | Our locked continuum + softMin stack |
+| 12 | Soft Matter Ohnesorge units review | 2022 | Shared Oh scaling for pinch / spread / coalesce |
+| 13 | JFM soft-substrate droplet papers | 2021–2023 | Soft interface drains / deforms with the drop |
 
 ---
 
 ## 7. Decision lock
 
-For **viscosity-dependent drips on the klaut.pro glass wordmark**, deepen **Rank 1** (continuum emitters + softMin / capsule necks). Use Rank 2 for ultra-cheap landing loops. Treat Rank 3 (MLS-MPM) as an optional WebGPU showcase, not the production glassify path.
+For **viscosity-dependent drips on the klaut.pro glass wordmark**, deepen **Rank 1** (continuum emitters + softMin / capsule necks **+ soft-letter gravity sag**). Use Rank 2 for ultra-cheap landing loops. Treat Rank 3 (MLS-MPM) as an optional WebGPU showcase, not the production glassify path.
