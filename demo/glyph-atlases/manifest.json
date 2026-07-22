@@ -8,7 +8,7 @@
       "png": "demo/glyph-atlases/chromeSansP.png",
       "maxDistPx": 48.0,
       "fieldExtent": 0.55,
-      "inkPx": 49279,
+      "inkPx": 50703,
       "blenderHeight": true
     },
     "scriptProP": {
@@ -17,7 +17,7 @@
       "png": "demo/glyph-atlases/scriptProP.png",
       "maxDistPx": 48.0,
       "fieldExtent": 0.55,
-      "inkPx": 53159,
+      "inkPx": 53455,
       "blenderHeight": true
     }
   }

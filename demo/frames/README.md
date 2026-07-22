@@ -31,6 +31,19 @@ Rebake: `npm run bake:glyphs` · `npm run bake:faces` · `npm run bake:env`
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 45 (atlas ink rescue + stem crack + richer oil)
+
+- **Root cause:** chrome stem plate voids were atlas/SwiftShader ink gaps + cover/early-out punching `[8,8,10]` through solid SDF; softbox cream flood washed gold oil; script stem↔loop join still thin vs ENj9B
+- Atlas: `thicken_chrome_stem` (close + horizontal crack fill); stronger `fill_script_stem_loop_voids` join band; counter ~421
+- Faceplates: cooler softbox plate + anisotropic gold ribbons (anti cream flood); multi-pass stem void lift
+- Shader: atlas ink rescue (force inside when R>0.52); opaque chrome cover when `d<0`; kill flatDead charcoal; stronger oilGate gold + face cream crush; script softMin/junc + crest ~0.65
+- chromeSansP: cyan0 pink0; tip filled; **stem enclosed hole killed** (was ~200–304px); cream still face-flooded (~0.41) gold~0.06 — planar oil still short of 1c6PD/Z53Ve
+- scriptProP: silverRatio ~0.65; tip filled; pink0; voidInside ~244 (counter-heavy); residual join holes (~360/1085) vs ENj9B tubular elegance
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome pink0 cyan0 cream~0.41 gold~0.06; script pink0 silverRatio ~0.65 tip filled
+
+**Status:** ❌ not READY — chromeSansP stem plate void fixed and gold ribbons present but cream flood / weak planar oil still short of 1c6PD/Z53Ve; scriptProP silverRatio~0.65 held without pink but join/elegance still lags ENj9B. Loop stays armed.
+
 ## Iteration 44 (stem↔loop selective fill + softbox oil)
 
 - **Root cause:** script atlas left enclosed stem corridors + counter bite (softMin alone insufficient); chrome softbox still mottled with charcoal stem patches vs 1c6PD/Z53Ve planar oil

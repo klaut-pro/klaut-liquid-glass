@@ -19,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-from scipy.ndimage import distance_transform_edt, gaussian_filter, label
+from scipy.ndimage import distance_transform_edt, gaussian_filter, label, binary_fill_holes
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "demo" / "glyph-atlases"
@@ -118,30 +118,34 @@ def fill_script_stem_loop_voids(mask: np.ndarray) -> np.ndarray:
         # Wider stem-facing band — kill jagged bite at loop return (keep right counter core)
         join_band = (
             counter
-            & (xx <= cx0 + max(22, int(0.72 * (cx1 - cx0))))
-            & (yy >= cy0 - 4)
-            & (yy <= cy1 + 4)
+            & (xx <= cx0 + max(32, int(0.82 * (cx1 - cx0))))
+            & (yy >= cy0 - 10)
+            & (yy <= cy1 + 10)
         )
-        grown = binary_dilation(out, iterations=10) & join_band
-        grown2 = binary_dilation(out | grown, iterations=5) & join_band
-        out = out | grown | grown2
+        grown = binary_dilation(out, iterations=14) & join_band
+        grown2 = binary_dilation(out | grown, iterations=8) & join_band
+        grown3 = binary_dilation(out | grown | grown2, iterations=5) & join_band
+        out = out | grown | grown2 | grown3
         # Morphological close on stem-side only (bridge jagged bite, keep counter core)
-        se = np.ones((11, 11), dtype=bool)
+        se = np.ones((15, 15), dtype=bool)
         closed = binary_closing(out, structure=se)
         out = out | (closed & join_band)
-        # Hairline exterior corridors near join
+        # Hairline exterior corridors near join (stem↔loop elegance)
         near_join = (
             (~out)
-            & (xx >= cx0 - 10)
-            & (xx <= cx0 + max(18, int(0.55 * (cx1 - cx0))))
-            & (yy >= cy0 - 6)
-            & (yy <= cy1 + 6)
+            & (xx >= cx0 - 16)
+            & (xx <= cx0 + max(26, int(0.68 * (cx1 - cx0))))
+            & (yy >= cy0 - 12)
+            & (yy <= cy1 + 12)
         )
-        bridge = binary_dilation(out, iterations=4) & near_join
+        bridge = binary_dilation(out, iterations=7) & near_join
         edt_out = distance_transform_edt(~out)
-        bridge = bridge & (edt_out <= 7.0)
+        bridge = bridge & (edt_out <= 11.0)
         out = out | bridge
-        # Final: fill any tiny enclosed speckles that remain in join zone
+        # Soft close again after bridge
+        closed2 = binary_closing(out, structure=np.ones((11, 11), dtype=bool))
+        out = out | (closed2 & near_join)
+        # Final: fill enclosed speckles in join/stem zone (counter core stays open)
         inv2 = ~out
         lab2, n2 = label(inv2)
         for j in range(1, n2 + 1):
@@ -152,8 +156,68 @@ def fill_script_stem_loop_voids(mask: np.ndarray) -> np.ndarray:
             if (ys2 == 0).any() or (ys2 == h - 1).any() or (xs2 == 0).any() or (xs2 == w - 1).any():
                 continue
             area2 = int(comp2.sum())
-            if area2 < 120 and float(xs2.mean()) < stem_x_max + 40:
+            cx2 = float(xs2.mean())
+            # Keep large right-side counter; fill stem/join speckles + left bite
+            if area2 < 220 and cx2 < stem_x_max + 60:
                 out[comp2] = True
+            elif area2 < 120 and cx2 < float(cx0 + 0.6 * (cx1 - cx0)):
+                out[comp2] = True
+    return out
+
+
+def thicken_chrome_stem(mask: np.ndarray) -> np.ndarray:
+    """Kill hairline stem pinches + stem↔bowl cracks that open as capture voids."""
+    from scipy.ndimage import binary_closing, binary_dilation
+
+    out = mask.copy()
+    # Stronger close bridges 1–4px stem↔bowl cracks (capture hole ~200px)
+    out = binary_closing(out, structure=np.ones((9, 9), dtype=bool))
+    out = binary_closing(out, structure=np.ones((5, 5), dtype=bool))
+    edt = distance_transform_edt(out)
+    yy, xx = np.mgrid[0 : out.shape[0], 0 : out.shape[1]]
+    my, mx = np.where(out)
+    if len(my) < 20:
+        return out
+    cx0, cx1 = int(mx.min()), int(mx.max())
+    cy0, cy1 = int(my.min()), int(my.max())
+    # Preserve large bowl counter
+    filled0 = binary_fill_holes(mask)
+    counter0 = filled0 & ~mask
+    # Stem + join band (left + mid)
+    stem_join = (
+        (xx <= cx0 + int(0.55 * (cx1 - cx0)))
+        & (yy >= cy0 + int(0.08 * (cy1 - cy0)))
+        & (yy <= cy0 + int(0.88 * (cy1 - cy0)))
+    )
+    thin = out & stem_join & (edt < 4.5)
+    if thin.any():
+        grown = binary_dilation(thin, iterations=4) & stem_join & ~counter0
+        out = out | grown
+    # Horizontal crack fill: any short gap in stem_join rows
+    for y in range(cy0, cy1 + 1):
+        row = out[y] & (xx[y] <= cx0 + int(0.55 * (cx1 - cx0)))
+        xs = np.where(row)[0]
+        if len(xs) < 4:
+            continue
+        for i in range(len(xs) - 1):
+            gap = xs[i + 1] - xs[i]
+            if 1 < gap <= 12:
+                out[y, xs[i] + 1 : xs[i + 1]] = True
+    out = binary_closing(out, structure=np.ones((7, 7), dtype=bool))
+    # Restore large counter if close sealed it
+    filled = binary_fill_holes(out)
+    holes = filled & ~out
+    lab, n = label(holes)
+    keep_counter = None
+    for i in range(1, n + 1):
+        comp = lab == i
+        if int(comp.sum()) > 1500:
+            keep_counter = comp if keep_counter is None else (keep_counter | comp)
+    if keep_counter is not None:
+        out = out & ~keep_counter
+    # Also restore original large counter footprint
+    if counter0.any() and int(counter0.sum()) > 1500:
+        out = out & ~counter0
     return out
 
 
@@ -365,6 +429,8 @@ def main() -> None:
             # Selective stem↔loop void fill (anti puff — counter stays open)
             if gid == "scriptProP":
                 mask = fill_script_stem_loop_voids(mask)
+            if gid == "chromeSansP":
+                mask = thicken_chrome_stem(mask)
             # Resample Blender height onto dilated mask: keep crest, fill joins
             height_src = bl_height.copy()
             if mask.sum() > bl_mask.sum():
@@ -380,6 +446,8 @@ def main() -> None:
             mask = render_mask(font, spec["char"], SIZE, spec["dilate"], spec["round"])
             if gid == "scriptProP":
                 mask = fill_script_stem_loop_voids(mask)
+            if gid == "chromeSansP":
+                mask = thicken_chrome_stem(mask)
             profile = "tube" if gid == "scriptProP" else "planar"
             encoded, height = bake_sdf(mask, MAX_DIST, force_profile=profile)
             source = font.name
