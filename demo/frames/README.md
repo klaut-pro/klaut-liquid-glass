@@ -31,6 +31,19 @@ Rebake: `npm run bake:glyphs` · `npm run bake:faces` · `npm run bake:env`
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 43 (planar softbox rebuild + join necks)
+
+- **Root cause:** chrome face stayed mottled concept noise vs 1c6PD/Z53Ve softbox; script over-dilate + huge softMin blobs filled counter (puff) while stem↔loop necks still voided; drip stretchScale oversized cream bulbs
+- Faceplates: chrome continuous softbox lobes + planar blur + sparse gold; localized cream drip-bulb; script tip→warm silver (kill cream fill-line) + EDT thin-neck join boost
+- Atlas: script blender dilate 4.4→2.8 / round 1.8; EDT dilate 8.2 / round 4.2
+- Shader: targeted softMin necks (not counter-fill blobs); smaller drip stretch; gold midtone-gated oil
+- chromeSansP: planar softbox + cream tip bulb; cyan0 pink0 cream~0.19–0.26 gold~0.11; tip filled
+- scriptProP: silverRatio ~0.57 (void-check); tip filled [227,227,225]; pink0; voidInside 100→~27 but residual stem↔loop voids / puff vs ENj9B
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome pink0 cyan0 cream~0.19–0.26 gold~0.11; script pink0 silverRatio ~0.57 tip filled voidInside~27
+
+**Status:** ❌ not READY — chromeSansP planar softbox closer (cream bulb held, cyan0) but softbox oil fidelity still short of 1c6PD/Z53Ve; scriptProP voids down (100→27) without pink but tubular elegance / silverRatio still lag ENj9B (~0.57 vs ~0.63). Loop stays armed.
+
 ## Iteration 42 (cream drip-bulb + tubular join fill)
 
 - **Root cause:** drip cream crush killed 1c6PD/Z53Ve cream bulb; script silCover floors → soft-white flood (silverRatio ~0.87) while stem↔loop softMin joins too weak → tube voids

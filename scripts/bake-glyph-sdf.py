@@ -49,9 +49,9 @@ GLYPHS = {
             Path(r"C:\Windows\Fonts\segoepr.ttf"),
             Path(r"C:\Windows\Fonts\segoescb.ttf"),
         ],
-        # Tubular thicken + smooth join — round-pipe elegance vs ENj9B (void kill)
-        "dilate": 9.6,
-        "round": 5.0,
+        # Tubular thicken — less puff than 9.6; joins filled in-shader softMin (anti counter close)
+        "dilate": 8.2,
+        "round": 4.2,
     },
 }
 
@@ -259,8 +259,8 @@ def main() -> None:
         if bl_mask is not None and bl_height is not None and bl_mask.sum() > 100:
             # Blender silhouette already has bevel/offset thickness — light soften only
             mask = bl_mask
-            dilate = 0.35 if gid == "chromeSansP" else 4.4
-            round_px = 0.4 if gid == "chromeSansP" else 2.5
+            dilate = 0.35 if gid == "chromeSansP" else 2.8
+            round_px = 0.4 if gid == "chromeSansP" else 1.8
             if dilate > 0 or round_px > 0:
                 outside = distance_transform_edt(~mask)
                 inside = distance_transform_edt(mask)
