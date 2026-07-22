@@ -231,9 +231,11 @@ One-shot settle → freeze (static sculpture)
 
 | viscosity | sagAmp | neckPinch | bulbGrow | settle | look |
 |-----------|--------|-----------|----------|--------|------|
-| low (~0.15) | shorter | sharper | smaller tip | fast | watery stretch |
-| mid (~0.55) | medium | medium | medium | mid | default syrup glass |
-| high (~0.9) | longer | thick neck | fat bulb | slow | honey / molten chrome |
+| low (~0.15) | shorter | sharper / thinner | smaller tip | fast | watery stretch drips |
+| mid (~0.55) | medium | medium | medium pear | mid | syrup glass |
+| high (~0.78–0.9) | longer hang | thick neck | **fat honey bulb** | slow | honey / molten chrome |
+
+**Honey morphology (2026-07):** defaults bias toward high Oh — tip-heavy sag, cosine/pear `teardropRadial`, shared softMin tip sphere + stem capsule, tip-boosted Taubin. Column half-width ~0.2× glyph so melt concentrates into pendant bulbs (not jagged bottom slabs). Still **no attached drip sphere meshes** (`dripBlobs: 0`).
 
 **Freeze-height cheat sheet:**
 
@@ -272,9 +274,11 @@ Optional Verlet mode attracts toward that target until KE < `freezeKe`, then fre
 1. Bind GLB buffers to `GravityMeltSim` — **one mesh slot per glyph**
 2. Stage 5: master Gravity / Freeze ht / Viscosity / Sag / Bulb-soft + **per-letter** enable & overrides (click glyph or picker)
 3. Font picker swaps pre-baked `wordmark-*.glb` (Blender portable bake)
-4. Roundness: cosine teardrop radial + softMin bulb SDF tip overlay + Taubin smooth on yielded verts
+4. Roundness: cosine/pear teardrop radial + softMin bulb SDF tip overlay + tip-boosted Taubin on yielded verts
 5. Pendant sphere pool **removed** — `dripBlobs: 0`
 6. `DripSim` for **2D field / glassify** only
+7. Honey look: high viscosity defaults (~0.78), tip-heavy hang, narrow drip columns, per-letter bulb boosts on `k`/`p`
+8. **`sculptHoneyPendant` post-pass** — per-column remap of yielded verts onto parametric neck→bulb→tip-taper (absolute radii from `colW`, not full glyph width). Caps hang so tips stay mid-air; floor dropped in scratch demo.
 
 **Per-letter API:**
 

@@ -48,6 +48,22 @@ async function main() {
 
   await page.waitForTimeout(1000);
 
+  // Reframe to show hanging honey tips
+  await page.evaluate(() => {
+    const cam = window.__scratchCamera;
+    const controls = window.__scratchControls;
+    const meshes = window.__scratchLetterMeshes;
+    if (!cam || !controls || !meshes?.length) return;
+    const box = new window.THREE.Box3();
+    for (const m of meshes) box.expandByObject(m);
+    const size = box.getSize(new window.THREE.Vector3());
+    const c = box.getCenter(new window.THREE.Vector3());
+    controls.target.set(c.x, c.y - size.y * 0.2, c.z);
+    cam.position.set(c.x, c.y - size.y * 0.05, Math.max(size.y * 2.4, size.x * 0.95, 5));
+    controls.update();
+  });
+  await page.waitForTimeout(400);
+
   const meta = await page.evaluate(() => {
     const s = window.__scratch;
     return {

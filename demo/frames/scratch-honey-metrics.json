@@ -1,0 +1,83 @@
+{
+  "letters": [
+    {
+      "ch": "k",
+      "tipCount": 602,
+      "tipW": 0.876,
+      "midW": 0.8726,
+      "bulbRatio": 1.004,
+      "hang": 1.5487
+    },
+    {
+      "ch": "l",
+      "tipCount": 298,
+      "tipW": 0.2593,
+      "midW": 0.3409,
+      "bulbRatio": 0.761,
+      "hang": 1.357
+    },
+    {
+      "ch": "a",
+      "tipCount": 482,
+      "tipW": 0.9509,
+      "midW": 0.981,
+      "bulbRatio": 0.969,
+      "hang": 1.4282
+    },
+    {
+      "ch": "u",
+      "tipCount": 332,
+      "tipW": 0.7675,
+      "midW": 0.868,
+      "bulbRatio": 0.884,
+      "hang": 1.3172
+    },
+    {
+      "ch": "t",
+      "tipCount": 286,
+      "tipW": 0.5014,
+      "midW": 0.5485,
+      "bulbRatio": 0.914,
+      "hang": 1.5804
+    },
+    {
+      "ch": ".",
+      "tipCount": 104,
+      "tipW": 0.1646,
+      "midW": 0.3198,
+      "bulbRatio": 0.515,
+      "hang": 0.578
+    },
+    {
+      "ch": "p",
+      "tipCount": 4966,
+      "tipW": 0.2923,
+      "midW": 0.9211,
+      "bulbRatio": 0.317,
+      "hang": 1.1596
+    },
+    {
+      "ch": "r",
+      "tipCount": 2056,
+      "tipW": 0.3914,
+      "midW": 0.3773,
+      "bulbRatio": 1.038,
+      "hang": 0.9606
+    },
+    {
+      "ch": "o",
+      "tipCount": 342,
+      "tipW": 0.7314,
+      "midW": 0.8732,
+      "bulbRatio": 0.838,
+      "hang": 1.4768
+    }
+  ],
+  "viscosity": 0.78,
+  "bulb": {
+    "teardrop": true,
+    "softMinBulb": true,
+    "taubin": true,
+    "dripBlobs": 0
+  }
+}

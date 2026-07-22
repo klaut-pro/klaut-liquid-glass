@@ -219,18 +219,18 @@
         <p class="mode-pill">Applies to letters without overrides</p>
         <label class="row">
           Gravity
-          <input id="gravity" type="range" min="0" max="1" step="0.01" value="0.72" />
-          <span id="gravityVal">0.72</span>
+          <input id="gravity" type="range" min="0" max="1" step="0.01" value="0.78" />
+          <span id="gravityVal">0.78</span>
         </label>
         <label class="row">
           Freeze ht
-          <input id="freezeHeight" type="range" min="0.15" max="0.9" step="0.01" value="0.55" />
-          <span id="freezeHeightVal">0.55</span>
+          <input id="freezeHeight" type="range" min="0.15" max="0.9" step="0.01" value="0.52" />
+          <span id="freezeHeightVal">0.52</span>
         </label>
         <label class="row">
           Viscosity
-          <input id="viscosity" type="range" min="0.05" max="1" step="0.01" value="0.55" />
-          <span id="viscosityVal">0.55</span>
+          <input id="viscosity" type="range" min="0.05" max="1" step="0.01" value="0.78" />
+          <span id="viscosityVal">0.78</span>
         </label>
         <label class="row">
           Sag amp
@@ -239,8 +239,8 @@
         </label>
         <label class="row">
           Bulb soft
-          <input id="bulbSoft" type="range" min="0" max="1" step="0.01" value="0.85" />
-          <span id="bulbSoftVal">0.85</span>
+          <input id="bulbSoft" type="range" min="0" max="1" step="0.01" value="0.95" />
+          <span id="bulbSoftVal">0.95</span>
         </label>
         <label class="row">
           IOR
@@ -294,7 +294,7 @@
       <p class="hint">
         Drag to orbit · scroll to zoom · click a glyph mesh to select<br />
         Stage 5: <code>GravityMeltSim</code> — master + per-letter overrides<br />
-        Round pendants: teardrop profile + softMin bulb + Taubin smooth<br />
+        Round honey pendants: pear teardrop + softMin tip + Taubin<br />
         Mesh: <code id="meshHint">demo/scratch/mesh/wordmark-klaut-pro.glb</code>
       </p>
     </aside>
@@ -368,11 +368,11 @@
         }),
       );
       floor.rotation.x = -Math.PI / 2;
-      floor.position.y = -1.35;
+      floor.position.y = -2.15;
       scene.add(floor);
 
       const grid = new THREE.GridHelper(20, 40, 0x7a8aa8, 0xb8c4d8);
-      grid.position.y = -1.349;
+      grid.position.y = -2.149;
       scene.add(grid);
 
       const key = new THREE.DirectionalLight(0xfff6ea, 3.2);
@@ -442,11 +442,11 @@
       matLiquid.envMapIntensity = 2.35;
 
       let stage = 3;
-      let gravityAmt = 0.72;
-      let freezeHeight = 0.55;
-      let viscosity = 0.55;
-      let sagAmpMul = 1;
-      let bulbSoftMin = 0.85;
+      let gravityAmt = 0.78;
+      let freezeHeight = 0.52;
+      let viscosity = 0.78;
+      let sagAmpMul = 1.0;
+      let bulbSoftMin = 0.95;
       let selectedLetter = 0;
       /** @type {import("../dist/field/GravityMeltSim.js").LetterMeltOverride[]} */
       let letterOverrides = [];
@@ -461,10 +461,10 @@
           intensity: gravityAmt,
           viscosity,
           freezeHeight,
-          falloffPower: 1.55,
+          falloffPower: 1.45,
           sagAmpMul,
-          neckPinchMul: 1,
-          bulbGrowMul: 1.45,
+          neckPinchMul: 1.2,
+          bulbGrowMul: 1.55,
           bulbSoftMin,
           smoothPasses: 5,
           oneShot: true,
@@ -523,19 +523,42 @@
       }
 
       function defaultLetterOverrides(n) {
-        // Concept-ish variation: stronger sag on early letters, milder on .pro
+        // Honey pendants: fatter bulbs on k / descenders; milder on .pro tail
         return Array.from({ length: n }, (_, i) => {
           const ch = letterChars[i] || WORDMARK[i] || "?";
           if (ch === ".") {
-            return { enable: true, sagAmpMul: 0.55, bulbGrowMul: 1.4, freezeHeight: 0.35 };
+            return {
+              enable: true,
+              sagAmpMul: 0.7,
+              bulbGrowMul: 1.9,
+              freezeHeight: 0.28,
+              viscosity: 0.85,
+            };
+          }
+          if (ch === "k" || ch === "p") {
+            return {
+              enable: true,
+              sagAmpMul: 1.05,
+              bulbGrowMul: 1.75,
+              viscosity: 0.82,
+              freezeHeight: 0.5,
+            };
+          }
+          if (ch === "l" || ch === "t") {
+            return {
+              enable: true,
+              sagAmpMul: 1.0,
+              bulbGrowMul: 1.65,
+              viscosity: 0.8,
+            };
           }
           if (i >= 6) {
-            return { enable: true, sagAmpMul: 0.75, intensity: 0.55 };
+            return { enable: true, sagAmpMul: 0.85, intensity: 0.62, bulbGrowMul: 1.55 };
           }
           if (i <= 2) {
-            return { enable: true, sagAmpMul: 1.15 + i * 0.05, bulbGrowMul: 1.2 };
+            return { enable: true, sagAmpMul: 1.05 + i * 0.04, bulbGrowMul: 2.1 };
           }
-          return { enable: true };
+          return { enable: true, bulbGrowMul: 2.0 };
         });
       }
 
@@ -669,15 +692,16 @@
       function frameWordmarkCamera(size) {
         const aspect = camera.aspect || 16 / 9;
         const vFov = THREE.MathUtils.degToRad(camera.fov);
-        const fitH = size.y * 1.85;
+        // Extra headroom for hanging honey pendants below the glyph
+        const fitH = size.y * 2.35;
         const fitW = size.x * 1.15;
         const distH = fitH / (2 * Math.tan(vFov / 2));
         const distW = fitW / (2 * Math.tan(vFov / 2) * aspect);
         const dist = Math.max(distH, distW, 4.5);
-        camera.position.set(0, size.y * 0.05, dist);
+        camera.position.set(0, size.y * 0.02, dist);
         controls.minDistance = Math.max(2.2, dist * 0.35);
         controls.maxDistance = dist * 3.2;
-        controls.target.set(0, -size.y * 0.12, 0);
+        controls.target.set(0, -size.y * 0.28, 0);
         controls.update();
       }
 
@@ -751,22 +775,31 @@
         box.setFromObject(letterRoot);
         const center = box.getCenter(new THREE.Vector3());
         letterRoot.position.sub(center);
-        letterRoot.position.y += 0.35;
+        letterRoot.position.y += 1.05;
         const size = box.getSize(new THREE.Vector3());
         wordHalfW = size.x * 0.5;
         wordHalfH = size.y * 0.5;
 
-        // Per-letter column seed at each glyph centroid (local)
         letterOverrides = defaultLetterOverrides(letterMeshes.length);
-        // Attach local column X per letter after scale — use mesh local cx ≈ 0 relative to each mesh
+        // Preferential drip columns — narrow so tips form clear honey pendants
         for (let i = 0; i < letterMeshes.length; i++) {
           const m = letterMeshes[i];
+          const ch = letterChars[i] || WORDMARK[i] || "?";
           m.geometry.computeBoundingBox();
-          const c = m.geometry.boundingBox.getCenter(new THREE.Vector3());
+          const bb = m.geometry.boundingBox;
+          const c = bb.getCenter(new THREE.Vector3());
+          const spanX = bb.max.x - bb.min.x;
+          const halfCol = Math.max(spanX * 0.2, 0.03);
+          let cols = [c.x];
+          // Dual legs: two honey drips — keep columns tight so tips don't merge into a puddle
+          if (ch === "k" || ch === "u" || ch === "a" || ch === "n" || ch === "m") {
+            const inset = spanX * 0.32;
+            cols = [bb.min.x + inset, bb.max.x - inset];
+          }
           letterOverrides[i] = {
             ...letterOverrides[i],
-            columnXs: [c.x],
-            columnHalfW: Math.max((m.geometry.boundingBox.max.x - m.geometry.boundingBox.min.x) * 0.35, 0.04),
+            columnXs: cols,
+            columnHalfW: Math.max(spanX * (cols.length > 1 ? 0.14 : 0.2), 0.028),
           };
         }
 
@@ -801,8 +834,12 @@
           fontId: currentFontId,
           fontLabel: currentFontLabel,
           fonts: fontCatalog.map((f) => f.id),
-          roundness: { teardrop: true, softMinBulb: true, taubin: true, dripBlobs: 0 },
+          roundness: { teardrop: true, softMinBulb: true, taubin: true, dripBlobs: 0, pearRadius: true },
         };
+        window.__scratchLetterMeshes = letterMeshes;
+        window.__scratchCamera = camera;
+        window.__scratchControls = controls;
+        window.THREE = THREE;
         lastParamKey = "";
       }
 
