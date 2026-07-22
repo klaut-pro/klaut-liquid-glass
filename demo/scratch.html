@@ -83,7 +83,7 @@
       }
       label.row {
         display: grid;
-        grid-template-columns: 88px 1fr 42px;
+        grid-template-columns: 96px 1fr 42px;
         gap: 8px;
         align-items: center;
         font-size: 12px;
@@ -92,6 +92,21 @@
       }
       label.row input[type="range"] { width: 100%; }
       label.row span { font-variant-numeric: tabular-nums; color: var(--ink); text-align: right; }
+      .actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .actions button {
+        font: inherit;
+        font-size: 11px;
+        padding: 7px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(126, 200, 255, 0.12);
+        color: #dff2ff;
+        cursor: pointer;
+      }
       .hint {
         margin-top: 10px;
         font-size: 11px;
@@ -113,6 +128,12 @@
         color: var(--accent);
         vertical-align: middle;
       }
+      .status {
+        margin-top: 8px;
+        font-size: 11px;
+        color: var(--accent);
+        font-variant-numeric: tabular-nums;
+      }
     </style>
   </head>
   <body>
@@ -121,34 +142,44 @@
       <h1>Scratch pipeline <span class="badge" id="stageBadge">stage 1</span></h1>
       <p class="sub">
         Font: <strong>Arial Black</strong> · wordmark <strong>klaut.pro</strong><br />
-        Blender extrude → Three.js orbit → glass → liquid → drip
+        Frozen viscoplastic sag — letter mesh yields, not drip blobs
       </p>
       <div class="stages" id="stageButtons">
         <button type="button" data-stage="1">1 Font</button>
         <button type="button" data-stage="2">2 Rotate</button>
         <button type="button" data-stage="3">3 Glass</button>
         <button type="button" data-stage="4">4 Liquid</button>
-        <button type="button" data-stage="5">5 Drip</button>
+        <button type="button" data-stage="5">5 Sag</button>
       </div>
       <label class="row">
-        Liquify
-        <input id="liquify" type="range" min="0" max="1" step="0.01" value="0.35" />
-        <span id="liquifyVal">0.35</span>
+        Gravity
+        <input id="gravity" type="range" min="0" max="1" step="0.01" value="0.72" />
+        <span id="gravityVal">0.72</span>
+      </label>
+      <label class="row">
+        Freeze ht
+        <input id="freezeHeight" type="range" min="0.15" max="0.9" step="0.01" value="0.55" />
+        <span id="freezeHeightVal">0.55</span>
       </label>
       <label class="row">
         Viscosity
-        <input id="viscosity" type="range" min="0.05" max="1" step="0.01" value="0.45" />
-        <span id="viscosityVal">0.45</span>
+        <input id="viscosity" type="range" min="0.05" max="1" step="0.01" value="0.55" />
+        <span id="viscosityVal">0.55</span>
       </label>
       <label class="row">
         IOR
         <input id="ior" type="range" min="1.05" max="1.55" step="0.01" value="1.33" />
         <span id="iorVal">1.33</span>
       </label>
+      <div class="actions">
+        <button type="button" id="btnResettle">Resettle</button>
+        <button type="button" id="btnFreeze">Freeze now</button>
+      </div>
+      <p class="status" id="meltStatus">settle —</p>
       <p class="hint">
         Drag to orbit · scroll to zoom · right-drag to pan<br />
-        Stage 5: soft-letter gravity sag + continuum necks (<code>DripSim</code>)<br />
-        Viscosity: high = thick slow sag · low = watery drip<br />
+        Stage 5: <code>GravityMeltSim</code> — top frozen, bottom → neck/bulb<br />
+        Freeze ht: fraction from top that stays identity<br />
         Mesh: <code>demo/scratch/mesh/wordmark-klaut-pro.glb</code>
       </p>
     </aside>
@@ -166,29 +197,17 @@
       import { OrbitControls } from "three/addons/controls/OrbitControls.js";
       import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-      // Rank-1 continuum drips (docs/drop-modeling-research.md)
-      import {
-        DripSim,
-        MAX_DRIP_BLOBS,
-        viscosityMaps,
-      } from "../dist/field/DripSim.js";
+      // Frozen viscoplastic letter sag (docs/drop-modeling-research.md §5c)
+      import { GravityMeltSim } from "../dist/field/GravityMeltSim.js";
 
       const WORDMARK = "klaut.pro";
       const GLB_PATH = "./scratch/mesh/wordmark-klaut-pro.glb";
       /**
-       * Approximate Arial Black glyph-center fractions for "klaut.pro"
-       * (−1…1 across half-width). Period + p get extra intensity (descenders).
+       * Preferential sag columns as fractions of half-width (−1…1).
+       * Seeds continuous pendant necks under stems — still the same mesh.
        */
-      const WORDMARK_EMITTER_FRACS = [
-        { x: -0.88, intensity: 0.95 }, // k
-        { x: -0.68, intensity: 0.85 }, // l
-        { x: -0.48, intensity: 0.9 }, // a
-        { x: -0.28, intensity: 0.9 }, // u
-        { x: -0.1, intensity: 1.0 }, // t
-        { x: 0.05, intensity: 1.15 }, // .
-        { x: 0.28, intensity: 1.25 }, // p (descender)
-        { x: 0.5, intensity: 0.95 }, // r
-        { x: 0.74, intensity: 1.0 }, // o
+      const SAG_COLUMN_FRACS = [
+        -0.88, -0.68, -0.48, -0.28, -0.1, 0.05, 0.28, 0.5, 0.74,
       ];
 
       const canvas = document.getElementById("c");
@@ -197,22 +216,18 @@
         antialias: true,
         alpha: false,
         powerPreference: "high-performance",
-        // Needed so screenshots / some software GL paths keep the last frame visible
         preserveDrawingBuffer: true,
       });
       renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
       renderer.setSize(innerWidth, innerHeight, false);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      // Higher exposure so transmission glass doesn't read as black-on-black
       renderer.toneMappingExposure = 1.55;
 
       const scene = new THREE.Scene();
-      // Bright studio wash — glass needs light to refract; dark navy made the mark vanish
       scene.background = new THREE.Color(0x9eb0cc);
       scene.fog = new THREE.Fog(0x9eb0cc, 22, 48);
 
-      // Wider FOV for the long wordmark
       const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.05, 80);
       camera.position.set(0, 0.55, 7.2);
 
@@ -223,7 +238,6 @@
       controls.maxDistance = 28;
       controls.target.set(0, 0.05, 0);
 
-      // Bright backplate so transmission has colored light to bend (wide for wordmark)
       const backplate = new THREE.Mesh(
         new THREE.PlaneGeometry(28, 10),
         new THREE.MeshStandardMaterial({
@@ -237,7 +251,6 @@
       backplate.position.set(0, 1.0, -3.2);
       scene.add(backplate);
 
-      // Soft studio-ish plate so glass has something to refract/reflect
       const floor = new THREE.Mesh(
         new THREE.CircleGeometry(14, 64),
         new THREE.MeshStandardMaterial({
@@ -267,7 +280,6 @@
       scene.add(new THREE.HemisphereLight(0xffffff, 0xa8b4c8, 0.85));
 
       const pmrem = new THREE.PMREMGenerator(renderer);
-      // Brighter room env for clear specular + refraction on MeshPhysicalMaterial
       scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.02).texture;
       scene.environmentIntensity = 1.35;
       pmrem.dispose();
@@ -278,12 +290,12 @@
       let letterMeshes = [];
       /** @type {{ pos: Float32Array, base: Float32Array, normal: Float32Array }[]} */
       let deformCache = [];
-      /** World-space half-width / height of wordmark (for drip field space) */
       let wordHalfW = 2.5;
       let wordHalfH = 0.95;
-      let wordAttachY = -0.85;
-      /** @type {DripSim} */
-      const dripSim = new DripSim(WORDMARK_EMITTER_FRACS.length);
+      /** Local-space X for sag columns (per mesh centroid frame ≈ wordmark local). */
+      let columnXsLocal = [];
+
+      const meltSim = new GravityMeltSim();
 
       const matSolid = new THREE.MeshStandardMaterial({
         color: 0xc8d0dc,
@@ -291,8 +303,6 @@
         metalness: 0.15,
       });
 
-      // Slightly imperfect glass: full transmission + dark env reads as empty canvas.
-      // Keep transmission high but tint + env intensity so the silhouette is obvious.
       const matGlass = new THREE.MeshPhysicalMaterial({
         color: 0xf2f7ff,
         metalness: 0,
@@ -318,182 +328,16 @@
       matLiquid.attenuationColor = new THREE.Color(0xa8d0ff);
       matLiquid.envMapIntensity = 2.35;
 
-      // Stage 5: DripSim metaball blobs as glass spheres (softMin-style overlap)
-      // Kept as a scene group; positions are world-space lip samples (OrbitControls
-      // moves the camera, not the mesh). letterRoot still owns the soft verts.
-      const dripGroup = new THREE.Group();
-      dripGroup.name = "dripPendants";
-      dripGroup.visible = false;
-      scene.add(dripGroup);
-      const dripMat = matLiquid.clone();
-      // Slightly denser so necks read against the bright studio wash
-      dripMat.transmission = 0.82;
-      dripMat.thickness = 1.05;
-      dripMat.attenuationColor = new THREE.Color(0x9ec8ff);
-      dripMat.attenuationDistance = 1.1;
-      dripMat.envMapIntensity = 2.5;
-      const dripSphereGeo = new THREE.SphereGeometry(1, 22, 16);
-      /** @type {THREE.Mesh[]} */
-      const dripPool = [];
-      for (let i = 0; i < MAX_DRIP_BLOBS; i++) {
-        const m = new THREE.Mesh(dripSphereGeo, dripMat);
-        m.visible = false;
-        m.frustumCulled = false;
-        dripGroup.add(m);
-        dripPool.push(m);
-      }
+      let stage = 3;
+      let gravityAmt = 0.72;
+      let freezeHeight = 0.55;
+      let viscosity = 0.55;
+      /** Param signature — resettle when artist knobs change after freeze. */
+      let lastParamKey = "";
 
-      /**
-       * Sample lowest verts per X-column from REST pose (deformCache.base).
-       * Using live deformed verts made lips chase pendant seeds and left a gap
-       * between the readable letter baseline and the drip spheres.
-       */
-      function sampleBottomLips(meshes) {
-        const v = new THREE.Vector3();
-        let minY = Infinity;
-        let maxY = -Infinity;
-        let minX = Infinity;
-        let maxX = -Infinity;
-        /** @type {{ x: number, y: number }[]} */
-        const pts = [];
-        for (let mi = 0; mi < meshes.length; mi++) {
-          const mesh = meshes[mi];
-          const entry = deformCache[mi];
-          if (!entry) continue;
-          const base = entry.base;
-          mesh.updateWorldMatrix(true, false);
-          const mw = mesh.matrixWorld;
-          for (let i = 0; i < base.length; i += 3) {
-            v.set(base[i], base[i + 1], base[i + 2]).applyMatrix4(mw);
-            pts.push({ x: v.x, y: v.y });
-            minY = Math.min(minY, v.y);
-            maxY = Math.max(maxY, v.y);
-            minX = Math.min(minX, v.x);
-            maxX = Math.max(maxX, v.x);
-          }
-        }
-        const halfW = Math.max((maxX - minX) * 0.5, 0.5);
-        const halfH = Math.max((maxY - minY) * 0.5, 0.4);
-        const bins = WORDMARK_EMITTER_FRACS.length;
-        const span = Math.max(maxX - minX, 1e-6);
-        /** @type {{ x: number, y: number, n: number, minY: number }[]} */
-        const accum = Array.from({ length: bins }, () => ({
-          x: 0,
-          y: 0,
-          n: 0,
-          minY: Infinity,
-        }));
-        // Bottom 14% of rest pose — true glyph lips / baseline
-        const band = minY + (maxY - minY) * 0.14;
-        const binW = span / bins;
-        for (const p of pts) {
-          if (p.y > band) continue;
-          const bi = Math.min(
-            bins - 1,
-            Math.max(0, Math.floor(((p.x - minX) / span) * bins)),
-          );
-          const a = accum[bi];
-          const cx = minX + (bi + 0.5) * binW;
-          const w = 1 / (1 + Math.abs(p.x - cx) / Math.max(binW * 0.35, 1e-3));
-          a.n += w;
-          a.x += p.x * w;
-          a.y += p.y * w;
-          a.minY = Math.min(a.minY, p.y);
-        }
-        // Mild sag offset so attach tracks soft-letter drainage without chasing tips
-        const maps = viscosityMaps(viscosity, Math.max(0.55 + liquifyAmt * 0.45, 0.35));
-        const sagLift = maps.sagAmp * liquifyAmt * halfH * 0.55;
-        const lips = WORDMARK_EMITTER_FRACS.map((spec, i) => {
-          const a = accum[i];
-          const useSample = a.n >= 2.5;
-          const worldX = useSample ? a.x / a.n : spec.x * halfW;
-          const restLip = useSample
-            ? (a.y / a.n) * 0.55 + a.minY * 0.45
-            : minY + (maxY - minY) * 0.06;
-          const hang = THREE.MathUtils.clamp(
-            (minY + (maxY - minY) * 0.1 - restLip) / Math.max(halfH, 1e-3),
-            0,
-            1,
-          );
-          return {
-            x: worldX,
-            // Sit slightly under rest lip so root embeds after soft sag
-            attachY: restLip - sagLift * (0.65 + 0.5 * hang),
-            normalized: false,
-            intensity: spec.intensity * (1 + hang * 0.35),
-            phaseOffset: (i * 0.13) % 1,
-            stretchScale: 1 + hang * 0.15,
-            locked: true,
-            enabled: true,
-            startInStretch: true,
-            stretchT: 0.4 + (i % 5) * 0.06,
-          };
-        });
-        return {
-          lips,
-          halfW,
-          halfH,
-          attachY: lips.reduce((s, l) => s + l.attachY, 0) / lips.length,
-          minY,
-          maxY,
-        };
+      function paramKey() {
+        return `${gravityAmt.toFixed(2)}|${freezeHeight.toFixed(2)}|${viscosity.toFixed(2)}|${stage}`;
       }
-
-      function configureDripSim() {
-        const sampled = letterMeshes.length
-          ? sampleBottomLips(letterMeshes)
-          : null;
-        if (sampled) {
-          wordHalfW = sampled.halfW;
-          wordHalfH = sampled.halfH;
-          wordAttachY = sampled.attachY;
-          dripSim.setControl({
-            mode: "controlled",
-            isolate: true,
-            suppressFrees: true,
-            deterministic: true,
-            attachY: sampled.attachY,
-            emitters: sampled.lips,
-          });
-        } else {
-          dripSim.setControl({
-            mode: "controlled",
-            isolate: true,
-            suppressFrees: true,
-            attachY: wordAttachY,
-            emitters: WORDMARK_EMITTER_FRACS.map((spec, i) => ({
-              x: spec.x,
-              normalized: true,
-              intensity: spec.intensity,
-              phaseOffset: (i * 0.13) % 1,
-              stretchScale: 1,
-            })),
-          });
-        }
-        dripSim.reset();
-      }
-
-      /** Push live lip positions into DripSim without resetting phase. */
-      function syncEmitterLipsFromMesh() {
-        if (!letterMeshes.length) return null;
-        const sampled = sampleBottomLips(letterMeshes);
-        wordHalfW = sampled.halfW;
-        wordHalfH = sampled.halfH;
-        wordAttachY = sampled.attachY;
-        dripSim.updateEmitterLips(
-          sampled.lips.map((l) => ({
-            x: l.x,
-            attachY: l.attachY,
-            normalized: false,
-          })),
-          wordHalfW,
-        );
-        return sampled;
-      }
-
-      let stage = 3; // ship with glass on by default (stages 1–3 done)
-      let liquifyAmt = 0.35;
-      let viscosity = 0.45;
 
       function applyMaterial() {
         const mat =
@@ -501,9 +345,6 @@
         for (const mesh of letterMeshes) {
           mesh.material = mat;
         }
-        dripMat.copy(matLiquid);
-        dripMat.needsUpdate = true;
-        dripGroup.visible = stage >= 5;
       }
 
       function setStage(next) {
@@ -513,189 +354,112 @@
           btn.classList.toggle("active", Number(btn.dataset.stage) === stage);
         }
         applyMaterial();
-        // Stage 1–2: no liquify deformation; 4+ enables
-        if (stage < 4) resetDeform();
-        if (stage >= 5) configureDripSim();
-        else {
-          for (const m of dripPool) m.visible = false;
-        }
-      }
-
-      function resetDeform() {
-        for (const entry of deformCache) {
-          entry.pos.set(entry.base);
-        }
-        for (const mesh of letterMeshes) {
-          mesh.geometry.attributes.position.needsUpdate = true;
-          mesh.geometry.computeVertexNormals();
-        }
-      }
-
-      /**
-       * Coupled soft-letter gravity drainage (Rank-1):
-       * Viscosity (Oh) → sagAmp (thick honey bulge) + sagRate (watery drain speed).
-       * Bottom / downward-facing verts soften under g; pendants emerge from that lip.
-       */
-      function applyGravitySag(t, dripAmt) {
-        if (stage < 4 || liquifyAmt < 0.001) {
-          if (stage < 4) resetDeform();
-          return;
-        }
-        const maps = viscosityMaps(viscosity, Math.max(dripAmt, 0.35));
-        const amt = liquifyAmt;
-        // High Oh: thicker slower sag; low Oh: faster drainage into the pendant
-        const sagAmp = maps.sagAmp * amt * wordHalfH * 0.85;
-        const dripPull = maps.sagRate * amt * 0.07 * wordHalfH;
-        const ripAmp = 0.018 * amt * (0.35 + 0.65 * (1 - viscosity));
-        const lips = dripSim.getControl().emitters || [];
-        const lipXs = lips.map((e) =>
-          e.normalized === false ? e.x : e.x * wordHalfW,
-        );
-
-        for (let mi = 0; mi < letterMeshes.length; mi++) {
-          const mesh = letterMeshes[mi];
-          const { pos, base, normal } = deformCache[mi];
-          let lo = Infinity;
-          let hi = -Infinity;
-          for (let i = 1; i < base.length; i += 3) {
-            lo = Math.min(lo, base[i]);
-            hi = Math.max(hi, base[i]);
+        if (stage < 4) {
+          meltSim.reset();
+          for (const mesh of letterMeshes) {
+            mesh.geometry.attributes.position.needsUpdate = true;
+            mesh.geometry.computeVertexNormals();
           }
-          const span = Math.max(hi - lo, 1e-4);
-          mesh.updateWorldMatrix(true, false);
-          const world = new THREE.Vector3();
+        } else if (stage >= 5) {
+          meltSim.reset();
+          lastParamKey = "";
+        }
+      }
 
-          for (let i = 0; i < pos.length; i += 3) {
-            const x = base[i];
-            const y = base[i + 1];
-            const z = base[i + 2];
-            const nx = normal[i];
-            const ny = normal[i + 1];
-            const nz = normal[i + 2];
-            const bottomW = THREE.MathUtils.clamp((hi - y) / span, 0, 1);
-            const bottomW2 = bottomW * bottomW;
-            const downFace = Math.max(0, -ny);
-            const drain = bottomW2 * (0.45 + 0.55 * downFace);
+      function resettle() {
+        if (stage < 5) return;
+        meltSim.reset();
+        lastParamKey = paramKey();
+      }
 
-            // Pendant seed columns — letter itself forms the upper neck
-            world.set(x, y, z).applyMatrix4(mesh.matrixWorld);
-            let near = 1;
-            for (const lx of lipXs) {
-              const d =
-                Math.abs(world.x - lx) / Math.max(wordHalfW * 0.11, 0.12);
-              near = Math.min(near, d);
+      function updateMelt(dt) {
+        if (stage < 5 || gravityAmt < 0.001) {
+          if (stage < 4) return;
+          if (stage === 4) {
+            // Soft liquid look without full sag — mild intensity, high freeze
+            const changed = meltSim.step(dt, {
+              intensity: gravityAmt * 0.25,
+              viscosity,
+              freezeHeight: Math.max(freezeHeight, 0.72),
+              falloffPower: 1.4,
+              columnXs: columnXsLocal,
+              columnHalfW: wordHalfW * 0.12,
+              oneShot: true,
+            });
+            if (changed) {
+              for (const mesh of letterMeshes) {
+                mesh.geometry.attributes.position.needsUpdate = true;
+                mesh.geometry.computeVertexNormals();
+              }
             }
-            const column = Math.max(0, 1 - near);
-            const column3 = column * column * column;
-
-            const rip =
-              Math.sin(x * 2.2 + t * maps.sagRate * 0.55) *
-                Math.cos(z * 3.1 + t * 0.7) *
-                ripAmp *
-                (0.4 + 0.6 * bottomW);
-            const sag = sagAmp * drain;
-            const lipSeed =
-              dripPull *
-              Math.pow(bottomW, 2.4) *
-              (0.35 + 0.65 * downFace) *
-              (0.2 + 2.0 * column3);
-            const pushN = rip * (0.5 + 0.5 * Math.max(0, ny));
-            pos[i] = x + nx * pushN;
-            pos[i + 1] = y - sag - lipSeed + ny * pushN * 0.35;
-            pos[i + 2] = z + nz * pushN;
           }
-          mesh.geometry.attributes.position.needsUpdate = true;
-          mesh.geometry.computeVertexNormals();
-        }
-      }
-
-      function updateDrips(dt) {
-        if (stage < 5) {
-          for (const m of dripPool) m.visible = false;
           return;
         }
-        const dripAmt = THREE.MathUtils.clamp(0.55 + liquifyAmt * 0.45, 0.35, 1);
-        // Resample lips from *deformed* mesh so emitters ride the sagging surface
-        syncEmitterLipsFromMesh();
-        const blobs = dripSim.step(Math.min(dt, 0.05), {
-          drip: dripAmt,
-          liquify: liquifyAmt,
+
+        const key = paramKey();
+        if (key !== lastParamKey) {
+          // Artist retuned after freeze → resettle to new target
+          if (meltSim.isFrozen() || lastParamKey !== "") {
+            meltSim.reset();
+          }
+          lastParamKey = key;
+        }
+
+        const changed = meltSim.step(dt, {
+          intensity: gravityAmt,
           viscosity,
-          halfW: wordHalfW,
-          halfH: wordHalfH,
-          reducedMotion: false,
+          freezeHeight,
+          falloffPower: 1.7,
+          columnXs: columnXsLocal,
+          columnHalfW: wordHalfW * 0.11,
+          oneShot: true,
         });
-        const maps = viscosityMaps(viscosity, dripAmt);
-        const k = maps.mergeK * wordHalfH;
-        // Cap sphere size so softMin plump can't birth a hero-orb in front of the mark
-        const maxR = wordHalfH * (0.2 + 0.12 * viscosity);
-        for (let i = 0; i < dripPool.length; i++) {
-          const mesh = dripPool[i];
-          const b = blobs[i];
-          if (!b || b.w < 0.04) {
-            mesh.visible = false;
-            continue;
+        if (changed) {
+          for (const mesh of letterMeshes) {
+            mesh.geometry.attributes.position.needsUpdate = true;
+            mesh.geometry.computeVertexNormals();
           }
-          let r = b.r * (0.8 + 0.25 * b.w);
-          // Only nearest-neighbor plump (true softMin neck) — avoid N² blow-up
-          let bestH = 0;
-          for (let j = 0; j < blobs.length; j++) {
-            if (j === i) continue;
-            const o = blobs[j];
-            if (!o || o.w < 0.04) continue;
-            const d = Math.hypot(b.x - o.x, b.y - o.y);
-            const reach = b.r + o.r + k * 1.6;
-            if (d < reach && d > 1e-5) {
-              const h = Math.max(0, 1 - d / reach);
-              bestH = Math.max(bestH, h);
-            }
-          }
-          r += k * bestH * bestH * 0.4;
-          r = Math.min(r, maxR);
-          mesh.visible = true;
-          // World-space coords from deformed lip samples (OrbitControls moves camera)
-          mesh.position.set(b.x, b.y, 0.03);
-          mesh.scale.setScalar(Math.max(r, 0.01));
         }
+
+        const st = meltSim.getStatus();
+        const statusEl = document.getElementById("meltStatus");
+        statusEl.textContent = st.frozen
+          ? `frozen · freezeHt ${st.freezeHeight.toFixed(2)} · sagAmp ${st.maps.sagAmp.toFixed(2)}`
+          : `settling ${(st.settle * 100).toFixed(0)}% · freezeHt ${st.freezeHeight.toFixed(2)}`;
+
         if (window.__scratch) {
-          window.__scratch.dripBlobs = blobs.length;
+          window.__scratch.frozen = st.frozen;
+          window.__scratch.settle = st.settle;
+          window.__scratch.freezeHeight = st.freezeHeight;
+          window.__scratch.gravity = gravityAmt;
           window.__scratch.viscosity = viscosity;
-          window.__scratch.attachY = wordAttachY;
+          window.__scratch.dripBlobs = 0;
           window.__scratch.maps = {
-            stretchLen: maps.stretchLen,
-            dropR: maps.dropR,
-            detachNeck: maps.detachNeck,
-            mergeK: maps.mergeK,
-            sagAmp: maps.sagAmp,
-            sagRate: maps.sagRate,
+            sagAmp: st.maps.sagAmp,
+            neckPinch: st.maps.neckPinch,
+            bulbGrow: st.maps.bulbGrow,
+            settleRate: st.maps.settleRate,
           };
-          const ctrl = dripSim.getControl();
-          window.__scratch.lips = (ctrl.emitters || []).map((e) => ({
-            x: e.x,
-            attachY: e.attachY,
-          }));
         }
       }
 
       function frameWordmarkCamera(size) {
-        // Frame by height so letters stay readable; pull back for width
         const aspect = camera.aspect || 16 / 9;
         const vFov = THREE.MathUtils.degToRad(camera.fov);
-        const fitH = size.y * 1.55;
+        const fitH = size.y * 1.85;
         const fitW = size.x * 1.15;
         const distH = fitH / (2 * Math.tan(vFov / 2));
         const distW = fitW / (2 * Math.tan(vFov / 2) * aspect);
         const dist = Math.max(distH, distW, 4.5);
-        camera.position.set(0, size.y * 0.15, dist);
+        camera.position.set(0, size.y * 0.05, dist);
         controls.minDistance = Math.max(2.2, dist * 0.35);
         controls.maxDistance = dist * 3.2;
-        controls.target.set(0, 0.02, 0);
+        controls.target.set(0, -size.y * 0.12, 0);
         controls.update();
       }
 
       async function loadLetter() {
         const loader = new GLTFLoader();
-        // Absolute-from-demo path survives serve's /scratch.html → /scratch redirect
         const glbUrl = new URL(GLB_PATH, import.meta.url).href;
         const gltf = await loader.loadAsync(glbUrl);
         letterRoot = gltf.scene;
@@ -707,14 +471,15 @@
             const posAttr = obj.geometry.attributes.position;
             const nAttr = obj.geometry.attributes.normal;
             const base = posAttr.array.slice(0);
-            const normal = nAttr ? nAttr.array.slice(0) : new Float32Array(base.length);
+            const normal = nAttr
+              ? nAttr.array.slice(0)
+              : new Float32Array(base.length);
             deformCache.push({ pos: posAttr.array, base, normal });
           }
         });
         if (!letterMeshes.length) {
           throw new Error("GLB loaded but contained no meshes");
         }
-        // Normalize by HEIGHT so the wide wordmark stays readable (not crushed by maxDim)
         const box = new THREE.Box3().setFromObject(letterRoot);
         const size0 = box.getSize(new THREE.Vector3());
         const targetH = 1.85;
@@ -723,36 +488,47 @@
         box.setFromObject(letterRoot);
         const center = box.getCenter(new THREE.Vector3());
         letterRoot.position.sub(center);
-        letterRoot.position.y += 0.08;
+        letterRoot.position.y += 0.35;
         const size = box.getSize(new THREE.Vector3());
         wordHalfW = size.x * 0.5;
         wordHalfH = size.y * 0.5;
-        configureDripSim();
+        // Columns in local mesh space (letterRoot centered; meshes share root)
+        columnXsLocal = SAG_COLUMN_FRACS.map((f) => f * wordHalfW);
+
+        meltSim.bind(deformCache);
         scene.add(letterRoot);
-        // Keep dripGroup in scene (world space); lips resampled from deformed mesh
-        if (dripGroup.parent !== scene) scene.add(dripGroup);
         applyMaterial();
         frameWordmarkCamera(size);
-        // Expose for Playwright readability checks
+
         window.__scratch = {
           wordmark: WORDMARK,
           mesh: GLB_PATH,
           size: { x: size.x, y: size.y, z: size.z },
-          attachY: wordAttachY,
-          emitters: dripSim.getControl().emitters?.length ?? 0,
           ready: true,
           dripBlobs: 0,
-          physics: "rank1-soft-letter+continuum",
+          frozen: false,
+          settle: 0,
+          freezeHeight,
+          gravity: gravityAmt,
+          viscosity,
+          physics: "frozen-viscoplastic-mesh-sag",
+          model: "GravityMeltSim",
         };
       }
 
       // UI
-      const liquifyEl = document.getElementById("liquify");
+      const gravityEl = document.getElementById("gravity");
+      const freezeEl = document.getElementById("freezeHeight");
       const viscosityEl = document.getElementById("viscosity");
       const iorEl = document.getElementById("ior");
-      liquifyEl.addEventListener("input", () => {
-        liquifyAmt = Number(liquifyEl.value);
-        document.getElementById("liquifyVal").textContent = liquifyAmt.toFixed(2);
+      gravityEl.addEventListener("input", () => {
+        gravityAmt = Number(gravityEl.value);
+        document.getElementById("gravityVal").textContent = gravityAmt.toFixed(2);
+      });
+      freezeEl.addEventListener("input", () => {
+        freezeHeight = Number(freezeEl.value);
+        document.getElementById("freezeHeightVal").textContent =
+          freezeHeight.toFixed(2);
       });
       viscosityEl.addEventListener("input", () => {
         viscosity = Number(viscosityEl.value);
@@ -763,7 +539,10 @@
         document.getElementById("iorVal").textContent = ior.toFixed(2);
         matGlass.ior = ior;
         matLiquid.ior = ior;
-        dripMat.ior = ior;
+      });
+      document.getElementById("btnResettle").addEventListener("click", resettle);
+      document.getElementById("btnFreeze").addEventListener("click", () => {
+        meltSim.freeze();
       });
       for (const btn of document.querySelectorAll("#stageButtons button")) {
         btn.addEventListener("click", () => setStage(Number(btn.dataset.stage)));
@@ -782,12 +561,8 @@
       const clock = new THREE.Clock();
       function frame() {
         const dt = clock.getDelta();
-        const t = clock.getElapsedTime();
         controls.update();
-        const dripAmt = THREE.MathUtils.clamp(0.55 + liquifyAmt * 0.45, 0.35, 1);
-        // Soft-letter sag first — then drips sample the deformed lips
-        applyGravitySag(t, dripAmt);
-        updateDrips(dt);
+        updateMelt(dt);
         renderer.render(scene, camera);
         requestAnimationFrame(frame);
       }
@@ -795,10 +570,7 @@
       try {
         await loadLetter();
         setStage(5);
-        // Bias toward visible mid-stretch pendants for first paint / QA
-        liquifyAmt = 0.55;
-        liquifyEl.value = String(liquifyAmt);
-        document.getElementById("liquifyVal").textContent = liquifyAmt.toFixed(2);
+        lastParamKey = "";
         frame();
       } catch (err) {
         console.error(err);

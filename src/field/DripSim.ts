@@ -1,5 +1,5 @@
 /**
- * Viscosity-driven pendant-drop simulation (CPU).
+ * Viscosity-driven continuum drop field (CPU) for SDF / glassify panes.
  *
  * Practical continuum model (not full SPH):
  * - Mass accumulates at bottom emitters (Bond-ish critical mass → drip)
@@ -10,6 +10,10 @@
  *
  * Controlled mode: explicit per-emitter anchors (per-glyph), deterministic necks,
  * no lateral chaos — clear pendant morphology for visual QA.
+ *
+ * NOTE (scratch wordmark): do NOT use this as floating glass spheres under the
+ * letter. The primary melted-letter look is mesh gravity drainage + freeze in
+ * `GravityMeltSim` — the glyph itself sags; blobs are for 2D field compositing.
  */
 
 /** Soft-body letter drips need denser filament samples than pane field blobs. */

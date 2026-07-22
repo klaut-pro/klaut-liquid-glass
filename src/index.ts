@@ -22,6 +22,13 @@ export {
   type DripEmitterSpec,
   type DripViscosityMaps,
 } from "./field/DripSim.js";
+export {
+  GravityMeltSim,
+  meltViscosityMaps,
+  type MeltViscosityMaps,
+  type GravityMeltParams,
+  type GravityMeltStatus,
+} from "./field/GravityMeltSim.js";
 export { softMin, sdRoundBox } from "./field/SDF.js";
 export {
   GLYPH_PROFILES,

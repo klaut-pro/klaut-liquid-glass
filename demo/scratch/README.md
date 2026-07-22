@@ -33,7 +33,7 @@ or:
 | 2 | 3D rotatable (OrbitControls) | ✅ `demo/scratch.html` |
 | 3 | Clear refractive glass (IOR / Fresnel / env) | ✅ same page |
 | 4 | Liquid glass (liquify / soft surface) | ✅ slider on page |
-| 5 | Gravity + viscosity drips | ✅ `DripSim` continuum emitters + softMin mesh blobs |
+| 5 | Gravity melt + viscosity + freeze | ✅ `GravityMeltSim` (letter mesh only) |
 | 6 | Dispersion / light-driven fringe polish | later |
 
 ## Demo
@@ -42,13 +42,13 @@ Serve repo root, then open:
 
 **http://localhost:52780/demo/scratch.html**
 
-Drag to orbit. Use the stage / viscosity / liquify controls.
+Drag to orbit. Controls: **Gravity**, **Freeze ht** (top fraction frozen), **Viscosity**, IOR. Resettle / Freeze now for pose control.
 
-**Stage 5 physics (Rank 1 — `docs/drop-modeling-research.md`):**
+**Stage 5 physics (`docs/drop-modeling-research.md` §3.1 / §5c):**
 
-- Continuum emitters sampled under letter bottoms (descenders `.` / `p` boosted)
-- Fill → stretch → neck pinch → detach free blobs (`DripSim`)
-- Viscosity → Ohnesorge maps: drip rate, neck length, tip radius, softMin `mergeK`
-- Glass sphere pool overlaps as a softMin / metaball proxy under the GLB wordmark
+- **Frozen viscoplastic sag** — letter mesh yields under gravity; upper band stays identity
+- Tunable `freezeHeight` + falloff; Oh maps → neck pinch / bulb grow / settle speed
+- One-shot settle → freeze (static sculpture, not ongoing drip sim)
+- Preferential columns under stems (same mesh — **no attached drip blobs**)
 
 Drop-modeling research: [`docs/drop-modeling-research.md`](../../docs/drop-modeling-research.md).

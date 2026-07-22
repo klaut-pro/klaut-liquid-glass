@@ -1,8 +1,10 @@
 # Drop Modeling Research — klaut-liquid-glass
 
-Deep dive on how to model **viscosity-dependent pendant drips** for the klaut.pro glass wordmark / field engine. Sources: public papers, VFX talks, WebGL/WebGPU demos, Codrops/Shadertoy prior art, and in-repo engine notes (`DripSim.ts`, `docs/liquid-glass-research.md`, liquid-glass-physics skill).
+Deep dive on how to model **frozen viscous gravity deformation** of the klaut.pro glass wordmark (and the older continuum pendant path). Sources: concept art (`klaut.pro/concept_art`), public papers, VFX talks, WebGL demos, and in-repo engine notes (`GravityMeltSim.ts`, `DripSim.ts`).
 
-**Klaut research gateway status:** `klaut-li-research` / `li-research-gateway` is planned (Semantic Scholar + OpenAlex warm index) but not queryable for this pass. `https://search.klaut.pro` currently serves the **lip registry** landing page (wrong vhost / TLS SNI `SEC_E_WRONG_PRINCIPAL` when verified); Majico `web_search` (SearXNG/Klaut/Serper chain) returned empty rows. Findings below use WebSearch + direct paper/article fetches instead.
+**Critical correction (2026-07):** Concept art is **molten chrome/glass letterforms that sagged and solidified** — continuous letter body → teardrop neck → bulb. **Do not** attach separate emitter blobs under letters for the default look. Upper glyph may be completely frozen; only a tunable bottom band yields.
+
+**Research tools this pass:** `user-klaut-research` `research_search_papers` + WebSearch + direct PDF fetches (Balmforth / viscous catenary / hanging filaments).
 
 ---
 
@@ -134,117 +136,160 @@ Refs:
 
 ## 3. What we already ship
 
-`DripSim` is explicitly a **practical continuum proxy** (not SPH):
+### 3.1 Default brand look — `GravityMeltSim` (frozen mesh sag)
 
-1. Mass accumulates at bottom emitters (Bond-ish critical mass).
-2. Stretch forms a neck; viscosity ↑ → longer / slower neck.
-3. Detach when neck thins → free drops + drag.
-4. Remerge nearby frees; shader `smoothMin` blends blobs into pane/glyph field.
+Scratch stage 5 deforms **wordmark mesh vertices** with a height-masked gravity field, one-shot settles, then **freezes**. No pendant sphere pool.
 
-Scratch demo (`demo/scratch.html`) approximates stage-5 with Three.js spheres/capsules driven by the same viscosity mapping for orbit QA on the baked wordmark mesh.
+| Knob | Meaning |
+|------|---------|
+| `intensity` (Gravity) | How far bottoms hang |
+| `freezeHeight` | Fraction from **top** that stays identity (0.55 ≈ concept) |
+| `falloffPower` | Sharpness of yield band below freeze line |
+| `viscosity` | Neck thickness, bulb fatness, settle speed (Oh-proxy) |
+
+Yield weight:
+
+\[
+w(h) = 0 \quad (h \ge h_{\mathrm{freeze}}),\quad
+w(h) = \left(\frac{h_{\mathrm{freeze}}-h}{h_{\mathrm{freeze}}}\right)^{p}
+\quad (h < h_{\mathrm{freeze}})
+\]
+
+where \(h\) is normalized height (0 bottom … 1 top). Target displacement: downward sag + mid-band radial **neck pinch** + tip **bulb grow** along preferential stem columns — continuous geometry, same mesh.
+
+### 3.2 Optional continuum — `DripSim` (field / glassify panes)
+
+`DripSim` remains a **practical continuum proxy** for 2D field glassify (not the scratch wordmark default):
+
+1. Mass at bottom emitters → stretch neck → pinch → free drops.
+2. softMin blends blobs into pane field.
+
+**Do not** use attached drip blobs as the default wordmark look.
 
 ---
 
-## 4. Ranked recommendations for klaut.pro mesh drips
+## 4. Ranked recommendations (post concept-art correction)
 
-### ★ Rank 1 — Hybrid continuum emitters + SDF / mesh softMin (ship / deepen)
+### ★ Rank 1 — Frozen viscoplastic mesh sag (`GravityMeltSim`) — **SHIPPED DEFAULT**
+
+**Why #1:** Matches concept art exactly — solidified pendant lettering, frozen upper band, tunable affected fraction, continuous neck/bulb, rotatable glass material unchanged.
+
+**Physics steal:**
+- **Yield-stress / Herschel–Bulkley:** regions below yield act as rigid plugs (our freeze-height band); yielded regions stretch under \(g\) then stop when stresses drop (Balmforth & Hewitt 2013; Balmforth et al. Annu. Rev. Fluid Mech.).
+- **Viscous catenary / hanging filaments:** gravity vs viscous resistance sets hang morphology; we bake a static target instead of running to pinch-off (Teichman & Mahadevan 2003; Le Merrer et al. 2008; Koulakis et al.).
+- **Ohnesorge maps:** viscosity → thicker necks, fatter bulbs, slower settle (same artist vocabulary as old drip path).
 
 **Pipeline:**
 
-1. Sample **drip emitters** along the wordmark medial bottom (per-glyph stem lips for `k`,`l`,`a`,`u`,`t`,`.`,`p`,`r`,`o` — or auto along AABB bottom silhouette).
-2. CPU (or tiny compute) **fill → stretch → pinch → free** with Oh/Bo-inspired maps from UI `viscosity` / `drip` / `liquify`.
-3. Upload ≤48 blobs + optional capsule endpoints; merge with mesh/glyph field via `smoothMin` (2D field for glassify, or vertex liquify + pendant meshes for scratch GLB).
-4. Shade with existing glass IOR / Fresnel / dispersion — drips inherit liquid material.
+```
+GLB wordmark → bind rest pose → yield mask(freezeHeight)
+  → analytic pendant target (sag + neck + bulb)
+  → one-shot ease 0→1 → freeze pose
+  → MeshPhysicalMaterial glass (orbit unchanged)
+```
 
-**Why #1:** Matches engine architecture, WebGL2, ≤3 live surfaces budget, readable brand type, already partially implemented. Steal CSF/RP *semantics* without SPH cost.
+### ★ Rank 2 — Continuum emitters + softMin (`DripSim`) — field / pane only
 
-**Next upgrades:**
-- Neck radius from Quilez capsule SDF, not only blob weights.
-- Detach threshold ∝ \(1/\mathrm{Oh}\) (viscosity delays pinch).
-- Emitters from mesh bottom edge samples of `wordmark-klaut-pro.glb`.
+Keep for 2D glassify liquify panes and experimental overlays. **Not** the scratch default. Attached spheres under letters read as floating orbs — rejected vs concept art.
 
-### ★ Rank 2 — Screen-space / field-only liquify with procedural pendants (no particle sim)
+### ★ Rank 3 — Screen-space SDF pendants (cheap landing loops)
 
-Keep the GLB glass wordmark; drive drips as **shader-only** SDF pendants (time + viscosity uniforms) seeded under letter bottoms. Optional: march a few spheres in a second pass.
+Shader-only hang under letter bottoms; no mesh edit. Good for lightweight marketing loops; weaker continuity than Rank 1.
 
-**Why #2:** Cheapest realtime; great for landing loops. Weaker physical continuity (no true mass conservation) but excellent brand readability.
+### ★ Rank 4 — WebGPU MLS-MPM (optional hero)
 
-Steal: Codrops metaball trail / Quilez smin; Weta contact-angle idea as “stick to underside until stretch exceeds threshold”.
+Defer — fights refractive glass wordmark readability.
 
-### ★ Rank 3 — WebGPU MLS-MPM island (optional hero demo)
-
-Isolate a small particle volume under the wordmark (or full WaterBall-style toy) with MLS-MPM + SSFR or mesh skinning. Gate behind WebGPU + reduced particle count (~10–30k).
-
-**Why #3:** Best physical splash / breakup fidelity in-browser, but diverges from refractive glass wordmark pipeline, needs WebGPU, and fights “readable klaut.pro” unless heavily constrained (emit only from letter lips, high viscosity, low We).
-
-Defer until Rank 1 looks locked on the scratch + glassify paths.
-
-### Not recommended as primary for logo drips
+### Not recommended as primary
 
 | Approach | Why skip as default |
 |----------|---------------------|
-| Full SPH in WebGL2 | Neighbor search / stability cost vs visual gain |
-| Offline FLIP (Weta-scale) | Overnight / mm voxels — bake B-roll only |
-| Pure vertex jelly without necks | Melty soup, no Rayleigh–Plateau read |
+| Attached drip blob spheres on wordmark | Concept art = continuous letter body, not emitters |
+| Full SPH in WebGL2 | Neighbor cost vs visual gain |
+| Offline FLIP (Weta-scale) | Bake B-roll only |
+| Continuous ongoing drip animation | Concept is **frozen / once-settled** |
 
 ---
 
-## 5. Practical WebGL pipeline (target)
+## 5. Practical WebGL pipeline (wordmark default)
 
 ```
 Blender bake: Arial Black "klaut.pro" → wordmark-klaut-pro.glb
         ↓
-Three.js MeshPhysicalMaterial glass (scratch)  |  Engine SDF glassify (product)
+Three.js MeshPhysicalMaterial glass (orbit / IOR)
         ↓
-Viscosity UI → Oh-like maps (rate, neck length, tip R, softMin k, sagAmp, sagRate)
+GravityMeltSim.bind(rest pose)
         ↓
-Soft-letter gravity sag (bottom verts drain) → resample per-glyph lips
+UI: gravity · freezeHeight · viscosity
         ↓
-Emitters on deformed letter bottoms → DripSim fill→stretch (suppress frees)
+Yield mask (top frozen) → pendant target (sag + neck + bulb)
         ↓
-Glass pendant blobs parented to wordmark (softMin necks into lip)
-        ↓
-Glass shade (Snell / Fresnel / thin-film) — same material family
+One-shot settle → freeze (static sculpture)
 ```
 
-**Viscosity cheat sheet (keep):**
+**Viscosity cheat sheet (mesh sag):**
 
-| viscosity | stretch | speed | softMin k | letter sag | look |
-|-----------|---------|-------|-----------|------------|------|
-| low (~0.1) | long | fast | small | thin/fast drain | watery pinch, quick drip |
-| mid (~0.45) | medium | mid | mid | medium | default syrup glass |
-| high (~0.9) | short* | slow | large | thick/slow | honey bulbs, delayed detach |
+| viscosity | sagAmp | neckPinch | bulbGrow | settle | look |
+|-----------|--------|-----------|----------|--------|------|
+| low (~0.15) | shorter | sharper | smaller tip | fast | watery stretch |
+| mid (~0.55) | medium | medium | medium | mid | default syrup glass |
+| high (~0.9) | longer | thick neck | fat bulb | slow | honey / molten chrome |
 
-\*stretchLen still rises with Oh in `viscosityMaps`; live demos cap stretch so necks stay readable under the wide wordmark.
+**Freeze-height cheat sheet:**
+
+| freezeHeight | Affected band | Look |
+|--------------|---------------|------|
+| 0.25 | most of glyph yields | melty soup (avoid for brand) |
+| 0.55 | bottom ~45% | concept art match |
+| 0.80 | only lips | subtle weighted baseline |
+
+Field-pane `DripSim.viscosityMaps` still apply to glassify only.
 
 ---
 
-## 5b. Soft-letter coupling (2026-07 update)
+## 5b. Why attached blobs failed (historical)
 
-**Problem we hit:** treating drips as free spheres under a rigid mesh made pendants float mid-air (shared baseline `attachY` at the descender floor + unparented blob group).
+Treating drips as spheres under a rigid/soft mesh produced floating orbs and discontinuous necks — **opposite** of concept art continuous letter→pendant. Soft-letter + `DripSim` lip tracking was an interim fix; the correction is to **delete the blob path from the default look** and sag the letter itself.
 
-**Physics read (Rank 1 deepen):** gravity drains liquid toward glyph lips; the **letter softens/sags** under that load; pendants **emerge from the deformed surface**. Viscosity (Oh) couples:
+---
 
-| Map | High Oh (syrup) | Low Oh (water) |
-|-----|-----------------|----------------|
-| `sagAmp` | thicker lip bulge | thinner |
-| `sagRate` | slow drainage | fast drainage into pendant |
-| stretch / detach | long delayed necks | faster pinch |
+## 5c. Frozen viscoplastic mesh sag (2026-07 rethink) — CURRENT
 
-**Implementation (scratch):**
-1. `applyGravitySag` — bottom-biased vertex pull using `sagAmp`/`sagRate`.
-2. `sampleBottomLips` — per X-column lowest verts in **world space after deform**.
-3. `DripSim.updateEmitterLips` + per-emitter `attachY` — pendants track the live lip.
-4. Pendant meshes **parented to `letterRoot`**, same `MeshPhysicalMaterial` glass.
-5. `suppressFrees` / isolate — no mid-air detached spheres.
+**Right approach:** the **letter mesh itself** is attracted by gravity. Upper band is a rigid plug (freeze height); yielded bottoms stretch into continuous neck/bulb; result **freezes** (one-shot or KE settle). No detach-and-fall particle drips as the main look.
 
-**Citations added:**
-- Charitatos & Kumar / soft-substrate spreading — JFM 2023 https://doi.org/10.1017/jfm.2023.673 (soft interface ↔ contact drainage)
-- Droplet settling on soft layers — JFM 2021 https://doi.org/10.1017/jfm.2021.1112 (coupled droplet–soft-coat dynamics)
-- Spreading, pinching, coalescence in Ohnesorge units — Soft Matter 2022 https://doi.org/10.1039/D2SM00069E
-- Weta SIGGRAPH 2019 drips — viscosity band near solids / adhesion (already §2.3)
+**Yield mask + target (`GravityMeltSim`):**
 
-Not adopting MLS-MPM for logo drips (still Rank 3); Rank 1 soft-mesh + continuum remains the production path.
+\[
+w(h)=0\ (h\ge h_f),\quad
+w(h)=\bigl((h_f-h)/h_f\bigr)^{p}\ (h<h_f)
+\]
+
+Target: \(\Delta y = -\mathrm{sagAmp}\cdot w\cdot(\ldots)\); mid-band radial **neck pinch**; tip **bulb grow** along stem columns.
+
+Optional Verlet mode attracts toward that target until KE < `freezeKe`, then freeze. Default scratch path is **oneShot** ease → freeze.
+
+**Implementation (scratch `demo/scratch.html`):**
+1. Bind GLB buffers to `GravityMeltSim`
+2. Stage 5: Gravity / Freeze ht / Viscosity sliders; Resettle / Freeze now
+3. Pendant sphere pool **removed** — `dripBlobs: 0`
+4. `DripSim` for **2D field / glassify** only
+
+**Literature (frozen / yield / hanging):**
+
+| Work | Year | Steal |
+|------|------|-------|
+| Balmforth, Frigaard, Ovarlez — *Yielding to stress* (Annu. Rev. Fluid Mech.) | 2014 | Yield → rigid plugs; free-surface slumps **stop** |
+| Balmforth & Hewitt — *Viscoplastic sheets and threads* | 2013 | Drooping threads → **steady frozen shapes** |
+| Teichman & Mahadevan — *The viscous catenary* (JFM) | 2003 | Hanging viscous filament under \(g\) |
+| Le Merrer et al. — hanging viscous filaments (EPL) | 2008 | Catenary vs U-shape; viscosity sets time |
+| Koulakis / Mitescu — viscous catenary experiments | 2007–08 | Lab hang morphology |
+| German & Bertola — viscoplastic pendant failure | 2010 | Yield-stress pendant limits |
+| van der Kolk et al. — viscoplastic printed filaments (JFM) | 2023 | Filaments reach **final equilibrium** at yield |
+| de Souza Mendes & Thompson — elasto-viscoplastic thixotropy | 2013 | Structured fluids that solidify after flow |
+| Soft Matter Oh review / JFM soft-substrate papers | 2021–23 | Oh scaling; soft interface drainage |
+| Concept art `klaut.pro/concept_art/*.jpg` | 2026 | Continuous solidified pendants |
+
+Not adopting MLS-MPM for logo melt. Production look = **freeze-masked mesh sag + one-shot freeze**.
 
 ---
 
@@ -252,22 +297,24 @@ Not adopting MLS-MPM for logo drips (still Rank 3); Rank 1 soft-mesh + continuum
 
 | # | Work | Year | Takeaway |
 |---|------|------|----------|
-| 1 | Brackbill et al., CSF | 1992 | Continuum ST as volume force / curvature |
-| 2 | Müller et al., SPH SCA | 2003 | Interactive particle NS + ST term |
-| 3 | Wang et al., Water Drops on Surfaces | 2005 | SDF curvature ST + contact angle |
-| 4 | Hu et al., MLS-MPM | 2018 | Realtime hybrid particles without neighbors |
-| 5 | Stomakhin et al., Weta drips talk | 2019 | FLIP + viscosity band + adhesion for film drips |
-| 6 | Da et al., Surface-Only Liquids | 2016 | Mesh BEM drip pinch / RP morphology |
-| 7 | Szewc et al., SPH Rayleigh–Plateau | 2018 | Ligament breakup resolution notes |
-| 8 | Quilez smin / Codrops metaballs | 2010s–2025 | Real-time liquid merge look |
-| 9 | Matsuoka Codrops WebGPU fluids | 2025 | MLS-MPM + SSFR browser ceiling |
-| 10 | KRÜSS / tensiometry docs | — | Pendant morphology ↔ σ, g |
-| 11 | In-repo `DripSim.ts` + liquid-glass-research.md | 2026 | Our locked continuum + softMin stack |
-| 12 | Soft Matter Ohnesorge units review | 2022 | Shared Oh scaling for pinch / spread / coalesce |
-| 13 | JFM soft-substrate droplet papers | 2021–2023 | Soft interface drains / deforms with the drop |
+| 1 | Brackbill et al., CSF | 1992 | Continuum ST (pane path) |
+| 2 | Teichman & Mahadevan, viscous catenary | 2003 | Hanging viscous filament |
+| 3 | Balmforth & Hewitt, viscoplastic sheets/threads | 2013 | Yield → frozen droop equilibria |
+| 4 | Balmforth et al., Annu. Rev. yield-stress | 2014 | Plugs + stopped slumps |
+| 5 | Le Merrer et al., hanging filaments | 2008 | Shape selection under gravity |
+| 6 | van der Kolk et al., viscoplastic lines | 2023 | Print filaments freeze at yield |
+| 7 | Da et al., Surface-Only Liquids | 2016 | Mesh drip morphology reference |
+| 8 | Stomakhin et al., Weta drips | 2019 | Film drips — not logo default |
+| 9 | Quilez / Codrops metaballs | — | Field merge (pane only) |
+| 10 | KRÜSS pendant-drop docs | — | Static pear silhouette |
+| 11 | In-repo `GravityMeltSim.ts` | 2026 | Frozen mesh sag + freeze-height |
+| 12 | In-repo `DripSim.ts` | 2026 | Optional continuum pane emitters |
+| 13 | Concept art `klaut.pro/concept_art` | 2026 | Visual north star |
 
 ---
 
 ## 7. Decision lock
 
-For **viscosity-dependent drips on the klaut.pro glass wordmark**, deepen **Rank 1** (continuum emitters + softMin / capsule necks **+ soft-letter gravity sag**). Use Rank 2 for ultra-cheap landing loops. Treat Rank 3 (MLS-MPM) as an optional WebGPU showcase, not the production glassify path.
+For the **klaut.pro glass wordmark**: ship **Rank 1 frozen viscoplastic mesh sag** (`GravityMeltSim`: freeze-height mask, pendant neck/bulb, one-shot settle → freeze). Do **not** attach drop blobs to letters for the default brand look.
+
+For **2D glassify / SDF panes**: keep `DripSim` + softMin. MLS-MPM remains optional WebGPU showcase only.
