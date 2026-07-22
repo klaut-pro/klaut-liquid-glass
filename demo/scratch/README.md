@@ -33,7 +33,7 @@ or:
 | 2 | 3D rotatable (OrbitControls) | ✅ `demo/scratch.html` |
 | 3 | Clear refractive glass (IOR / Fresnel / env) | ✅ same page |
 | 4 | Liquid glass (liquify / soft surface) | ✅ slider on page |
-| 5 | Gravity + viscosity drips | ✅ viscosity slider |
+| 5 | Gravity + viscosity drips | ✅ `DripSim` continuum emitters + softMin mesh blobs |
 | 6 | Dispersion / light-driven fringe polish | later |
 
 ## Demo
@@ -43,5 +43,12 @@ Serve repo root, then open:
 **http://localhost:52780/demo/scratch.html**
 
 Drag to orbit. Use the stage / viscosity / liquify controls.
+
+**Stage 5 physics (Rank 1 — `docs/drop-modeling-research.md`):**
+
+- Continuum emitters sampled under letter bottoms (descenders `.` / `p` boosted)
+- Fill → stretch → neck pinch → detach free blobs (`DripSim`)
+- Viscosity → Ohnesorge maps: drip rate, neck length, tip radius, softMin `mergeK`
+- Glass sphere pool overlaps as a softMin / metaball proxy under the GLB wordmark
 
 Drop-modeling research: [`docs/drop-modeling-research.md`](../../docs/drop-modeling-research.md).

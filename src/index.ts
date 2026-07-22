@@ -16,10 +16,13 @@ export { supportsWebGL2, prefersReducedMotion } from "./core/gl.js";
 export {
   DripSim,
   MAX_DRIP_BLOBS,
+  viscosityMaps,
   type DripBlob,
   type DripControl,
   type DripEmitterSpec,
+  type DripViscosityMaps,
 } from "./field/DripSim.js";
+export { softMin, sdRoundBox } from "./field/SDF.js";
 export {
   GLYPH_PROFILES,
   getGlyphProfile,

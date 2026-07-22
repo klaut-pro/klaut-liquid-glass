@@ -1,0 +1,67 @@
+{
+  "url": "http://localhost:52780/demo/scratch.html",
+  "http": 200,
+  "errors": [],
+  "mid": {
+    "wordmark": "klaut.pro",
+    "mesh": "./scratch/mesh/wordmark-klaut-pro.glb",
+    "size": {
+      "x": 9.482480142064306,
+      "y": 1.85,
+      "z": 0.5546800868341215
+    },
+    "attachY": -0.7710000000000001,
+    "emitters": 9,
+    "ready": true,
+    "dripBlobs": 48,
+    "viscosity": 0.45,
+    "maps": {
+      "stretchLen": 0.7030000000000001,
+      "dropR": 0.10175000000000001,
+      "detachNeck": 0.13024999999999998,
+      "mergeK": 0.14800000000000002
+    },
+    "badge": "stage 5"
+  },
+  "low": {
+    "wordmark": "klaut.pro",
+    "mesh": "./scratch/mesh/wordmark-klaut-pro.glb",
+    "size": {
+      "x": 9.482480142064306,
+      "y": 1.85,
+      "z": 0.5546800868341215
+    },
+    "attachY": -0.7710000000000001,
+    "emitters": 9,
+    "ready": true,
+    "dripBlobs": 41,
+    "viscosity": 0.12,
+    "maps": {
+      "stretchLen": 0.39280000000000004,
+      "dropR": 0.0638,
+      "detachNeck": 0.1814,
+      "mergeK": 0.0688
+    }
+  },
+  "high": {
+    "wordmark": "klaut.pro",
+    "mesh": "./scratch/mesh/wordmark-klaut-pro.glb",
+    "size": {
+      "x": 9.482480142064306,
+      "y": 1.85,
+      "z": 0.5546800868341215
+    },
+    "attachY": -0.7710000000000001,
+    "emitters": 9,
+    "ready": true,
+    "dripBlobs": 48,
+    "viscosity": 0.92,
+    "maps": {
+      "stretchLen": 1.1448,
+      "dropR": 0.1558,
+      "detachNeck": 0.05739999999999998,
+      "mergeK": 0.26080000000000003
+    }
+  },
+  "ok": true
+}

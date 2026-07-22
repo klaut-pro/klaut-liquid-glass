@@ -118,21 +118,44 @@ function mix(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
+/**
+ * Ohnesorge / Bond–inspired artist maps (Rank-1 continuum proxy).
+ * High viscosity (high Oh): slow fill, longer syrup necks, delayed pinch,
+ * fatter tip blobs, stronger softMin merge (mergeK).
+ */
+export type DripViscosityMaps = {
+  fillPeriod: number;
+  criticalMass: number;
+  stretchLen: number;
+  stretchDuration: number;
+  neckThinRate: number;
+  /** Neck radius floor at detach — lower = wait for thinner neck (high Oh). */
+  detachNeck: number;
+  dropR: number;
+  drag: number;
+  gravity: number;
+  /** softMin / metaball merge radius proxy (shader + free-drop coalesce). */
+  mergeK: number;
+  cooldown: number;
+};
+
 /** Ohnesorge-ish mapping: high viscosity → slow fill, long stretch, thick blobs. */
-function viscosityMaps(viscosity: number, drip: number) {
+export function viscosityMaps(viscosity: number, drip: number): DripViscosityMaps {
   const v = clamp01(viscosity);
   const d = Math.max(drip, 0.02);
   return {
     fillPeriod: mix(0.55, 2.6, v) / d,
     criticalMass: mix(0.35, 0.85, v),
-    stretchLen: mix(0.32, 1.15, v),
-    stretchDuration: mix(0.35, 1.85, v),
-    neckThinRate: mix(2.8, 0.32, v),
-    dropR: mix(0.055, 0.155, v),
+    stretchLen: mix(0.28, 1.22, v),
+    stretchDuration: mix(0.32, 2.05, v),
+    neckThinRate: mix(3.1, 0.28, v),
+    // Rayleigh–Plateau proxy: viscosity delays pinch (must thin further / longer)
+    detachNeck: mix(0.2, 0.045, v),
+    dropR: mix(0.05, 0.165, v),
     drag: mix(0.1, 0.78, v),
-    gravity: mix(1.25, 0.42, v),
-    mergeK: mix(0.04, 0.24, v),
-    cooldown: mix(0.15, 0.7, v),
+    gravity: mix(1.35, 0.38, v),
+    mergeK: mix(0.04, 0.28, v),
+    cooldown: mix(0.12, 0.85, v),
   };
 }
 
@@ -392,8 +415,9 @@ export class DripSim {
       });
 
       // Viscous filament — thick lip → elegant tubular mid → round bulb (ENj9B)
+      // Live path uses denser samples so Three.js mesh blobs read as continuous necks
       {
-        const segments = freeze ? 24 : 5;
+        const segments = freeze ? 24 : 12;
         for (let si = 1; si < segments; si++) {
           const ft = si / segments;
           let profile: number;
@@ -410,7 +434,7 @@ export class DripSim {
           blobs.push({
             x: em.x + wobble * 0.01,
             y: sy,
-            r: Math.max(sr, tipR * (freeze ? 0.1 : 0.04)),
+            r: Math.max(sr, tipR * (freeze ? 0.1 : 0.05)),
             // Keep mid-filament weight high so trim never drops the neck
             w: emDrip * mix(1.3, 1.08, ft) * Math.max(0.7, em.neckR),
           });
@@ -447,7 +471,8 @@ export class DripSim {
         });
       }
 
-      if (!freeze && (em.neckR < 0.12 || t >= 1)) {
+      // Pinch-off when neck thins below Oh-dependent threshold (or stretch completes)
+      if (!freeze && (em.neckR < maps.detachNeck || t >= 1)) {
         this.frees.push({
           x: em.x + wobble,
           y: tipY,
@@ -456,6 +481,17 @@ export class DripSim {
           r: tipR,
           mass: tipR,
         });
+        // Low-viscosity satellite bead (Rayleigh–Plateau secondary)
+        if (emVisc < 0.35 && tipR > 1e-4) {
+          this.frees.push({
+            x: em.x + wobble * 0.4,
+            y: mix(bottomY, tipY, 0.55),
+            vx: locked ? 0 : (em.seed - 0.5) * 0.04 * halfW,
+            vy: -maps.gravity * 0.08,
+            r: tipR * 0.32,
+            mass: tipR * 0.28,
+          });
+        }
         em.phase = "cooldown";
         em.cooldown = maps.cooldown * (0.85 + em.seed * 0.3);
         em.mass = 0;
@@ -477,7 +513,7 @@ export class DripSim {
 
   private integrateFrees(
     dt: number,
-    maps: ReturnType<typeof viscosityMaps>,
+    maps: DripViscosityMaps,
     halfH: number,
     halfW: number,
     blobs: DripBlob[],
