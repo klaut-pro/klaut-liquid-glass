@@ -1,0 +1,51 @@
+{
+  "state": {
+    "wordmark": "klaut.pro",
+    "mesh": "./scratch/mesh/wordmark-klaut-pro.glb",
+    "size": {
+      "x": 9.482480142064306,
+      "y": 1.85,
+      "z": 0.5546800868341215
+    },
+    "ready": true,
+    "dripBlobs": 0,
+    "frozen": true,
+    "settle": 1,
+    "freezeHeight": 0.55,
+    "gravity": 0.72,
+    "viscosity": 0.55,
+    "physics": "frozen-viscoplastic-mesh-sag",
+    "model": "GravityMeltSim",
+    "maps": {
+      "sagAmp": 0.44999999999999996,
+      "neckPinch": 0.34650000000000003,
+      "bulbGrow": 0.4015000000000001,
+      "settleRate": 0.6768
+    }
+  },
+  "state2": {
+    "wordmark": "klaut.pro",
+    "mesh": "./scratch/mesh/wordmark-klaut-pro.glb",
+    "size": {
+      "x": 9.482480142064306,
+      "y": 1.85,
+      "z": 0.5546800868341215
+    },
+    "ready": true,
+    "dripBlobs": 0,
+    "frozen": true,
+    "settle": 1,
+    "freezeHeight": 0.35,
+    "gravity": 0.72,
+    "viscosity": 0.55,
+    "physics": "frozen-viscoplastic-mesh-sag",
+    "model": "GravityMeltSim",
+    "maps": {
+      "sagAmp": 0.44999999999999996,
+      "neckPinch": 0.34650000000000003,
+      "bulbGrow": 0.4015000000000001,
+      "settleRate": 0.6768
+    }
+  },
+  "url": "http://localhost:52780/demo/scratch"
+}
