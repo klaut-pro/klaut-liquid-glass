@@ -26,9 +26,9 @@ async function main() {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.on("pageerror", (e) => console.error("PAGEERROR", String(e)));
 
-  await page.goto(url, { waitUntil: "networkidle", timeout: 120000 });
+  await page.goto(url, { waitUntil: "load", timeout: 120000 });
   await page.waitForFunction(() => window.__scratch?.ready === true, null, {
-    timeout: 60000,
+    timeout: 120000,
   });
 
   await page.evaluate(() => document.querySelector('[data-stage="5"]')?.click());

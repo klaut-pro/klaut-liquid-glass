@@ -6,14 +6,17 @@
   "char": "klaut.pro",
   "extrude": 0.09,
   "bevelDepth": 0.02,
-  "bevelResolution": 8,
-  "subdivLevels": 1,
+  "bevelResolution": 16,
+  "resolutionU": 32,
+  "subdivLevels": 2,
+  "remeshVoxel": 0.008,
   "targetHeight": 1.15,
   "bakedDimensions": {
-    "x": 6.887341234683991,
-    "y": 0.46119531989097595,
-    "z": 1.1500000953674316
+    "x": 6.859269711971283,
+    "y": 0.4588218629360199,
+    "z": 1.149600863456726
   },
+  "vertexCount": 404562,
   "mesh": "wordmark-klaut-pro.glb",
   "letters": [
     {
@@ -67,7 +70,7 @@
   "fontsCatalog": "fonts.json",
   "pipeline": [
     "1-font: Arial Black wordmark klaut.pro (per-glyph meshes)",
-    "2-mesh: Blender extrude+bevel+subdiv \u2192 GLB",
+    "2-mesh: Blender extrude+bevel+subdiv+remesh \u2192 GLB",
     "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
     "4-liquid: GravityMeltSim per-letter overrides",
     "5-sag: frozen viscoplastic neck/bulb (no drip blobs)"

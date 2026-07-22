@@ -31,9 +31,9 @@ async function main() {
     if (m.type() === "error") errors.push(m.text());
   });
 
-  await page.goto(url, { waitUntil: "networkidle", timeout: 120000 });
+  await page.goto(url, { waitUntil: "load", timeout: 120000 });
   await page.waitForFunction(() => window.__scratch?.ready === true, null, {
-    timeout: 60000,
+    timeout: 120000,
   });
 
   // Wait for settle → freeze

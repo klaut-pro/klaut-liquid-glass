@@ -25,9 +25,9 @@ async function main() {
     failed.push({ url: r.url(), error: r.failure()?.errorText }),
   );
 
-  await page.goto(url, { waitUntil: "networkidle", timeout: 90000 });
+  await page.goto(url, { waitUntil: "load", timeout: 120000 });
   await page.waitForFunction(() => window.__scratch?.ready === true, null, {
-    timeout: 30000,
+    timeout: 120000,
   });
   await page.waitForTimeout(2000);
 

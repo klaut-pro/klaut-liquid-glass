@@ -1,29 +1,154 @@
 {
   "url": "http://localhost:52780/demo/scratch.html",
   "stats": {
-    "badge": "stage 3",
-    "sub": "Font: Arial Black · wordmark klaut.pro\n        Blender extrude → Three.js orbit → glass → liquid → drip",
+    "badge": "stage 5",
+    "sub": "Font: Arial Black · wordmark klaut.pro\n        Frozen viscoplastic sag — per-letter melt, no drip blobs",
     "hintHasGlb": true,
     "hudSaysKlautPro": true,
     "scratch": {
       "wordmark": "klaut.pro",
       "mesh": "./scratch/mesh/wordmark-klaut-pro.glb",
       "size": {
-        "x": 9.482480142064306,
+        "x": 16.833925027012242,
         "y": 1.85,
-        "z": 0.5546800868341215
+        "z": 0.7384854423794582
       },
-      "ready": true
+      "ready": true,
+      "dripBlobs": 0,
+      "frozen": false,
+      "settle": 0.5266168115000741,
+      "freezeHeight": 0.55,
+      "gravity": 0.72,
+      "viscosity": 0.55,
+      "physics": "frozen-viscoplastic-mesh-sag",
+      "model": "GravityMeltSim",
+      "slotCount": 9,
+      "letterChars": [
+        "k",
+        "l",
+        "a",
+        "u",
+        "t",
+        ".",
+        "p",
+        "r",
+        "o"
+      ],
+      "letterOverrides": [
+        {
+          "enable": true,
+          "sagAmpMul": 1.15,
+          "bulbGrowMul": 1.2,
+          "columnXs": [
+            -4.786656618118286
+          ],
+          "columnHalfW": 0.30987775325775146
+        },
+        {
+          "enable": true,
+          "sagAmpMul": 1.2,
+          "bulbGrowMul": 1.2,
+          "columnXs": [
+            -3.7484230995178223
+          ],
+          "columnHalfW": 0.12245023250579833
+        },
+        {
+          "enable": true,
+          "sagAmpMul": 1.25,
+          "bulbGrowMul": 1.2,
+          "columnXs": [
+            -2.639664649963379
+          ],
+          "columnHalfW": 0.3433927059173584
+        },
+        {
+          "enable": true,
+          "columnXs": [
+            -1.130453109741211
+          ],
+          "columnHalfW": 0.31157096624374386
+        },
+        {
+          "enable": true,
+          "columnXs": [
+            0.13571231067180634
+          ],
+          "columnHalfW": 0.22869067937135695
+        },
+        {
+          "enable": true,
+          "sagAmpMul": 0.55,
+          "bulbGrowMul": 1.4,
+          "freezeHeight": 0.35,
+          "columnXs": [
+            1.0154342651367188
+          ],
+          "columnHalfW": 0.12836058139801024
+        },
+        {
+          "enable": true,
+          "sagAmpMul": 0.75,
+          "intensity": 0.55,
+          "columnXs": [
+            2.095267176628113
+          ],
+          "columnHalfW": 0.3233454346656799
+        },
+        {
+          "enable": true,
+          "sagAmpMul": 0.75,
+          "intensity": 0.55,
+          "columnXs": [
+            3.3985713720321655
+          ],
+          "columnHalfW": 0.23458255529403685
+        },
+        {
+          "enable": true,
+          "sagAmpMul": 0.75,
+          "intensity": 0.55,
+          "columnXs": [
+            4.741113185882568
+          ],
+          "columnHalfW": 0.34193940162658687
+        }
+      ],
+      "fontId": "arial-black",
+      "fontLabel": "Arial Black",
+      "fonts": [
+        "arial-black",
+        "arial-bold",
+        "bahnschrift",
+        "impact",
+        "segoe-ui-bold",
+        "tahoma-bold",
+        "trebuchet-bold",
+        "verdana-bold"
+      ],
+      "roundness": {
+        "teardrop": true,
+        "softMinBulb": true,
+        "taubin": true,
+        "dripBlobs": 0
+      },
+      "selectedLetter": 0,
+      "maps": {
+        "sagAmp": 0.44999999999999996,
+        "neckPinch": 0.34650000000000003,
+        "bulbGrow": 0.6935,
+        "settleRate": 0.6768
+      }
     },
     "canvas": {
       "w": 1440,
       "h": 800
     },
     "nonDark": 26664,
-    "maxLum": 254.99999999999997,
-    "colVariance": 1.7426392897108618,
-    "activeCols": 1,
-    "spanCols": 24,
+    "maxLum": 254.0722,
+    "colVariance": 2.5853475195959543,
+    "activeCols": 0,
+    "spanCols": 0,
     "bg": "rgb(158, 176, 204)"
   },
   "consoleLogs": [],

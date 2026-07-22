@@ -40,8 +40,15 @@ OUT_DIR = ROOT / "demo" / "scratch" / "mesh"
 TEXT = "klaut.pro"
 EXTRUDE = 0.09
 BEVEL_DEPTH = 0.02
-BEVEL_RES = 8
-SUBDIV_LEVELS = 1
+# Density knobs — raised so glyph edges + melted necks stay smooth (not low-poly).
+# Previous: bevel_res 8, resolution_u 12 (Blender default), subdiv 1, no remesh → ~93k verts.
+BEVEL_RES = 16
+RESOLUTION_U = 32
+SUBDIV_LEVELS = 2
+# Voxel remesh after subdiv for uniform melt-region density (world units, ~letter height 1.15).
+# Caps subdiv blow-up (subdiv2 alone ≈1.6M verts). 0.006 too heavy (~726k/2min);
+# 0.008 ≈ 350–450k verts / ~15MB — smooth necks, demo-loadable.
+REMESH_VOXEL = 0.008
 TARGET_HEIGHT = 1.15
 LETTER_GAP = 0.04  # extra tracking between separate letter objects
 
@@ -78,6 +85,7 @@ def make_letter(font, ch: str, name: str):
     curve.extrude = EXTRUDE
     curve.bevel_depth = BEVEL_DEPTH
     curve.bevel_resolution = BEVEL_RES
+    curve.resolution_u = RESOLUTION_U
     curve.fill_mode = "BOTH"
     curve.align_x = "CENTER"
     curve.align_y = "CENTER"
@@ -86,7 +94,7 @@ def make_letter(font, ch: str, name: str):
     return obj
 
 
-def convert_and_round(obj) -> None:
+def convert_and_round(obj):
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
@@ -104,6 +112,23 @@ def convert_and_round(obj) -> None:
     for poly in mesh_obj.data.polygons:
         poly.use_smooth = True
     return mesh_obj
+
+
+def remesh_dense(mesh_obj) -> None:
+    """Voxel remesh in final world units for even melt-neck topology."""
+    if REMESH_VOXEL <= 0:
+        return
+    bpy.ops.object.select_all(action="DESELECT")
+    mesh_obj.select_set(True)
+    bpy.context.view_layer.objects.active = mesh_obj
+    rem = mesh_obj.modifiers.new(name="Remesh", type="REMESH")
+    rem.mode = "VOXEL"
+    rem.voxel_size = float(REMESH_VOXEL)
+    rem.use_smooth_shade = True
+    bpy.ops.object.modifier_apply(modifier=rem.name)
+    bpy.ops.object.shade_smooth()
+    for poly in mesh_obj.data.polygons:
+        poly.use_smooth = True
 
 
 def build_wordmark(font_path: Path) -> list:
@@ -179,7 +204,10 @@ def build_wordmark(font_path: Path) -> list:
         m.select_set(True)
         bpy.context.view_layer.objects.active = m
         bpy.ops.object.transform_apply(location=True, rotation=False, scale=False)
-        bpy.ops.object.shade_smooth()
+
+    # Remesh after final scale/orient so REMESH_VOXEL is in world units (~letter height 1.15)
+    for m in mesh_objs:
+        remesh_dense(m)
 
     return mesh_objs
 
@@ -225,12 +253,18 @@ def bake_one(font_id: str, label: str, font_path: Path, primary: bool) -> dict:
         "extrude": EXTRUDE,
         "bevelDepth": BEVEL_DEPTH,
         "bevelResolution": BEVEL_RES,
+        "resolutionU": RESOLUTION_U,
         "subdivLevels": SUBDIV_LEVELS,
+        "remeshVoxel": REMESH_VOXEL,
         "targetHeight": TARGET_HEIGHT,
         "bakedDimensions": dims,
+        "vertexCount": sum(len(m.data.vertices) for m in mesh_objs),
         "bytes": glb.stat().st_size,
     }
-    print(f"wrote {glb} ({entry['bytes']} bytes) font={label} letters={len(letters)}")
+    print(
+        f"wrote {glb} ({entry['bytes']} bytes) font={label} "
+        f"letters={len(letters)} verts={entry['vertexCount']}"
+    )
     return entry
 
 
@@ -330,9 +364,12 @@ def main(argv: list[str] | None = None) -> None:
         "extrude": EXTRUDE,
         "bevelDepth": BEVEL_DEPTH,
         "bevelResolution": BEVEL_RES,
+        "resolutionU": RESOLUTION_U,
         "subdivLevels": SUBDIV_LEVELS,
+        "remeshVoxel": REMESH_VOXEL,
         "targetHeight": TARGET_HEIGHT,
         "bakedDimensions": primary_entry["bakedDimensions"],
+        "vertexCount": primary_entry.get("vertexCount"),
         "mesh": primary_entry["mesh"],
         "letters": primary_entry["letters"],
         "perLetterMeshes": True,
@@ -340,7 +377,7 @@ def main(argv: list[str] | None = None) -> None:
         "fontsCatalog": "fonts.json",
         "pipeline": [
             f"1-font: {primary_entry['label']} wordmark {TEXT} (per-glyph meshes)",
-            "2-mesh: Blender extrude+bevel+subdiv → GLB",
+            "2-mesh: Blender extrude+bevel+subdiv+remesh → GLB",
             "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
             "4-liquid: GravityMeltSim per-letter overrides",
             "5-sag: frozen viscoplastic neck/bulb (no drip blobs)",
