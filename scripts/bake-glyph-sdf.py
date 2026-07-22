@@ -118,25 +118,25 @@ def fill_script_stem_loop_voids(mask: np.ndarray) -> np.ndarray:
         # Wider stem-facing band — kill jagged bite at loop return (keep right counter core)
         join_band = (
             counter
-            & (xx <= cx0 + max(36, int(0.88 * (cx1 - cx0))))
-            & (yy >= cy0 - 12)
-            & (yy <= cy1 + 12)
+            & (xx <= cx0 + max(40, int(0.92 * (cx1 - cx0))))
+            & (yy >= cy0 - 14)
+            & (yy <= cy1 + 14)
         )
-        grown = binary_dilation(out, iterations=16) & join_band
-        grown2 = binary_dilation(out | grown, iterations=9) & join_band
-        grown3 = binary_dilation(out | grown | grown2, iterations=6) & join_band
+        grown = binary_dilation(out, iterations=18) & join_band
+        grown2 = binary_dilation(out | grown, iterations=10) & join_band
+        grown3 = binary_dilation(out | grown | grown2, iterations=7) & join_band
         out = out | grown | grown2 | grown3
         # Morphological close on stem-side only (bridge jagged bite, keep counter core)
-        se = np.ones((17, 17), dtype=bool)
+        se = np.ones((19, 19), dtype=bool)
         closed = binary_closing(out, structure=se)
         out = out | (closed & join_band)
         # Hairline exterior corridors near join (stem↔loop elegance)
         near_join = (
             (~out)
-            & (xx >= cx0 - 18)
-            & (xx <= cx0 + max(30, int(0.72 * (cx1 - cx0))))
-            & (yy >= cy0 - 14)
-            & (yy <= cy1 + 14)
+            & (xx >= cx0 - 20)
+            & (xx <= cx0 + max(34, int(0.78 * (cx1 - cx0))))
+            & (yy >= cy0 - 16)
+            & (yy <= cy1 + 16)
         )
         bridge = binary_dilation(out, iterations=8) & near_join
         edt_out = distance_transform_edt(~out)

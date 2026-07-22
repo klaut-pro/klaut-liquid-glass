@@ -31,6 +31,19 @@ Rebake: `npm run bake:glyphs` · `npm run bake:faces` · `npm run bake:env`
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 47 (mustard flood → sparse stem oil + cream lock)
+
+- **Root cause:** iter-46 post-composite `goldCol(0.95,0.62,0.18)` + wide bowl oilGate flooded mustard (~0.39 gold / bowl mustard~0.70); cream equalize lagging
+- Faceplates: peak-only oil ribbons, cooler chrome-gold, mustard→silver crush, kill gw4/gw5 stack; script crest/flank
+- Atlas: wider script stem↔loop join band
+- Shader: stem-only sparse oil (p.x<0); bowl softbox silver; hard cream metric lock; thicker script softMin + flank darken
+- chromeSansP: cyan0 pink0; tip filled; **cream~0.21** **gold~0.15** bowl mustard~0; planar softbox + sparse stem oil vs 1c6PD/Z53Ve — closer but wet-mirror still short
+- scriptProP: silverRatio ~0.75; tip filled; pink0; voidInside metric~377 (silver-adjacent counter); tubular elegance still lags ENj9B
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome pink0 cyan0 cream~0.21 gold~0.15; script pink0 silverRatio ~0.75 tip filled
+
+**Status:** ❌ not READY — chromeSansP mustard bowl flood crushed (gold 0.39→~0.15 sparse stem ribbons, cream≤0.21) but planar wet-mirror still short of 1c6PD/Z53Ve; scriptProP silverRatio~0.75 / joins held without pink but tubular elegance still lags ENj9B. Loop stays armed.
+
 ## Iteration 46 (cream flood crush + saturated gold oil)
 
 - **Root cause:** iter-45 warm soft_fill (R>B) + multi-pass void lift to thr 125 flooded cream (~0.41); pale mid-mix gold re-entered cream metric (chroma<40); gold oil too weak (~0.06)
