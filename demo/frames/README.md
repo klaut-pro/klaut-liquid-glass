@@ -31,6 +31,17 @@ Rebake: `npm run bake:glyphs` · `npm run bake:faces` · `npm run bake:env`
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 41 (cyan softbox kill + tip fill + cream rebalance)
+
+- **Root cause:** cool-silver grades used B-boost (`*1.02–1.04`) → cyan softbox residual ~0.25; faceplate spare_cyan restored B-lead milk; script tipZone mixed toward charcoal + dark tip probe
+- Faceplates: spare_cyan=false; hard B-lead kill; near-equal silver (no B restore); gold oil kept; script tip/flank floor raised
+- chromeSansP: gold-led oilFire (no cyan whisper); warm-neutral glints/rims; cream softbox B-lift equalize; cyan~0.003 cream~0.09 mint~0.04 gold bowl held; tip [243,243,235] (was cyan [233,239,242])
+- scriptProP: tip filled [227,227,225] (was [8,8,10]); pink0; silverRatio ~0.87; residual tube voids / soft white flood vs ENj9B tubular elegance
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome pink0 cyan~0.003 cream~0.09 mint~0.04; script pink0 silverRatio ~0.87 tip filled
+
+**Status:** ❌ not READY — chromeSansP cyan softbox crushed vs iter-40 (~0.25→~0.003) with gold bowl held, but cream drip-bulb + planar wet-mirror still short of 1c6PD/Z53Ve; scriptProP tip lag fixed without pink but tubular voids / crest-flank elegance still lag ENj9B. Loop stays armed.
+
 ## Iteration 40 (gold-led oil + olive crush + script void floor)
 
 - **Root cause:** iter-39 cyan-led oilFire + conceptAlive crushed synth gold → mint/cyan softbox; faceplate crush killed B then restored lime → olive swamp; silCover redefinition broke WebGL; script concept-dark punched tube voids

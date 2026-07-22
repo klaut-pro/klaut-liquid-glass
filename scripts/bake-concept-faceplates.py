@@ -60,15 +60,15 @@ def load_rgb(name: str) -> np.ndarray:
     return np.asarray(Image.open(path).convert("RGB"), dtype=np.float32)
 
 
-def crush_pink_cream(rgb: np.ndarray, spare_oil: bool = True, keep_oil_chroma: float = 1.0, spare_cyan: bool = True) -> np.ndarray:
-    """pink0 + cream kill; spare lime/gold/(optional cyan) oil; crush cyan-milk only."""
+def crush_pink_cream(rgb: np.ndarray, spare_oil: bool = True, keep_oil_chroma: float = 1.0, spare_cyan: bool = False) -> np.ndarray:
+    """pink0 + cream kill; spare lime/gold oil only — crush cyan softbox (anti B-boost)."""
     out = rgb.copy()
     r, g, b = out[..., 0], out[..., 1], out[..., 2]
     chroma = out.max(-1) - out.min(-1)
     luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
     lime = (g > r + 4) & (g > b + 2) & (chroma > 14)
     gold = (r > 95) & (g > 80) & (b < 160) & (chroma > 12) & (r > b + 5)
-    cyan = (b > r + 6) & (b > g - 4) & (chroma > 18) & (luma < 210)
+    cyan = (b > r + 4) & (b > g - 6) & (chroma > 12) & (luma < 220)
     spare = (lime | gold | (cyan if spare_cyan else False)) if spare_oil else np.zeros_like(lime)
     softbox = (luma > 195) & (chroma < 34)
     pink = np.maximum(0.0, r - g * 1.05) * np.maximum(0.0, b - g * 0.88)
@@ -78,34 +78,44 @@ def crush_pink_cream(rgb: np.ndarray, spare_oil: bool = True, keep_oil_chroma: f
     cream = np.maximum(0.0, r - b * 1.05)
     cream = np.maximum(cream, np.maximum(0.0, g * 0.9 - b))
     cream = np.where(spare | softbox, cream * 0.08, cream)
-    # Cyan milk = low-chroma B-lead only (preserve high-chroma cyan oil)
+    # Cyan softbox = any B-lead (milk + softbox plate) — kill unless spare_cyan oil
+    cyan_soft = np.maximum(0.0, b - r * 0.98) * np.maximum(0.0, b - g * 0.96)
+    cyan_soft = np.where(spare, cyan_soft * 0.08, cyan_soft)
     cyan_milk = np.maximum(0.0, b - r * 0.96) * (1.0 - np.clip(chroma / 50.0, 0.0, 1.0))
-    cyan_milk = np.where(spare | softbox | (chroma > 28), 0.0, cyan_milk)
+    cyan_milk = np.where(spare | softbox, 0.0, cyan_milk)
     out[..., 0] = r - pink * 1.1 - mag * 1.0 - cream * 0.85
     out[..., 1] = g - cream * 0.4 + pink * 0.12 + mag * 0.22
-    out[..., 2] = b - pink * 0.9 - mag * 0.75 - cream * 0.12 - cyan_milk * 0.75
+    out[..., 2] = b - pink * 0.9 - mag * 0.75 - cream * 0.12 - cyan_milk * 0.95 - cyan_soft * 0.85
     nr, ng, nb = out[..., 0], out[..., 1], out[..., 2]
     still_pink = np.maximum(0.0, nr - ng * 1.02) * np.maximum(0.0, nb - ng * 0.9)
     sil = 0.2126 * nr + 0.7152 * ng + 0.0722 * nb
     w = np.clip(still_pink * 1.5, 0.0, 1.0)[..., None]
-    silver = np.stack([sil * 0.97, sil * 1.0, sil * 1.03], axis=-1)
+    # Warm-neutral silver (B ≤ R) — B-boost reads as cyan softbox
+    silver = np.stack([sil * 1.0, sil * 1.0, sil * 0.99], axis=-1)
     out = out * (1.0 - w) + silver * w
-    # Restore lime/gold/cyan oil chroma from source (not mint softbox)
+    # Restore lime/gold oil chroma only (not cyan softbox)
     if keep_oil_chroma > 0.01 and spare_oil:
         oil = rgb.copy()
         oil_mask = lime | gold | (cyan if spare_cyan else False)
         ow = (oil_mask.astype(np.float32) * keep_oil_chroma)[..., None]
         out = out * (1.0 - ow * 0.38) + oil * (ow * 0.38)
-    # Kill olive swamp: G-lead + crushed B → cool silver (spare true gold/lime oil)
+    # Kill olive swamp: G-lead + crushed B → warm-neutral silver (spare true gold/lime)
     nr, ng, nb = out[..., 0], out[..., 1], out[..., 2]
     sil = 0.2126 * nr + 0.7152 * ng + 0.0722 * nb
     ch = out.max(-1) - out.min(-1)
     olive = (ng > nr * 1.05) & (nb < sil * 0.75) & (ch > 8)
-    true_oil = (gold | lime | cyan) & (ch > 22)
+    true_oil = (gold | lime) & (ch > 22)
     olive = olive & ~true_oil
-    cool = np.stack([sil * 0.99, sil * 1.0, sil * 1.03], axis=-1)
+    cool = np.stack([sil * 1.0, sil * 1.0, sil * 0.99], axis=-1)
     ow = olive.astype(np.float32)[..., None] * 0.9
     out = out * (1.0 - ow) + cool * ow
+    # Final B-lead hard kill → warm silver
+    still_cyan = (out[..., 2] > out[..., 0] * 1.0) & (out[..., 2] > out[..., 1] * 0.98)
+    still_cyan = still_cyan & ~((out[..., 0] > out[..., 2] + 10) & (ch > 22))
+    sil2 = 0.2126 * out[..., 0] + 0.7152 * out[..., 1] + 0.0722 * out[..., 2]
+    warm = np.stack([sil2 * 1.0, sil2 * 1.0, sil2 * 0.99], axis=-1)
+    cw = still_cyan.astype(np.float32)[..., None] * 0.92
+    out = out * (1.0 - cw) + warm * cw
     return np.clip(out, 0.0, 255.0)
 
 
@@ -214,7 +224,7 @@ def bake_glyph(glyph_id: str) -> Image.Image:
     im = im.filter(ImageFilter.GaussianBlur(radius=0.9))
     arr = crush_pink_cream(np.asarray(im, dtype=np.float32), keep_oil_chroma=0.45 if glyph_id == "chromeSansP" else 0.05)
 
-    # Global olive kill after compose (cyan-crush+lime-restore artifact)
+    # Global olive + cyan softbox kill (no B restore — B restore → cyan softbox)
     if glyph_id == "chromeSansP":
         sil0 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         ch0 = arr.max(-1) - arr.min(-1)
@@ -222,14 +232,15 @@ def bake_glyph(glyph_id: str) -> Image.Image:
         gold0 = (arr[..., 0] > arr[..., 2] + 12) & (ch0 > 24) & (sil0 < 175)
         lime0 = (arr[..., 1] > arr[..., 0] + 8) & (arr[..., 1] > arr[..., 2] + 6) & (ch0 > 28)
         olive0 = olive0 & ~gold0 & ~lime0
-        cool0 = np.stack([sil0 * 0.99, sil0 * 1.0, sil0 * 1.04], axis=-1)
+        cool0 = np.stack([sil0 * 1.0, sil0 * 1.0, sil0 * 0.99], axis=-1)
         arr = arr * (1.0 - olive0[..., None] * 0.92) + cool0 * (olive0[..., None] * 0.92)
-        # Restore crushed B toward silver on midtones
-        low_b = mask & (arr[..., 2] < sil0 * 0.7) & (ch0 < 50)
-        arr[..., 2] = np.where(low_b, np.maximum(arr[..., 2], sil0 * 0.95), arr[..., 2])
         # Cap G to max(R,B) outside true oil
         g_cap = np.maximum(arr[..., 0], arr[..., 2])
         arr[..., 1] = np.where(mask & ~gold0 & ~lime0, np.minimum(arr[..., 1], g_cap * 1.01), arr[..., 1])
+        # Hard cyan softbox → warm-neutral (B ≤ R)
+        cyan0 = (arr[..., 2] > arr[..., 0] * 0.99) & (arr[..., 2] > arr[..., 1] * 0.97) & mask & ~gold0
+        arr = arr * (1.0 - cyan0[..., None] * 0.95) + cool0 * (cyan0[..., None] * 0.95)
+        arr[..., 2] = np.where(mask & ~gold0, np.minimum(arr[..., 2], np.maximum(arr[..., 0], arr[..., 1]) * 0.98), arr[..., 2])
 
     if glyph_id == "scriptProP":
         r, g, b = arr[..., 0], arr[..., 1], arr[..., 2]
@@ -241,22 +252,28 @@ def bake_glyph(glyph_id: str) -> Image.Image:
         sil_n = np.clip(sil_n, 0.0, 1.0)
         crest_w = np.power(sil_n, 0.7)
         flank_w = np.power(1.0 - sil_n, 1.1)
-        mid_col = np.array([95.0, 96.0, 98.0], dtype=np.float32)
-        crest_col = np.array([236.0, 234.0, 226.0], dtype=np.float32)
-        flank_col = np.array([38.0, 40.0, 44.0], dtype=np.float32)
+        mid_col = np.array([118.0, 118.0, 116.0], dtype=np.float32)
+        crest_col = np.array([242.0, 240.0, 232.0], dtype=np.float32)
+        # Lighter flanks — anti tube void / dark tip lag vs ENj9B
+        flank_col = np.array([58.0, 58.0, 56.0], dtype=np.float32)
         arr = (
-            mid_col * (0.45 + 0.25 * sil_n)[..., None]
-            + crest_col * (crest_w * 0.7)[..., None]
-            + flank_col * (flank_w * 0.55)[..., None]
+            mid_col * (0.5 + 0.28 * sil_n)[..., None]
+            + crest_col * (crest_w * 0.78)[..., None]
+            + flank_col * (flank_w * 0.4)[..., None]
         )
         arr = np.where(mask[..., None], np.clip(arr, 0, 255), 0.0)
-        concept_boost = np.clip((sil - 100.0) / 130.0, 0.0, 1.0)
-        arr = np.clip(arr * (1.0 + concept_boost[..., None] * 0.08), 0, 255)
-        for thresh in (18.0, 32.0, 48.0):
+        concept_boost = np.clip((sil - 90.0) / 120.0, 0.0, 1.0)
+        arr = np.clip(arr * (1.0 + concept_boost[..., None] * 0.12), 0, 255)
+        for thresh in (18.0, 32.0, 48.0, 62.0):
             arr = inpaint_mask_holes(arr, mask, luma_thresh=thresh)
         sil2 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
-        dark = mask & (sil2 < 42)
-        arr[dark] = np.clip(arr[dark] * 0.25 + mid_col * 0.75, 0, 255)
+        dark = mask & (sil2 < 58)
+        arr[dark] = np.clip(arr[dark] * 0.2 + mid_col * 0.8, 0, 255)
+        # Tip/descender fill (lower atlas third)
+        yy, _xx = np.mgrid[0:SIZE, 0:SIZE]
+        tip_m = mask & (yy > int(SIZE * 0.62)) & (sil2 < 110)
+        tip_col = np.array([148.0, 147.0, 145.0], dtype=np.float32)
+        arr[tip_m] = np.clip(arr[tip_m] * 0.35 + tip_col * 0.65, 0, 255)
         icy = (arr[..., 2] > arr[..., 0] * 1.01) & mask
         sil3 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         warm2 = np.stack([sil3 * 1.01, sil3 * 1.0, sil3 * 0.97], axis=-1)
@@ -268,42 +285,46 @@ def bake_glyph(glyph_id: str) -> Image.Image:
         sil = 0.2126 * r + 0.7152 * g + 0.0722 * b
         mid = (sil > 35) & (sil < 205) & mask
         chroma = arr.max(-1) - arr.min(-1)
-        # Softbox peaks → near-neutral cool silver (preserve B — anti olive)
-        peak_sil = np.stack([sil * 0.99, sil * 1.0, sil * 1.02], axis=-1)
+        # Softbox peaks → warm-neutral silver (anti cyan B-boost)
+        peak_sil = np.stack([sil * 1.0, sil * 1.0, sil * 0.99], axis=-1)
         pw = ((sil > 140) & (chroma < 40)).astype(np.float32)[..., None]
         arr = arr * (1.0 - pw * 0.88) + peak_sil * (pw * 0.88)
-        # Cream/mint swamp → cool silver; spare high-chroma gold/lime only
+        # Cream/mint/cyan swamp → warm silver; spare high-chroma gold/lime only
         swamp = np.maximum(0.0, arr[..., 1] - arr[..., 0] * 1.0) * np.maximum(
             0.0, arr[..., 1] - arr[..., 2] * 0.95
         )
         cream = np.maximum(0.0, arr[..., 0] - arr[..., 2] * 0.98)
         cream = np.maximum(cream, np.maximum(0.0, arr[..., 1] * 0.9 - arr[..., 2]))
-        swamp = np.maximum(swamp * 1.35, cream)
+        cyan_sw = np.maximum(0.0, arr[..., 2] - arr[..., 0] * 0.98) * np.maximum(
+            0.0, arr[..., 2] - arr[..., 1] * 0.96
+        )
+        swamp = np.maximum(np.maximum(swamp * 1.35, cream), cyan_sw * 1.4)
         w = np.clip(swamp / 14.0, 0.0, 1.0)
-        cool = np.stack([sil * 0.99, sil * 1.0, sil * 1.02], axis=-1)
+        cool = np.stack([sil * 1.0, sil * 1.0, sil * 0.99], axis=-1)
         goldish = (arr[..., 0] > arr[..., 2] + 10) & (arr[..., 1] > arr[..., 2] + 4) & (chroma > 24) & (sil < 170)
         limeish = (arr[..., 1] > arr[..., 0] + 6) & (arr[..., 1] > arr[..., 2] + 4) & (chroma > 24)
         w = np.where(goldish | limeish, w * 0.1, w)
         arr = arr * (1.0 - w[..., None] * 0.92) + cool * (w[..., None] * 0.92)
-        for _ in range(2):
+        for _ in range(3):
             mint2 = np.maximum(0.0, arr[..., 1] - arr[..., 0] * 1.01) * np.maximum(
                 0.0, arr[..., 1] - arr[..., 2] * 0.97
             )
             cream2 = np.maximum(0.0, arr[..., 0] - arr[..., 2] * 1.0) + np.maximum(
                 0.0, arr[..., 1] * 0.88 - arr[..., 2]
             )
-            cyan2 = np.maximum(0.0, arr[..., 2] - arr[..., 0] * 0.98) * (1.0 - np.clip(
-                (arr.max(-1) - arr.min(-1)) / 45.0, 0, 1
-            ))
-            w2 = np.clip(np.maximum(np.maximum(mint2, cream2), cyan2 * 1.2) / 16.0, 0.0, 1.0)
+            # Full cyan softbox (not milk-only) — B-lead anywhere outside gold
+            cyan2 = np.maximum(0.0, arr[..., 2] - arr[..., 0] * 0.98) * np.maximum(
+                0.0, arr[..., 2] - arr[..., 1] * 0.96
+            )
+            w2 = np.clip(np.maximum(np.maximum(mint2, cream2), cyan2 * 1.6) / 14.0, 0.0, 1.0)
             sil2 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
-            cool2 = np.stack([sil2 * 0.99, sil2 * 1.0, sil2 * 1.02], axis=-1)
+            cool2 = np.stack([sil2 * 1.0, sil2 * 1.0, sil2 * 0.99], axis=-1)
             chs = arr.max(-1) - arr.min(-1)
             spare2 = ((arr[..., 0] > arr[..., 2] + 10) & (chs > 24) & (sil2 < 170)) | (
-                (arr[..., 1] > arr[..., 0] + 6) & (chs > 24)
+                (arr[..., 1] > arr[..., 0] + 6) & (chs > 24) & (arr[..., 1] > arr[..., 2] + 4)
             )
-            w2 = np.where(spare2, w2 * 0.12, w2)
-            arr = arr * (1.0 - w2[..., None] * 0.9) + cool2 * (w2[..., None] * 0.9)
+            w2 = np.where(spare2, w2 * 0.1, w2)
+            arr = arr * (1.0 - w2[..., None] * 0.94) + cool2 * (w2[..., None] * 0.94)
         # SMALL localized gold oil stamps only (not face-wide olive)
         sil3 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         yy, xx = np.mgrid[0:SIZE, 0:SIZE]
@@ -320,39 +341,49 @@ def bake_glyph(glyph_id: str) -> Image.Image:
         ch3 = arr.max(-1) - arr.min(-1)
         oil_keep = puddle > 0.35
         g_dom = (arr[..., 1] > arr[..., 0] * 1.0) & (arr[..., 1] > arr[..., 2] * 0.98) & ~oil_keep
-        cool3 = np.stack([sil3 * 0.99, sil3 * 1.0, sil3 * 1.02], axis=-1)
+        cool3 = np.stack([sil3 * 1.0, sil3 * 1.0, sil3 * 0.99], axis=-1)
         arr = arr * (1.0 - g_dom[..., None] * 0.9) + cool3 * (g_dom[..., None] * 0.9)
         soft_g = (ch3 < 36) & mask & ~oil_keep
         g_cap = np.maximum(arr[..., 0], arr[..., 2]) * 1.0
         arr[..., 1] = np.where(soft_g, np.minimum(arr[..., 1], g_cap), arr[..., 1])
-        # Cyan milk crush
-        b_milk = (arr[..., 2] > arr[..., 0] * 1.02) & (ch3 < 38) & ~oil_keep
-        arr = arr * (1.0 - b_milk[..., None] * 0.8) + cool3 * (b_milk[..., None] * 0.8)
+        # Cyan softbox crush (any B-lead outside gold puddles)
+        b_cyan = (arr[..., 2] > arr[..., 0] * 0.99) & ~oil_keep
+        arr = arr * (1.0 - b_cyan[..., None] * 0.92) + cool3 * (b_cyan[..., None] * 0.92)
+        arr[..., 2] = np.where(~oil_keep & mask, np.minimum(arr[..., 2], np.maximum(arr[..., 0], arr[..., 1]) * 0.98), arr[..., 2])
         # Cream desat
         sil3 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         ch2 = arr.max(-1) - arr.min(-1)
         cream_low = (sil3 > 55) & (sil3 < 200) & (ch2 < 30) & (
             (arr[..., 0] > arr[..., 2] + 4) | (arr[..., 1] * 0.9 > arr[..., 2])
         ) & ~oil_keep
-        cool4 = np.stack([sil3 * 0.99, sil3 * 1.0, sil3 * 1.02], axis=-1)
+        cool4 = np.stack([sil3 * 1.0, sil3 * 1.0, sil3 * 0.99], axis=-1)
         arr = arr * (1.0 - cream_low[..., None] * 0.88) + cool4 * (cream_low[..., None] * 0.88)
         void = (sil < 42) & mask
         arr[void] = np.clip(arr[void] * 0.45 + np.array([16, 18, 24]) * 0.55, 0, 255)
-        arr = crush_pink_cream(arr, keep_oil_chroma=0.5, spare_cyan=True)
+        arr = crush_pink_cream(arr, keep_oil_chroma=0.55, spare_cyan=False)
         silf = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         chf = arr.max(-1) - arr.min(-1)
         mintf = (arr[..., 1] > arr[..., 0]) & (arr[..., 1] > arr[..., 2] * 0.98) & (chf < 38) & (puddle < 0.3)
-        coolf = np.stack([silf * 0.99, silf * 1.0, silf * 1.02], axis=-1)
+        coolf = np.stack([silf * 1.0, silf * 1.0, silf * 0.99], axis=-1)
         arr = arr * (1.0 - mintf[..., None] * 0.92) + coolf * (mintf[..., None] * 0.92)
+        # Final B cap outside gold
+        arr[..., 2] = np.where(
+            mask & (puddle < 0.35),
+            np.minimum(arr[..., 2], np.maximum(arr[..., 0], arr[..., 1]) * 0.98),
+            arr[..., 2],
+        )
 
     arr *= mask[..., None].astype(np.float32)
     # Aggressive void fill for script; chrome keeps soft charcoal contrast
     if glyph_id == "scriptProP":
-        for thresh in (22.0, 38.0, 55.0):
+        for thresh in (22.0, 38.0, 55.0, 70.0):
             arr = inpaint_mask_holes(arr, mask, luma_thresh=thresh)
         silf2 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
-        still_dark = mask & (silf2 < 55)
-        arr[still_dark] = np.clip(arr[still_dark] * 0.3 + np.array([78.0, 80.0, 84.0]) * 0.7, 0, 255)
+        still_dark = mask & (silf2 < 72)
+        arr[still_dark] = np.clip(arr[still_dark] * 0.25 + np.array([128.0, 127.0, 122.0]) * 0.75, 0, 255)
+        yy2, _ = np.mgrid[0:SIZE, 0:SIZE]
+        tip2 = mask & (yy2 > int(SIZE * 0.58)) & (silf2 < 130)
+        arr[tip2] = np.clip(arr[tip2] * 0.4 + np.array([158.0, 157.0, 154.0]) * 0.6, 0, 255)
     else:
         arr = inpaint_mask_holes(arr, mask, luma_thresh=14.0)
     arr *= mask[..., None].astype(np.float32)
