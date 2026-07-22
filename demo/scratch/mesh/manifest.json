@@ -1,0 +1,16 @@
+{
+  "font": "Arial Black",
+  "fontPath": "C:/Windows/Fonts/ariblk.ttf",
+  "char": "K",
+  "extrude": 0.12,
+  "bevelDepth": 0.018,
+  "bevelResolution": 3,
+  "mesh": "letter-K.glb",
+  "pipeline": [
+    "1-font: Arial Black (ariblk.ttf)",
+    "2-mesh: Blender extrude+bevel \u2192 GLB",
+    "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
+    "4-liquid: vertex liquify (demo)",
+    "5-drip: viscosity-driven pendants (demo)"
+  ]
+}

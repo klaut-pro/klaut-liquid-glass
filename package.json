@@ -37,6 +37,7 @@
     "bake:glyphs:edt": "python scripts/bake-glyph-sdf.py",
     "bake:env": "python scripts/bake-concept-env.py",
     "bake:faces": "python scripts/bake-concept-faceplates.py",
+    "bake:scratch": "node scripts/run-bake-scratch.mjs",
     "capture:glyph-qa": "node scripts/capture-glyph-qa.mjs",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build"

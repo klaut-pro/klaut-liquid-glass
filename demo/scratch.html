@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>klaut liquid glass — scratch pipeline</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --panel: rgba(10, 12, 18, 0.78);
+        --ink: #e8eef8;
+        --muted: #9aa8bc;
+        --accent: #7ec8ff;
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #05070c;
+        color: var(--ink);
+      }
+      #c {
+        position: fixed;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .hud {
+        position: fixed;
+        left: 16px;
+        top: 16px;
+        z-index: 5;
+        width: min(340px, calc(100vw - 32px));
+        padding: 14px 16px 16px;
+        border-radius: 14px;
+        background: var(--panel);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+      }
+      .hud h1 {
+        margin: 0 0 4px;
+        font-size: 15px;
+        font-weight: 650;
+        letter-spacing: -0.02em;
+      }
+      .hud .sub {
+        margin: 0 0 12px;
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+      .stages {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      .stages button {
+        font: inherit;
+        font-size: 11px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--ink);
+        cursor: pointer;
+      }
+      .stages button.active {
+        border-color: rgba(126, 200, 255, 0.55);
+        background: rgba(126, 200, 255, 0.18);
+        color: #dff2ff;
+      }
+      .stages button:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      label.row {
+        display: grid;
+        grid-template-columns: 88px 1fr 42px;
+        gap: 8px;
+        align-items: center;
+        font-size: 12px;
+        margin: 8px 0;
+        color: var(--muted);
+      }
+      label.row input[type="range"] { width: 100%; }
+      label.row span { font-variant-numeric: tabular-nums; color: var(--ink); text-align: right; }
+      .hint {
+        margin-top: 10px;
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .hint code {
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 10px;
+        color: var(--accent);
+      }
+      .badge {
+        display: inline-block;
+        margin-left: 6px;
+        padding: 1px 7px;
+        border-radius: 999px;
+        font-size: 10px;
+        background: rgba(126, 200, 255, 0.15);
+        color: var(--accent);
+        vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <aside class="hud">
+      <h1>Scratch pipeline <span class="badge" id="stageBadge">stage 1</span></h1>
+      <p class="sub">
+        Font: <strong>Arial Black</strong> · glyph <strong>K</strong><br />
+        Blender extrude → Three.js orbit → glass → liquid → drip
+      </p>
+      <div class="stages" id="stageButtons">
+        <button type="button" data-stage="1">1 Font</button>
+        <button type="button" data-stage="2">2 Rotate</button>
+        <button type="button" data-stage="3">3 Glass</button>
+        <button type="button" data-stage="4">4 Liquid</button>
+        <button type="button" data-stage="5">5 Drip</button>
+      </div>
+      <label class="row">
+        Liquify
+        <input id="liquify" type="range" min="0" max="1" step="0.01" value="0.35" />
+        <span id="liquifyVal">0.35</span>
+      </label>
+      <label class="row">
+        Viscosity
+        <input id="viscosity" type="range" min="0.05" max="1" step="0.01" value="0.45" />
+        <span id="viscosityVal">0.45</span>
+      </label>
+      <label class="row">
+        IOR
+        <input id="ior" type="range" min="1.05" max="1.55" step="0.01" value="1.33" />
+        <span id="iorVal">1.33</span>
+      </label>
+      <p class="hint">
+        Drag to orbit · scroll to zoom · right-drag to pan<br />
+        Mesh: <code>demo/scratch/mesh/letter-K.glb</code>
+      </p>
+    </aside>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module">
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+      import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+      const canvas = document.getElementById("c");
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: false,
+        powerPreference: "high-performance",
+      });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.setSize(innerWidth, innerHeight, false);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x070a12);
+
+      const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.05, 40);
+      camera.position.set(2.4, 1.35, 3.2);
+
+      const controls = new OrbitControls(camera, canvas);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+      controls.minDistance = 1.2;
+      controls.maxDistance = 10;
+      controls.target.set(0, 0.1, 0);
+
+      // Soft studio-ish plate so glass has something to refract/reflect
+      const floor = new THREE.Mesh(
+        new THREE.CircleGeometry(6, 64),
+        new THREE.MeshStandardMaterial({
+          color: 0x121826,
+          roughness: 0.85,
+          metalness: 0.05,
+        }),
+      );
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = -1.15;
+      scene.add(floor);
+
+      const grid = new THREE.GridHelper(8, 24, 0x2a3550, 0x151b2a);
+      grid.position.y = -1.149;
+      scene.add(grid);
+
+      const key = new THREE.DirectionalLight(0xfff2e0, 2.2);
+      key.position.set(3.5, 5.5, 2.5);
+      scene.add(key);
+      const fill = new THREE.DirectionalLight(0xb8d4ff, 0.85);
+      fill.position.set(-4, 2, -2);
+      scene.add(fill);
+      scene.add(new THREE.AmbientLight(0x6a7a99, 0.35));
+      scene.add(new THREE.HemisphereLight(0xdde8ff, 0x1a1520, 0.55));
+
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      pmrem.dispose();
+
+      /** @type {THREE.Object3D | null} */
+      let letterRoot = null;
+      /** @type {THREE.Mesh[]} */
+      let letterMeshes = [];
+      /** @type {{ pos: Float32Array, base: Float32Array, normal: Float32Array }[]} */
+      let deformCache = [];
+
+      const matSolid = new THREE.MeshStandardMaterial({
+        color: 0xc8d0dc,
+        roughness: 0.35,
+        metalness: 0.15,
+      });
+
+      const matGlass = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        metalness: 0,
+        roughness: 0.04,
+        transmission: 1,
+        thickness: 0.75,
+        ior: 1.33,
+        specularIntensity: 1,
+        envMapIntensity: 1.35,
+        clearcoat: 1,
+        clearcoatRoughness: 0.05,
+        attenuationColor: new THREE.Color(0xd8ecff),
+        attenuationDistance: 2.5,
+        transparent: true,
+        opacity: 1,
+      });
+
+      const matLiquid = matGlass.clone();
+      matLiquid.roughness = 0.08;
+      matLiquid.thickness = 1.05;
+      matLiquid.attenuationColor = new THREE.Color(0xcfe8ff);
+      matLiquid.envMapIntensity = 1.55;
+
+      // Pendant drip blobs (stage 5)
+      const dripGroup = new THREE.Group();
+      dripGroup.visible = false;
+      scene.add(dripGroup);
+      const dripMat = matLiquid.clone();
+      const dripGeos = [
+        new THREE.SphereGeometry(0.08, 24, 16),
+        new THREE.SphereGeometry(0.055, 20, 14),
+        new THREE.SphereGeometry(0.04, 16, 12),
+      ];
+      const drips = dripGeos.map((g, i) => {
+        const m = new THREE.Mesh(g, dripMat);
+        m.position.set(-0.15 + i * 0.12, -0.95 - i * 0.08, 0.05);
+        m.userData.phase = i * 1.7;
+        m.userData.baseY = m.position.y;
+        dripGroup.add(m);
+        return m;
+      });
+      // Neck connectors (simple capsules via stretched spheres)
+      const necks = drips.map((d, i) => {
+        const n = new THREE.Mesh(
+          new THREE.CapsuleGeometry(0.018 - i * 0.003, 0.12, 6, 10),
+          dripMat,
+        );
+        n.position.copy(d.position);
+        n.position.y += 0.1;
+        dripGroup.add(n);
+        return n;
+      });
+
+      let stage = 3; // ship with glass on by default (stages 1–3 done)
+      let liquifyAmt = 0.35;
+      let viscosity = 0.45;
+
+      function applyMaterial() {
+        const mat =
+          stage <= 2 ? matSolid : stage === 3 ? matGlass : matLiquid;
+        for (const mesh of letterMeshes) {
+          mesh.material = mat;
+        }
+        dripMat.copy(matLiquid);
+        dripMat.needsUpdate = true;
+        dripGroup.visible = stage >= 5;
+      }
+
+      function setStage(next) {
+        stage = next;
+        document.getElementById("stageBadge").textContent = `stage ${stage}`;
+        for (const btn of document.querySelectorAll("#stageButtons button")) {
+          btn.classList.toggle("active", Number(btn.dataset.stage) === stage);
+        }
+        applyMaterial();
+        // Stage 1–2: no liquify deformation; 4+ enables
+        if (stage < 4) resetDeform();
+      }
+
+      function resetDeform() {
+        for (const entry of deformCache) {
+          entry.pos.set(entry.base);
+        }
+        for (const mesh of letterMeshes) {
+          mesh.geometry.attributes.position.needsUpdate = true;
+          mesh.geometry.computeVertexNormals();
+        }
+      }
+
+      function applyLiquify(t) {
+        if (stage < 4 || liquifyAmt < 0.001) {
+          if (stage < 4) resetDeform();
+          return;
+        }
+        const amt = liquifyAmt;
+        for (let mi = 0; mi < letterMeshes.length; mi++) {
+          const mesh = letterMeshes[mi];
+          const { pos, base, normal } = deformCache[mi];
+          for (let i = 0; i < pos.length; i += 3) {
+            const x = base[i];
+            const y = base[i + 1];
+            const z = base[i + 2];
+            const nx = normal[i];
+            const ny = normal[i + 1];
+            const nz = normal[i + 2];
+            // Soft viscous ripple + downward melt bias (metaball-ish read)
+            const w =
+              Math.sin(x * 4.2 + t * 1.1) *
+                Math.cos(z * 3.6 + t * 0.85) *
+                0.55 +
+              Math.sin((x + z) * 2.4 - t * 0.7) * 0.35;
+            const melt = Math.max(0, -y) * 0.12 * amt;
+            const push = (0.045 * amt * w - melt * 0.35) * (0.55 + 0.45 * Math.max(0, -ny));
+            pos[i] = x + nx * push;
+            pos[i + 1] = y + ny * push * 0.85 - melt;
+            pos[i + 2] = z + nz * push;
+          }
+          mesh.geometry.attributes.position.needsUpdate = true;
+          mesh.geometry.computeVertexNormals();
+        }
+      }
+
+      function updateDrips(t) {
+        if (stage < 5) return;
+        // Higher viscosity → slower, shorter pendants; low viscosity → longer stretch
+        const stretch = THREE.MathUtils.lerp(0.55, 0.12, viscosity);
+        const speed = THREE.MathUtils.lerp(1.8, 0.35, viscosity);
+        for (let i = 0; i < drips.length; i++) {
+          const d = drips[i];
+          const bob = Math.sin(t * speed + d.userData.phase) * 0.5 + 0.5;
+          const drop = bob * bob * stretch * (0.35 + i * 0.22);
+          d.position.y = d.userData.baseY - drop;
+          d.scale.setScalar(THREE.MathUtils.lerp(1.05, 0.82, bob * (1 - viscosity)));
+          const n = necks[i];
+          n.position.x = d.position.x;
+          n.position.z = d.position.z;
+          n.position.y = d.position.y + 0.09 + drop * 0.25;
+          n.scale.y = 1 + drop * 3.2;
+        }
+      }
+
+      async function loadLetter() {
+        const loader = new GLTFLoader();
+        const gltf = await loader.loadAsync("./scratch/mesh/letter-K.glb");
+        letterRoot = gltf.scene;
+        letterRoot.traverse((obj) => {
+          if (obj.isMesh) {
+            obj.castShadow = false;
+            obj.receiveShadow = false;
+            letterMeshes.push(obj);
+            const posAttr = obj.geometry.attributes.position;
+            const nAttr = obj.geometry.attributes.normal;
+            const base = posAttr.array.slice(0);
+            const normal = nAttr ? nAttr.array.slice(0) : new Float32Array(base.length);
+            deformCache.push({ pos: posAttr.array, base, normal });
+          }
+        });
+        // Center / lift slightly above grid
+        const box = new THREE.Box3().setFromObject(letterRoot);
+        const center = box.getCenter(new THREE.Vector3());
+        letterRoot.position.sub(center);
+        letterRoot.position.y += 0.05;
+        scene.add(letterRoot);
+        applyMaterial();
+      }
+
+      // UI
+      const liquifyEl = document.getElementById("liquify");
+      const viscosityEl = document.getElementById("viscosity");
+      const iorEl = document.getElementById("ior");
+      liquifyEl.addEventListener("input", () => {
+        liquifyAmt = Number(liquifyEl.value);
+        document.getElementById("liquifyVal").textContent = liquifyAmt.toFixed(2);
+      });
+      viscosityEl.addEventListener("input", () => {
+        viscosity = Number(viscosityEl.value);
+        document.getElementById("viscosityVal").textContent = viscosity.toFixed(2);
+      });
+      iorEl.addEventListener("input", () => {
+        const ior = Number(iorEl.value);
+        document.getElementById("iorVal").textContent = ior.toFixed(2);
+        matGlass.ior = ior;
+        matLiquid.ior = ior;
+        dripMat.ior = ior;
+      });
+      for (const btn of document.querySelectorAll("#stageButtons button")) {
+        btn.addEventListener("click", () => setStage(Number(btn.dataset.stage)));
+      }
+
+      addEventListener("resize", () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight, false);
+      });
+
+      const clock = new THREE.Clock();
+      function frame() {
+        const t = clock.getElapsedTime();
+        controls.update();
+        applyLiquify(t);
+        updateDrips(t);
+        renderer.render(scene, camera);
+        requestAnimationFrame(frame);
+      }
+
+      try {
+        await loadLetter();
+        setStage(3);
+        frame();
+      } catch (err) {
+        console.error(err);
+        document.querySelector(".sub").textContent =
+          "Failed to load letter-K.glb — run scripts/bake-scratch-mesh.py via Blender first.";
+      }
+    </script>
+  </body>
+</html>
