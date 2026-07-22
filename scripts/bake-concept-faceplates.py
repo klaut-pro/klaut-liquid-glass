@@ -30,25 +30,29 @@ SIZE = 512
 CROPS = {
     "chromeSansP": [
         # Z53Ve geometric chrome p — planar wet-mirror (gold/lime oil preferred)
-        ("Z53Ve.jpg", (230, 620, 455, 930), 1.05),
-        # 1c6PD stem/bowl oil — gold accents (cream crushed in post)
-        ("1c6PD.jpg", (145, 700, 330, 1040), 0.75),
+        ("Z53Ve.jpg", (230, 620, 455, 930), 1.1),
+        # 1c6PD stem/bowl oil — gold accents (cream crushed on face in post)
+        ("1c6PD.jpg", (145, 700, 330, 1040), 0.8),
         # Z53Ve drip-adjacent oil accents
-        ("Z53Ve.jpg", (210, 820, 380, 1000), 0.7),
+        ("Z53Ve.jpg", (210, 820, 380, 1000), 0.75),
         # 1c6PD upper bowl oil
-        ("1c6PD.jpg", (170, 640, 340, 820), 0.5),
+        ("1c6PD.jpg", (170, 640, 340, 820), 0.55),
         # Z53Ve mid face iridescence
-        ("Z53Ve.jpg", (250, 680, 420, 880), 0.65),
+        ("Z53Ve.jpg", (250, 680, 420, 880), 0.7),
+        # 1c6PD cream drip-bulb harvest (lower stem tip)
+        ("1c6PD.jpg", (160, 900, 280, 1080), 0.85),
     ],
     "scriptProP": [
         # ENj9B molten script p (full bowl+stem)
-        ("ENj9B.jpg", (175, 600, 450, 960), 1.15),
+        ("ENj9B.jpg", (175, 600, 450, 960), 1.2),
         # Extra stem/drip metal — tubular crest highlights
-        ("ENj9B.jpg", (200, 760, 380, 1000), 0.7),
+        ("ENj9B.jpg", (200, 760, 380, 1000), 0.75),
         # Bowl loop tubular wrap
-        ("ENj9B.jpg", (250, 580, 460, 780), 0.6),
+        ("ENj9B.jpg", (250, 580, 460, 780), 0.65),
         # Stem crest fill (anti void)
-        ("ENj9B.jpg", (180, 650, 320, 900), 0.55),
+        ("ENj9B.jpg", (180, 650, 320, 900), 0.6),
+        # Tip fill metal
+        ("ENj9B.jpg", (220, 880, 360, 1020), 0.55),
     ],
 }
 
@@ -245,39 +249,43 @@ def bake_glyph(glyph_id: str) -> Image.Image:
     if glyph_id == "scriptProP":
         r, g, b = arr[..., 0], arr[..., 1], arr[..., 2]
         sil = 0.2126 * r + 0.7152 * g + 0.0722 * b
-        # Continuous tubular silver — crest ribbons + darker flanks (ENj9B elegance)
-        sil_s = gaussian_filter(sil * mask.astype(np.float32), sigma=1.8)
+        # Tubular elegance: narrow crest ribbon + mid flanks (anti soft-white flood / voids)
+        sil_s = gaussian_filter(sil * mask.astype(np.float32), sigma=2.2)
         sil_s = np.where(mask, sil_s, 0.0)
-        sil_n = sil_s / max(float(np.percentile(sil_s[mask], 97)), 1e-3) if mask.any() else sil_s
+        sil_n = sil_s / max(float(np.percentile(sil_s[mask], 96)), 1e-3) if mask.any() else sil_s
         sil_n = np.clip(sil_n, 0.0, 1.0)
-        crest_w = np.power(sil_n, 0.7)
-        flank_w = np.power(1.0 - sil_n, 1.1)
-        mid_col = np.array([118.0, 118.0, 116.0], dtype=np.float32)
-        crest_col = np.array([242.0, 240.0, 232.0], dtype=np.float32)
-        # Lighter flanks — anti tube void / dark tip lag vs ENj9B
-        flank_col = np.array([58.0, 58.0, 56.0], dtype=np.float32)
+        # Steeper crest (pow↑) → silverRatio ~0.55–0.70 elegance, not 0.87 flood
+        crest_w = np.power(sil_n, 1.15)
+        flank_w = np.power(1.0 - sil_n, 0.85)
+        mid_col = np.array([108.0, 108.0, 105.0], dtype=np.float32)
+        crest_col = np.array([236.0, 234.0, 226.0], dtype=np.float32)
+        # Mid flanks — continuous pipe, never near-black voids
+        flank_col = np.array([72.0, 72.0, 70.0], dtype=np.float32)
         arr = (
-            mid_col * (0.5 + 0.28 * sil_n)[..., None]
-            + crest_col * (crest_w * 0.78)[..., None]
-            + flank_col * (flank_w * 0.4)[..., None]
+            mid_col * (0.55 + 0.22 * sil_n)[..., None]
+            + crest_col * (crest_w * 0.62)[..., None]
+            + flank_col * (flank_w * 0.48)[..., None]
         )
         arr = np.where(mask[..., None], np.clip(arr, 0, 255), 0.0)
-        concept_boost = np.clip((sil - 90.0) / 120.0, 0.0, 1.0)
-        arr = np.clip(arr * (1.0 + concept_boost[..., None] * 0.12), 0, 255)
-        for thresh in (18.0, 32.0, 48.0, 62.0):
+        concept_boost = np.clip((sil - 100.0) / 130.0, 0.0, 1.0)
+        arr = np.clip(arr * (1.0 + concept_boost[..., None] * 0.08), 0, 255)
+        for thresh in (18.0, 32.0, 48.0, 62.0, 78.0):
             arr = inpaint_mask_holes(arr, mask, luma_thresh=thresh)
         sil2 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
-        dark = mask & (sil2 < 58)
-        arr[dark] = np.clip(arr[dark] * 0.2 + mid_col * 0.8, 0, 255)
-        # Tip/descender fill (lower atlas third)
+        dark = mask & (sil2 < 70)
+        arr[dark] = np.clip(arr[dark] * 0.15 + mid_col * 0.85, 0, 255)
+        # Tip/descender fill (lower atlas third) — filled tip, mid crest
         yy, _xx = np.mgrid[0:SIZE, 0:SIZE]
-        tip_m = mask & (yy > int(SIZE * 0.62)) & (sil2 < 110)
-        tip_col = np.array([148.0, 147.0, 145.0], dtype=np.float32)
-        arr[tip_m] = np.clip(arr[tip_m] * 0.35 + tip_col * 0.65, 0, 255)
+        tip_m = mask & (yy > int(SIZE * 0.58)) & (sil2 < 140)
+        tip_col = np.array([162.0, 160.0, 155.0], dtype=np.float32)
+        arr[tip_m] = np.clip(arr[tip_m] * 0.3 + tip_col * 0.7, 0, 255)
         icy = (arr[..., 2] > arr[..., 0] * 1.01) & mask
         sil3 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         warm2 = np.stack([sil3 * 1.01, sil3 * 1.0, sil3 * 0.97], axis=-1)
         arr[icy] = warm2[icy]
+        # Kill soft-white flood mid-body (keep crest peaks)
+        soft_flood = mask & (sil3 > 210) & (crest_w < 0.55)
+        arr[soft_flood] = np.clip(arr[soft_flood] * 0.35 + mid_col * 0.65, 0, 255)
         arr = crush_pink_cream(arr, spare_oil=False, keep_oil_chroma=0.0)
 
     if glyph_id == "chromeSansP":
@@ -335,8 +343,10 @@ def bake_glyph(glyph_id: str) -> Image.Image:
         )
         mid_band = mid & (sil3 > 55) & (sil3 < 165)
         gw = (mid_band.astype(np.float32) * np.clip(puddle, 0, 1) * 0.55)[..., None]
-        gold_col = np.array([205.0, 158.0, 78.0], dtype=np.float32)
-        arr = arr * (1.0 - gw) + (arr * 0.4 + gold_col * 0.6) * gw
+        gold_col = np.array([188.0, 155.0, 95.0], dtype=np.float32)
+        # Softer gold stamps — planar wet-mirror first (anti neon face flood)
+        gw = gw * 0.55
+        arr = arr * (1.0 - gw) + (arr * 0.55 + gold_col * 0.45) * gw
         # Hard mint G cap outside oil puddles
         ch3 = arr.max(-1) - arr.min(-1)
         oil_keep = puddle > 0.35
@@ -350,25 +360,57 @@ def bake_glyph(glyph_id: str) -> Image.Image:
         b_cyan = (arr[..., 2] > arr[..., 0] * 0.99) & ~oil_keep
         arr = arr * (1.0 - b_cyan[..., None] * 0.92) + cool3 * (b_cyan[..., None] * 0.92)
         arr[..., 2] = np.where(~oil_keep & mask, np.minimum(arr[..., 2], np.maximum(arr[..., 0], arr[..., 1]) * 0.98), arr[..., 2])
-        # Cream desat
+        # Cream desat on face only — spare lower drip-bulb cream (1c6PD/Z53Ve)
         sil3 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         ch2 = arr.max(-1) - arr.min(-1)
+        yy_c, xx_c = np.mgrid[0:SIZE, 0:SIZE]
+        # Place cream bulb from mask bbox bottom (atlas-aligned)
+        my, mx = np.where(mask)
+        if len(my) > 10:
+            y_lo, y_hi = int(my.min()), int(my.max())
+            x_lo, x_hi = int(mx.min()), int(mx.max())
+            bx = 0.5 * (x_lo + x_hi)
+            by = y_lo + 0.82 * (y_hi - y_lo)
+            brx = max(28.0, 0.22 * (x_hi - x_lo))
+            bry = max(22.0, 0.14 * (y_hi - y_lo))
+        else:
+            bx, by, brx, bry = 200.0, 430.0, 70.0, 55.0
+        drip_bulb = (
+            0.95 * np.exp(-(((xx_c - bx) / brx) ** 2 + ((yy_c - by) / bry) ** 2))
+            + 0.7 * np.exp(-(((xx_c - bx) / (brx * 0.75)) ** 2 + ((yy_c - (by + bry * 0.45)) / (bry * 0.8)) ** 2))
+        )
+        drip_m = drip_bulb > 0.22
         cream_low = (sil3 > 55) & (sil3 < 200) & (ch2 < 30) & (
             (arr[..., 0] > arr[..., 2] + 4) | (arr[..., 1] * 0.9 > arr[..., 2])
-        ) & ~oil_keep
+        ) & ~oil_keep & ~drip_m
         cool4 = np.stack([sil3 * 1.0, sil3 * 1.0, sil3 * 0.99], axis=-1)
         arr = arr * (1.0 - cream_low[..., None] * 0.88) + cool4 * (cream_low[..., None] * 0.88)
-        void = (sil < 42) & mask
+        # Cream drip-bulb stamp — warm pearlescent (anti cyan), planar face stays wet-mirror
+        cream_bulb = np.array([232.0, 222.0, 192.0], dtype=np.float32)
+        dark_bulb = np.array([32.0, 34.0, 38.0], dtype=np.float32)
+        bulb_w = (mask.astype(np.float32) * np.clip(drip_bulb, 0, 1) * 0.78)[..., None]
+        bulb_shade = np.clip((yy_c - (by - bry * 0.6)) / max(bry * 1.4, 1.0), 0.0, 1.0)[..., None]
+        bulb_col = cream_bulb * (1.0 - bulb_shade * 0.72) + dark_bulb * (bulb_shade * 0.72)
+        arr = arr * (1.0 - bulb_w) + (arr * 0.2 + bulb_col * 0.8) * bulb_w
+        # Restore softbox peaks for planar wet-mirror (anti fragmented noise)
+        silp = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
+        peak = mask & (silp > 145) & (ch2 < 42) & ~drip_m
+        peak_col = np.stack([silp * 1.04, silp * 1.01, silp * 0.96], axis=-1)
+        arr[peak] = np.clip(arr[peak] * 0.3 + peak_col[peak] * 0.7, 0, 255)
+        # Mild blur on face (keep softbox + oil, kill barcode noise)
+        blur_f = gaussian_filter(arr, sigma=(1.1, 1.1, 0.0))
+        arr = np.where(mask[..., None] & ~drip_m[..., None], arr * 0.45 + blur_f * 0.55, arr)
+        void = (silp < 42) & mask & ~drip_m
         arr[void] = np.clip(arr[void] * 0.45 + np.array([16, 18, 24]) * 0.55, 0, 255)
-        arr = crush_pink_cream(arr, keep_oil_chroma=0.55, spare_cyan=False)
+        arr = crush_pink_cream(arr, keep_oil_chroma=0.7, spare_cyan=False)
         silf = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         chf = arr.max(-1) - arr.min(-1)
-        mintf = (arr[..., 1] > arr[..., 0]) & (arr[..., 1] > arr[..., 2] * 0.98) & (chf < 38) & (puddle < 0.3)
+        mintf = (arr[..., 1] > arr[..., 0]) & (arr[..., 1] > arr[..., 2] * 0.98) & (chf < 38) & (puddle < 0.3) & ~drip_m
         coolf = np.stack([silf * 1.0, silf * 1.0, silf * 0.99], axis=-1)
         arr = arr * (1.0 - mintf[..., None] * 0.92) + coolf * (mintf[..., None] * 0.92)
-        # Final B cap outside gold
+        # Final B cap outside gold + drip bulb
         arr[..., 2] = np.where(
-            mask & (puddle < 0.35),
+            mask & (puddle < 0.35) & ~drip_m,
             np.minimum(arr[..., 2], np.maximum(arr[..., 0], arr[..., 1]) * 0.98),
             arr[..., 2],
         )
@@ -376,14 +418,40 @@ def bake_glyph(glyph_id: str) -> Image.Image:
     arr *= mask[..., None].astype(np.float32)
     # Aggressive void fill for script; chrome keeps soft charcoal contrast
     if glyph_id == "scriptProP":
-        for thresh in (22.0, 38.0, 55.0, 70.0):
+        for thresh in (22.0, 38.0, 55.0, 70.0, 85.0, 95.0):
             arr = inpaint_mask_holes(arr, mask, luma_thresh=thresh)
         silf2 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
-        still_dark = mask & (silf2 < 72)
-        arr[still_dark] = np.clip(arr[still_dark] * 0.25 + np.array([128.0, 127.0, 122.0]) * 0.75, 0, 255)
+        still_dark = mask & (silf2 < 95)
+        arr[still_dark] = np.clip(arr[still_dark] * 0.1 + np.array([128.0, 127.0, 122.0]) * 0.9, 0, 255)
         yy2, _ = np.mgrid[0:SIZE, 0:SIZE]
-        tip2 = mask & (yy2 > int(SIZE * 0.58)) & (silf2 < 130)
-        arr[tip2] = np.clip(arr[tip2] * 0.4 + np.array([158.0, 157.0, 154.0]) * 0.6, 0, 255)
+        tip2 = mask & (yy2 > int(SIZE * 0.55)) & (silf2 < 155)
+        arr[tip2] = np.clip(arr[tip2] * 0.3 + np.array([172.0, 170.0, 164.0]) * 0.7, 0, 255)
+        # Cap soft-white flood mid-body (tubular elegance, not matte flood)
+        soft2 = mask & (silf2 > 200) & (yy2 < int(SIZE * 0.55))
+        arr[soft2] = np.clip(arr[soft2] * 0.35 + np.array([118.0, 117.0, 114.0]) * 0.65, 0, 255)
+        # Extra void kill — any near-black island → mid metal (ENj9B continuous pipe)
+        silf3 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
+        holes = mask & (silf3 < 100)
+        arr[holes] = np.clip(arr[holes] * 0.08 + np.array([132.0, 131.0, 126.0]) * 0.92, 0, 255)
+        # Smooth tubular grade: blur then re-mask (kill jagged void edges)
+        blur = gaussian_filter(arr, sigma=(1.4, 1.4, 0.0))
+        arr = np.where(mask[..., None], blur, 0.0)
+        silf4 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
+        arr = np.where(
+            mask[..., None],
+            np.clip(
+                arr * 0.55
+                + np.stack([silf4 * 1.01, silf4, silf4 * 0.97], axis=-1) * 0.45,
+                0,
+                255,
+            ),
+            0.0,
+        )
+        # Crest ribbon after blur
+        crest_n = np.clip(silf4 / max(float(np.percentile(silf4[mask], 95)), 1e-3), 0, 1) if mask.any() else silf4
+        crest_n = np.power(crest_n, 1.2)
+        crest_add = (crest_n * 55.0)[..., None] * np.array([1.0, 0.99, 0.96])
+        arr = np.where(mask[..., None], np.clip(arr + crest_add * 0.55, 0, 255), 0.0)
     else:
         arr = inpaint_mask_holes(arr, mask, luma_thresh=14.0)
     arr *= mask[..., None].astype(np.float32)

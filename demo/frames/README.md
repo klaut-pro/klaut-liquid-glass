@@ -31,6 +31,18 @@ Rebake: `npm run bake:glyphs` · `npm run bake:faces` · `npm run bake:env`
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 42 (cream drip-bulb + tubular join fill)
+
+- **Root cause:** drip cream crush killed 1c6PD/Z53Ve cream bulb; script silCover floors → soft-white flood (silverRatio ~0.87) while stem↔loop softMin joins too weak → tube voids
+- Faceplates: atlas-bbox cream drip-bulb stamp; softer gold oil; script crest/flank rebuild + blur void kill + soft-white mid-body cap
+- Atlas: script dilate 9.6 / round 5.0; stronger softMin junction blobs (jScale↑)
+- chromeSansP: cream drip-bulb assert + planar wet-mirror gold sparse; cyan0 pink0 cream~0.19 gold~0.24; tip filled
+- scriptProP: silverRatio ~0.63 (was ~0.87); tip filled [227,227,225]; pink0; voidInside↓ but residual stem↔loop voids / puff vs ENj9B tubular elegance
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome pink0 cyan0 cream~0.19 gold~0.24; script pink0 silverRatio ~0.63 tip filled
+
+**Status:** ❌ not READY — chromeSansP cream drip-bulb + planar wet-mirror closer to 1c6PD/Z53Ve (cyan held), but scriptProP still shows residual tube voids / soft puff vs ENj9B tubular elegance. Loop stays armed.
+
 ## Iteration 41 (cyan softbox kill + tip fill + cream rebalance)
 
 - **Root cause:** cool-silver grades used B-boost (`*1.02–1.04`) → cyan softbox residual ~0.25; faceplate spare_cyan restored B-lead milk; script tipZone mixed toward charcoal + dark tip probe
