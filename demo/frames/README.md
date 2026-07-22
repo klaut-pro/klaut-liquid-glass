@@ -31,6 +31,19 @@ Rebake: `npm run bake:glyphs` · `npm run bake:faces` · `npm run bake:env`
 - Landing: `/glyph-qa`
 - Capture: `node scripts/capture-glyph-qa.mjs http://localhost:52780`
 
+## Iteration 44 (stem↔loop selective fill + softbox oil)
+
+- **Root cause:** script atlas left enclosed stem corridors + counter bite (softMin alone insufficient); chrome softbox still mottled with charcoal stem patches vs 1c6PD/Z53Ve planar oil
+- Atlas: `fill_script_stem_loop_voids` — fill left enclosed gaps + grow ink into counter stem-facing band (counter 2550→~717); blender dilate 3.0/2.0
+- Faceplates: anisotropic softbox lobes + streak; sparse edge gold (anti bowl-center flood); chrome stem charcoal→softbox mid; script crest for silverRatio~0.63
+- Shader: wider softMin/junc necks; wider crest (pow 0.58); raised tube ink floor; concept empty→mid metal (anti jagged charcoal)
+- chromeSansP: cyan0 pink~0 cream~0.19 gold~0.10; tip filled; softbox+sparse gold closer but oil fidelity / stem dark patch still short of 1c6PD/Z53Ve
+- scriptProP: silverRatio ~0.67; tip filled; pink0; join geometry improved but residual stem↔loop / counter roughness vs ENj9B; voidInside metric ~99 (counter-adjacent)
+- Evidence: `glyph-chromeSansP.png`, `glyph-scriptProP.png`, `glyph-qa-full.png`
+- Metrics: chrome pink0 cyan0 cream~0.19 gold~0.10; script pink0 silverRatio ~0.67 tip filled
+
+**Status:** ❌ not READY — chromeSansP softbox oil + sparse gold improved (cyan held) but still short of 1c6PD/Z53Ve wet-mirror fidelity; scriptProP join fill + silverRatio~0.67 without pink but tubular elegance / residual voids still lag ENj9B. Loop stays armed.
+
 ## Iteration 43 (planar softbox rebuild + join necks)
 
 - **Root cause:** chrome face stayed mottled concept noise vs 1c6PD/Z53Ve softbox; script over-dilate + huge softMin blobs filled counter (puff) while stem↔loop necks still voided; drip stretchScale oversized cream bulbs

@@ -19,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-from scipy.ndimage import distance_transform_edt, gaussian_filter
+from scipy.ndimage import distance_transform_edt, gaussian_filter, label
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "demo" / "glyph-atlases"
@@ -61,6 +61,100 @@ def pick_font(candidates: list[Path]) -> Path:
         if p.exists():
             return p
     raise FileNotFoundError(f"No font found among {[str(c) for c in candidates]}")
+
+
+def fill_script_stem_loop_voids(mask: np.ndarray) -> np.ndarray:
+    """Fill enclosed stem↔loop gaps; keep the open bowl counter (ENj9B tubular join).
+
+    Segoe/Blender script *p* leaves thin black corridors where the loop crosses
+    the stem. Global dilate fills those but also puffs/closes the counter.
+    Selective fill: only enclosed ~mask components whose centroid sits in the
+    left/stem zone (counter stays open on the right). Then grow ink a few px
+    into the counter's stem-facing edge so the join reads continuous.
+    """
+    out = mask.copy()
+    inv = ~out
+    labeled, n = label(inv)
+    if n < 1:
+        return out
+    h, w = out.shape
+    stem_x_max = int(w * 0.42)
+    yy, xx = np.mgrid[0:h, 0:w]
+    counter = None
+    for i in range(1, n + 1):
+        comp = labeled == i
+        ys, xs = np.where(comp)
+        if len(ys) < 8:
+            continue
+        # Outer background touches the frame — never fill
+        if (ys == 0).any() or (ys == h - 1).any() or (xs == 0).any() or (xs == w - 1).any():
+            continue
+        cx = float(xs.mean())
+        cy = float(ys.mean())
+        area = int(comp.sum())
+        # Bowl counter: right-of-stem enclosed hole — keep open (join thicken below)
+        if cx >= stem_x_max:
+            if counter is None or area > int(counter.sum()):
+                counter = comp
+            continue
+        # Stem↔loop / stem-interior voids: left zone, not tiny speckles
+        if area < 40:
+            continue
+        # Ignore huge accidental floods
+        if area > int(0.08 * h * w):
+            continue
+        # Prefer mid-body junctions (skip extreme tip speckles)
+        if cy < h * 0.12 or cy > h * 0.88:
+            continue
+        out[comp] = True
+
+    # Thicken stem↔loop: grow ink into counter's left/stem-facing rim only
+    if counter is not None and counter.any():
+        from scipy.ndimage import binary_dilation, binary_closing
+
+        cys, cxs = np.where(counter)
+        cx0, cx1 = int(cxs.min()), int(cxs.max())
+        cy0, cy1 = int(cys.min()), int(cys.max())
+        # Wider stem-facing band — kill jagged bite at loop return (keep right counter core)
+        join_band = (
+            counter
+            & (xx <= cx0 + max(22, int(0.72 * (cx1 - cx0))))
+            & (yy >= cy0 - 4)
+            & (yy <= cy1 + 4)
+        )
+        grown = binary_dilation(out, iterations=10) & join_band
+        grown2 = binary_dilation(out | grown, iterations=5) & join_band
+        out = out | grown | grown2
+        # Morphological close on stem-side only (bridge jagged bite, keep counter core)
+        se = np.ones((11, 11), dtype=bool)
+        closed = binary_closing(out, structure=se)
+        out = out | (closed & join_band)
+        # Hairline exterior corridors near join
+        near_join = (
+            (~out)
+            & (xx >= cx0 - 10)
+            & (xx <= cx0 + max(18, int(0.55 * (cx1 - cx0))))
+            & (yy >= cy0 - 6)
+            & (yy <= cy1 + 6)
+        )
+        bridge = binary_dilation(out, iterations=4) & near_join
+        edt_out = distance_transform_edt(~out)
+        bridge = bridge & (edt_out <= 7.0)
+        out = out | bridge
+        # Final: fill any tiny enclosed speckles that remain in join zone
+        inv2 = ~out
+        lab2, n2 = label(inv2)
+        for j in range(1, n2 + 1):
+            comp2 = lab2 == j
+            ys2, xs2 = np.where(comp2)
+            if len(ys2) < 4:
+                continue
+            if (ys2 == 0).any() or (ys2 == h - 1).any() or (xs2 == 0).any() or (xs2 == w - 1).any():
+                continue
+            area2 = int(comp2.sum())
+            if area2 < 120 and float(xs2.mean()) < stem_x_max + 40:
+                out[comp2] = True
+    return out
 
 
 def render_mask(font_path: Path, char: str, size: int, dilate: float, round_px: float) -> np.ndarray:
@@ -259,8 +353,8 @@ def main() -> None:
         if bl_mask is not None and bl_height is not None and bl_mask.sum() > 100:
             # Blender silhouette already has bevel/offset thickness — light soften only
             mask = bl_mask
-            dilate = 0.35 if gid == "chromeSansP" else 2.8
-            round_px = 0.4 if gid == "chromeSansP" else 1.8
+            dilate = 0.35 if gid == "chromeSansP" else 3.0
+            round_px = 0.4 if gid == "chromeSansP" else 2.0
             if dilate > 0 or round_px > 0:
                 outside = distance_transform_edt(~mask)
                 inside = distance_transform_edt(mask)
@@ -268,6 +362,9 @@ def main() -> None:
                 if round_px > 0:
                     signed = gaussian_filter(signed, sigma=round_px * 0.35)
                 mask = signed > 0
+            # Selective stem↔loop void fill (anti puff — counter stays open)
+            if gid == "scriptProP":
+                mask = fill_script_stem_loop_voids(mask)
             # Resample Blender height onto dilated mask: keep crest, fill joins
             height_src = bl_height.copy()
             if mask.sum() > bl_mask.sum():
@@ -281,6 +378,8 @@ def main() -> None:
             source = f"blender+{font.name}"
         else:
             mask = render_mask(font, spec["char"], SIZE, spec["dilate"], spec["round"])
+            if gid == "scriptProP":
+                mask = fill_script_stem_loop_voids(mask)
             profile = "tube" if gid == "scriptProP" else "planar"
             encoded, height = bake_sdf(mask, MAX_DIST, force_profile=profile)
             source = font.name

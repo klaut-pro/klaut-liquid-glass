@@ -129,19 +129,23 @@ float glyphField(vec2 p) {
     ? glyphAtlasField(p)
     : (u_glyphId < 0.5 ? glyphChromeSansP(p) : glyphScriptProP(p));
   if (u_glyphId > 0.5) {
-    // Script: softMin pipe join — fill stem↔loop necks only (anti voids WITHOUT counter fill/puff)
-    float jScale = u_useGlyphAtlas > 0.5 ? 0.78 : 0.9;
-    float jNeck = length(p - vec2(-0.08, 0.08)) - 0.055 * jScale;
-    float jNeck2 = length(p - vec2(-0.1, 0.12)) - 0.05 * jScale;
-    float jNeck3 = length(p - vec2(-0.06, 0.04)) - 0.048 * jScale;
-    float jCap = sdCapsule(p, vec2(-0.11, 0.15), vec2(-0.05, 0.02), 0.042 * jScale);
-    float jCap2 = sdCapsule(p, vec2(-0.09, 0.1), vec2(-0.04, 0.05), 0.038 * jScale);
-    float jK = mix(0.055, 0.042, u_useGlyphAtlas);
+    // Script: softMin pipe join — stem↔loop necks only (atlas void fill + residual shader bridge)
+    float jScale = u_useGlyphAtlas > 0.5 ? 0.88 : 0.95;
+    float jNeck = length(p - vec2(-0.1, 0.06)) - 0.062 * jScale;
+    float jNeck2 = length(p - vec2(-0.12, 0.12)) - 0.055 * jScale;
+    float jNeck3 = length(p - vec2(-0.08, 0.0)) - 0.052 * jScale;
+    float jNeck4 = length(p - vec2(-0.14, 0.02)) - 0.048 * jScale;
+    float jCap = sdCapsule(p, vec2(-0.14, 0.16), vec2(-0.06, -0.02), 0.046 * jScale);
+    float jCap2 = sdCapsule(p, vec2(-0.11, 0.1), vec2(-0.05, 0.04), 0.042 * jScale);
+    float jCap3 = sdCapsule(p, vec2(-0.13, 0.04), vec2(-0.07, -0.08), 0.04 * jScale);
+    float jK = mix(0.058, 0.048, u_useGlyphAtlas);
     d = softMin(d, jNeck, jK);
     d = softMin(d, jNeck2, jK * 0.95);
-    d = softMin(d, jNeck3, jK * 0.9);
+    d = softMin(d, jNeck3, jK * 0.92);
+    d = softMin(d, jNeck4, jK * 0.9);
     d = softMin(d, jCap, jK * 0.95);
-    d = softMin(d, jCap2, jK * 0.9);
+    d = softMin(d, jCap2, jK * 0.92);
+    d = softMin(d, jCap3, jK * 0.9);
   } else {
     // Chrome: Blender silhouette already has clean stem–bowl join — skip procedural notches
   }
@@ -587,7 +591,7 @@ void main() {
         cOil.b = min(cOil.b, max(cOil.r, cOil.g) * 0.98);
         facePlate = mix(facePlate, cOil, clamp(conceptAlive * hasMetal * (0.82 + 0.18 * hasOil), 0.0, 0.99));
         float emptyC = (1.0 - hasMetal) * (1.0 - hasOil);
-        facePlate = mix(facePlate, vec3(0.028, 0.03, 0.04), emptyC * conceptAlive * 0.65);
+        facePlate = mix(facePlate, vec3(0.38, 0.375, 0.36), emptyC * conceptAlive * 0.55);
         float creamFp = max(0.0, facePlate.r - facePlate.b * 0.98) + max(0.0, facePlate.g * 0.86 - facePlate.b);
         float mintFp = max(0.0, facePlate.g - facePlate.r * 1.0) * max(0.0, facePlate.g - facePlate.b * 0.96);
         float cyanFp = max(0.0, facePlate.b - facePlate.r * 0.98) * max(0.0, facePlate.b - facePlate.g * 0.96);
@@ -619,10 +623,10 @@ void main() {
       oWash *= (0.4 + 0.6 * ellOil);
       // Charcoal floor — preserve dark softbox voids (anti flat cream-silver)
       facePlate = max(facePlate, vec3(0.05, 0.055, 0.07) * (0.55 + 0.45 * fL));
-      // Midtone oil — gold/lime elliptical puddles (anti mint/cyan softbox flood)
-      float midOil = smoothstep(0.08, 0.36, fL) * (1.0 - smoothstep(0.5, 0.82, fL));
-      float synthOil = oWash * midOil * mix(0.55, 0.62, conceptAlive);
-      facePlate = mix(facePlate, ofire * (max(fL, 0.3) / oL), synthOil * 0.88);
+      // Midtone oil — gold/lime elliptical puddles on softbox (1c6PD/Z53Ve sparse)
+      float midOil = smoothstep(0.08, 0.36, fL) * (1.0 - smoothstep(0.52, 0.85, fL));
+      float synthOil = oWash * midOil * mix(0.62, 0.78, conceptAlive);
+      facePlate = mix(facePlate, ofire * (max(fL, 0.3) / oL), synthOil * 0.95);
       // Crush mint/cream/cyan-milk → cool silver; spare gold/lime oil chroma
       float peakSil = smoothstep(0.48, 0.8, fL);
       float peakCh = max(facePlate.r, max(facePlate.g, facePlate.b)) - min(facePlate.r, min(facePlate.g, facePlate.b));
@@ -717,9 +721,9 @@ void main() {
       // Round tubular pipe (ENj9B): narrow crest + mid flanks (elegance, anti soft-white flood / voids)
       float tubeBody = smoothstep(0.0, max(bevelW * 0.55, 0.0012), inside);
       float hPipe = u_useGlyphAtlas > 0.5 ? glyphAtlasHeight(p) : 0.0;
-      // Narrower crest (pow↑) for tubular elegance — silverRatio ~0.55–0.70
-      float bodyT = clamp(mix(inside / 0.095, hPipe, 0.12), 0.0, 1.0);
-      float crest = pow(bodyT, 0.68);
+      // Crest/flank for tubular elegance — silverRatio ~0.63 target vs ENj9B
+      float bodyT = clamp(mix(inside / 0.088, hPipe, 0.14), 0.0, 1.0);
+      float crest = pow(bodyT, 0.58);
       float flank = 1.0 - crest;
       float heightFlank = 1.0 - smoothstep(0.08, 0.58, hPipe);
       float wrapFres = pow(1.0 - ndotv, 0.92);
@@ -906,12 +910,13 @@ void main() {
       color += envFace * spine * vec3(0.95, 0.94, 0.9) * 0.7;
       color = max(color, vec3(0.22, 0.225, 0.24) * tubeAliveS * u_glass);
       color = max(color, ambTint * 0.65 * tubeAliveS * u_glass);
-      float joinZone = exp(-pow(length(p - vec2(-0.055, 0.07)) / 0.22, 2.0));
-      joinZone = max(joinZone, exp(-pow(length(p - vec2(-0.09, 0.12)) / 0.16, 2.0)));
-      color += vec3(0.98, 0.975, 0.95) * joinZone * wrapFresS * tubeAliveS * 1.85 * u_glass;
-      color = max(color, envFace * joinZone * 1.05 * tubeAliveS * u_glass);
-      color = max(color, vec3(0.28, 0.28, 0.275) * joinZone * tubeAliveS);
-      color = max(color, vec3(0.36, 0.36, 0.35) * joinZone * 1.2 * tubeAliveS);
+      float joinZone = exp(-pow(length(p - vec2(-0.08, 0.05)) / 0.26, 2.0));
+      joinZone = max(joinZone, exp(-pow(length(p - vec2(-0.12, 0.1)) / 0.2, 2.0)));
+      joinZone = max(joinZone, exp(-pow(length(p - vec2(-0.14, 0.0)) / 0.18, 2.0)));
+      color += vec3(0.98, 0.975, 0.95) * joinZone * wrapFresS * tubeAliveS * 2.05 * u_glass;
+      color = max(color, envFace * joinZone * 1.15 * tubeAliveS * u_glass);
+      color = max(color, vec3(0.3, 0.3, 0.292) * joinZone * tubeAliveS);
+      color = max(color, vec3(0.4, 0.4, 0.39) * joinZone * 1.35 * tubeAliveS);
     }
 
     vec3 rimCol = mix(vec3(1.22, 1.2, 1.12), envRim * 2.4, 0.7);
@@ -1059,8 +1064,8 @@ void main() {
       // Round pipe chrome (ENj9B) — narrow crest + mid flanks (tubular elegance, anti soft-white flood / voids)
       float tubeAliveF = smoothstep(0.0, max(bevelW * 0.55, 0.0012), inside);
       float hFin = u_useGlyphAtlas > 0.5 ? glyphAtlasHeight(p) : 0.0;
-      float bodyTF = clamp(mix(inside / 0.095, hFin, 0.12), 0.0, 1.0);
-      float crestFin = pow(bodyTF, 0.66);
+      float bodyTF = clamp(mix(inside / 0.088, hFin, 0.14), 0.0, 1.0);
+      float crestFin = pow(bodyTF, 0.58);
       float flankFin = 1.0 - crestFin;
       float heightFlankF = 1.0 - smoothstep(0.08, 0.58, hFin);
       float hemiFin = 0.16 + 0.84 * max(dot(N, L), 0.0);
@@ -1097,11 +1102,12 @@ void main() {
       color = max(color, vec3(0.44, 0.44, 0.43) * inkFloor);
       float holeKill = (1.0 - smoothstep(0.16, 0.42, max(color.r, max(color.g, color.b)))) * tubeAliveF;
       color = mix(color, midMetal * 1.2, clamp(holeKill * 0.99, 0.0, 0.99));
-      color = max(color, midMetal * tubeAliveF * 1.12);
+      color = max(color, midMetal * tubeAliveF * 1.25);
+      color = max(color, vec3(0.44, 0.44, 0.43) * tubeAliveF);
       // Second-pass void kill — no near-black islands inside tube body
-      float stillHole = (1.0 - smoothstep(0.2, 0.46, max(color.r, max(color.g, color.b)))) * tubeAliveF;
-      color = mix(color, vec3(0.46, 0.46, 0.45), clamp(stillHole * 0.98, 0.0, 0.98));
-      color = max(color, vec3(0.4, 0.4, 0.39) * tubeAliveF);
+      float stillHole = (1.0 - smoothstep(0.28, 0.52, max(color.r, max(color.g, color.b)))) * tubeAliveF;
+      color = mix(color, vec3(0.5, 0.5, 0.485), clamp(stillHole * 0.99, 0.0, 0.99));
+      color = max(color, vec3(0.46, 0.46, 0.45) * tubeAliveF);
       // Crush soft-white flood on flanks
       float pkS = max(color.r, max(color.g, color.b));
       float chS = max(abs(color.r - color.g), max(abs(color.g - color.b), abs(color.r - color.b)));
@@ -1130,12 +1136,13 @@ void main() {
       color = max(color, midMetal * tipZone * tubeAliveF * 1.2);
       color = max(color, silverFil * tipZone * tubeAliveF * mix(0.35, 0.75, crestFin));
       color = mix(color, silverFil * 0.55 + midMetal * 0.45, tipZone * tubeAliveF * mix(0.28, 0.55, silCover));
-      float juncFill = exp(-pow(length(p - vec2(-0.05, 0.06)) / 0.22, 2.0));
-      juncFill = max(juncFill, exp(-pow(length(p - vec2(-0.09, 0.1)) / 0.2, 2.0)));
-      juncFill = max(juncFill, exp(-pow(length(p - vec2(-0.03, 0.12)) / 0.18, 2.0)));
-      juncFill = max(juncFill, exp(-pow(length(p - vec2(-0.07, 0.02)) / 0.2, 2.0)));
-      color = max(color, midMetal * juncFill * 1.55 * tubeAliveF);
-      color = max(color, silverFil * silCover * juncFill * 0.7);
+      float juncFill = exp(-pow(length(p - vec2(-0.08, 0.04)) / 0.26, 2.0));
+      juncFill = max(juncFill, exp(-pow(length(p - vec2(-0.12, 0.1)) / 0.22, 2.0)));
+      juncFill = max(juncFill, exp(-pow(length(p - vec2(-0.14, -0.02)) / 0.2, 2.0)));
+      juncFill = max(juncFill, exp(-pow(length(p - vec2(-0.06, 0.12)) / 0.2, 2.0)));
+      juncFill = max(juncFill, exp(-pow(length(p - vec2(-0.1, -0.06)) / 0.2, 2.0)));
+      color = max(color, midMetal * juncFill * 1.75 * tubeAliveF);
+      color = max(color, silverFil * silCover * juncFill * 0.85);
       color = max(color, vec3(0.28, 0.285, 0.29) * tubeAliveF);
       color = max(color, vec3(0.24, 0.245, 0.25) * tubeAliveF);
     } else {
@@ -1163,7 +1170,8 @@ void main() {
         planar = mix(planar, conceptWet, clamp(conceptAlive * hasM * 0.97, 0.0, 0.99));
         float hotC = clamp(pow(faceHard, 2.0) * 0.55, 0.0, 1.0);
         planar = mix(planar, vec3(1.0, 0.99, 0.96) * max(cL3, 0.55), hotC * (1.0 - smoothstep(0.1, 0.26, cCh3)) * 0.3);
-        planar = mix(planar, vec3(0.03, 0.034, 0.045), (1.0 - hasM) * conceptAlive * 0.7);
+        // Soft mid fill for empty concept holes — avoid jagged stem charcoal voids
+        planar = mix(planar, vec3(0.42, 0.415, 0.4), (1.0 - hasM) * conceptAlive * 0.55);
         color = mix(color, planar, faceAlive * softFace * 0.92);
         color = max(color, planar * faceAlive * 0.6);
         float midC = smoothstep(0.04, 0.55, cL3) * (1.0 - smoothstep(0.7, 0.92, cL3));

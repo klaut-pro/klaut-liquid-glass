@@ -393,7 +393,7 @@ def bake_glyph(glyph_id: str) -> Image.Image:
         bulb_shade = np.clip((yy_c - (by - bry * 0.55)) / max(bry * 1.35, 1.0), 0.0, 1.0)[..., None]
         bulb_col = cream_bulb * (1.0 - bulb_shade * 0.7) + dark_bulb * (bulb_shade * 0.7)
         arr = arr * (1.0 - bulb_w) + (arr * 0.28 + bulb_col * 0.72) * bulb_w
-        # Planar wet-mirror softbox rebuild — continuous frontal lobes (anti mottled noise)
+        # Planar wet-mirror softbox — continuous frontal + anisotropic lobes (1c6PD/Z53Ve)
         silp = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         my2, mx2 = np.where(mask)
         if len(my2) > 10:
@@ -403,40 +403,70 @@ def bake_glyph(glyph_id: str) -> Image.Image:
             hh = max(50.0, 0.38 * (float(my2.max()) - float(my2.min())))
         else:
             cx, cy, hw, hh = 256.0, 240.0, 90.0, 110.0
+        # Vertical softbox streaks (studio) + wide frontal lobes — oil fidelity vs mottled noise
         softbox = (
-            1.0 * np.exp(-(((xx_c - cx) / (hw * 1.15)) ** 2 + ((yy_c - (cy - hh * 0.15)) / (hh * 0.95)) ** 2))
-            + 0.75 * np.exp(-(((xx_c - (cx - hw * 0.25)) / (hw * 0.85)) ** 2 + ((yy_c - cy) / (hh * 0.8)) ** 2))
-            + 0.55 * np.exp(-(((xx_c - (cx + hw * 0.2)) / (hw * 0.7)) ** 2 + ((yy_c - (cy + hh * 0.1)) / (hh * 0.7)) ** 2))
+            1.05 * np.exp(-(((xx_c - cx) / (hw * 1.25)) ** 2 + ((yy_c - (cy - hh * 0.12)) / (hh * 1.05)) ** 2))
+            + 0.85 * np.exp(-(((xx_c - (cx - hw * 0.28)) / (hw * 0.55)) ** 2 + ((yy_c - cy) / (hh * 1.15)) ** 2))
+            + 0.7 * np.exp(-(((xx_c - (cx + hw * 0.22)) / (hw * 0.5)) ** 2 + ((yy_c - (cy + hh * 0.05)) / (hh * 1.05)) ** 2))
+            + 0.55 * np.exp(-(((xx_c - (cx - hw * 0.05)) / (hw * 0.95)) ** 2 + ((yy_c - (cy - hh * 0.35)) / (hh * 0.55)) ** 2))
         )
-        softbox = np.clip(softbox, 0.0, 1.0) * mask.astype(np.float32)
-        # Continuous softbox silver plate + sparse gold oil (planar wet-mirror)
+        # Mild diagonal oil-flow streak (wet-mirror sheen, not barcode)
+        streak = np.exp(
+            -(
+                (((xx_c - cx) * 0.55 + (yy_c - cy) * 0.85) / (hh * 0.55)) ** 2
+                + (((xx_c - cx) * 0.85 - (yy_c - cy) * 0.4) / (hw * 0.9)) ** 2
+            )
+        )
+        softbox = np.clip(softbox + 0.35 * streak, 0.0, 1.0) * mask.astype(np.float32)
+        # Continuous softbox silver plate — studio lobes dominate; concept oil as whisper underlay
         soft_col = np.stack(
             [
-                168.0 + softbox * 72.0,
-                166.0 + softbox * 68.0,
-                160.0 + softbox * 58.0,
+                162.0 + softbox * 88.0,
+                160.0 + softbox * 84.0,
+                154.0 + softbox * 70.0,
             ],
             axis=-1,
         )
-        face_w = ((~drip_m).astype(np.float32) * mask.astype(np.float32) * 0.82)[..., None]
-        arr = arr * (1.0 - face_w) + (arr * 0.22 + soft_col * 0.78) * face_w
-        # Stronger planar blur — softbox oil fidelity (anti mottled concept noise)
-        blur_f = gaussian_filter(arr, sigma=(2.8, 2.8, 0.0))
-        arr = np.where(mask[..., None] & ~drip_m[..., None], arr * 0.2 + blur_f * 0.8, arr)
-        # Sparse gold oil after softbox (1c6PD/Z53Ve wet-mirror accents)
+        # Softbox-led plate (wet-mirror fidelity) with residual concept chroma
+        face_w = ((~drip_m).astype(np.float32) * mask.astype(np.float32) * 0.7)[..., None]
+        arr = arr * (1.0 - face_w) + (arr * 0.3 + soft_col * 0.7) * face_w
+        # Planar blur — continuous softbox oil fidelity (anti mottled noise)
+        blur_f = gaussian_filter(arr, sigma=(3.8, 3.8, 0.0))
+        arr = np.where(mask[..., None] & ~drip_m[..., None], arr * 0.22 + blur_f * 0.78, arr)
+        # Sparse gold oil after softbox (1c6PD/Z53Ve wet-mirror accents) — edge/mid only
         silp2 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
-        mid_band2 = mask & (silp2 > 65) & (silp2 < 180) & ~drip_m
-        gw2 = (mid_band2.astype(np.float32) * np.clip(puddle, 0, 1) * 0.55)[..., None]
-        gold_col2 = np.array([200.0, 164.0, 98.0], dtype=np.float32)
-        arr = arr * (1.0 - gw2) + (arr * 0.4 + gold_col2 * 0.6) * gw2
-        # Softbox peaks — warm-neutral (anti cyan / cream flood)
+        mid_band2 = mask & (silp2 > 58) & (silp2 < 168) & ~drip_m
+        # Edge-oil lobe on bowl right (Z53Ve sparse gold) — NOT bowl-center flood
+        edge_gold = np.exp(-(((xx_c - (cx + hw * 0.42)) / (hw * 0.38)) ** 2 + ((yy_c - (cy - hh * 0.05)) / (hh * 0.55)) ** 2))
+        oil_gate = np.clip(puddle * 0.45 + edge_gold * 0.75 + streak * 0.25, 0.0, 1.0)
+        # Suppress oil under bright softbox peaks (softbox first, gold sparse)
+        oil_gate = oil_gate * (1.0 - np.clip(softbox * 0.65, 0.0, 0.85))
+        gw2 = (mid_band2.astype(np.float32) * oil_gate * 0.48)[..., None]
+        gold_col2 = np.array([210.0, 170.0, 88.0], dtype=np.float32)
+        lime_col2 = np.array([150.0, 190.0, 88.0], dtype=np.float32)
+        oil_mix = gold_col2 * 0.82 + lime_col2 * 0.18
+        arr = arr * (1.0 - gw2) + (arr * 0.4 + oil_mix * 0.6) * gw2
+        # Softbox peaks — warm-neutral (anti cyan / cream flood); spare mid oil
         ch2b = arr.max(-1) - arr.min(-1)
-        peak = mask & (softbox > 0.45) & (ch2b < 48) & ~drip_m
-        peak_col = np.stack([silp2 * 1.02, silp2 * 1.0, silp2 * 0.97], axis=-1)
-        arr[peak] = np.clip(arr[peak] * 0.3 + peak_col[peak] * 0.7, 0, 255)
+        peak = mask & (softbox > 0.45) & (ch2b < 44) & ~drip_m & (oil_gate < 0.28)
+        peak_col = np.stack([silp2 * 1.03, silp2 * 1.005, silp2 * 0.97], axis=-1)
+        arr[peak] = np.clip(arr[peak] * 0.28 + peak_col[peak] * 0.72, 0, 255)
         silp = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
-        void = (silp < 38) & mask & ~drip_m
-        arr[void] = np.clip(arr[void] * 0.35 + np.array([14, 16, 22]) * 0.65, 0, 255)
+        void = (silp < 55) & mask & ~drip_m
+        # Raise stem/face charcoal voids to softbox mid (anti jagged stem hole)
+        soft_fill = np.stack(
+            [
+                148.0 + softbox * 60.0,
+                146.0 + softbox * 56.0,
+                140.0 + softbox * 48.0,
+            ],
+            axis=-1,
+        )
+        arr[void] = np.clip(arr[void] * 0.15 + soft_fill[void] * 0.85, 0, 255)
+        # Second pass — no near-black islands on planar face
+        silp = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
+        void2 = (silp < 70) & mask & ~drip_m
+        arr[void2] = np.clip(arr[void2] * 0.2 + soft_fill[void2] * 0.8, 0, 255)
         arr = crush_pink_cream(arr, keep_oil_chroma=0.55, spare_cyan=False)
         silf = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         chf = arr.max(-1) - arr.min(-1)
@@ -503,11 +533,11 @@ def bake_glyph(glyph_id: str) -> Image.Image:
             ),
             0.0,
         )
-        # Crest ribbon after blur — steeper for silverRatio ~0.63 elegance
+        # Crest ribbon after blur — silverRatio ~0.63 tubular elegance (not 0.87 flood)
         crest_n = np.clip(silf4 / max(float(np.percentile(silf4[mask], 95)), 1e-3), 0, 1) if mask.any() else silf4
-        crest_n = np.power(crest_n, 1.35)
-        crest_add = (crest_n * 48.0)[..., None] * np.array([1.0, 0.99, 0.96])
-        arr = np.where(mask[..., None], np.clip(arr + crest_add * 0.5, 0, 255), 0.0)
+        crest_n = np.power(crest_n, 1.18)
+        crest_add = (crest_n * 56.0)[..., None] * np.array([1.0, 0.99, 0.96])
+        arr = np.where(mask[..., None], np.clip(arr + crest_add * 0.58, 0, 255), 0.0)
         # Final void floor
         silf5 = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
         still = mask & (silf5 < 100)
