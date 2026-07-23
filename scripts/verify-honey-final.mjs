@@ -153,7 +153,9 @@ async function main() {
       strandsKilled = 0,
       lipSoftened = 0,
       loftShared = 0,
-      loftVerts = 0;
+      loftVerts = 0,
+      tipCount = 0,
+      bakedSoft = 0;
     for (const m of meshes) {
       const w = m.geometry?.userData?.tipWeld;
       if (!w) continue;
@@ -163,6 +165,8 @@ async function main() {
       lipSoftened += w.lipSoftened || 0;
       loftShared += w.loftShared || 0;
       loftVerts += w.loftVerts || 0;
+      tipCount += w.tipCount || 0;
+      if (w.bakedSoftBoolean) bakedSoft++;
     }
     return {
       welded,
@@ -171,10 +175,13 @@ async function main() {
       lipSoftened,
       loftShared,
       loftVerts,
+      tipCount,
+      bakedSoftLetters: bakedSoft,
       tipWeldFlag: !!window.__scratch?.roundness?.tipWeld,
       tipLoftFlag: !!window.__scratch?.roundness?.tipLoft,
       sharedVertexFlag: !!window.__scratch?.roundness?.sharedVertex,
       lipSoftFlag: !!window.__scratch?.roundness?.lipSoft,
+      softBooleanBakeFlag: !!window.__scratch?.roundness?.softBooleanBake,
     };
   });
   await writeFile(join(outDir, "scratch-honey-final.json"), JSON.stringify(metrics, null, 2));
@@ -197,6 +204,8 @@ async function main() {
   } catch (_) {}
 
   try {
+    await copyFile(full, join(outDir, "scratch-honey-after-softbool.png"));
+    await copyFile(closeup, join(outDir, "scratch-honey-after-softbool-closeup.png"));
     await copyFile(full, join(outDir, "scratch-honey-after-loft.png"));
     await copyFile(closeup, join(outDir, "scratch-honey-after-loft-closeup.png"));
     await copyFile(full, join(outDir, "scratch-honey-after-lip.png"));

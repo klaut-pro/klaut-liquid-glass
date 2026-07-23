@@ -2059,8 +2059,8 @@ function sealHoneyTipLip(
 
     if (!isLipRoot && !isLetterLip) continue;
 
-    // Letter strands: snap UP onto lip disk (open bottom)
-    if (!isLipRoot && s.pos[i + 1]! < lipY - colW * 0.04) {
+    // Letter underside: dig concave funnel into filament (not snap-UP shelf)
+    if (!isLipRoot) {
       let ox = s.pos[i]! - ax;
       let oz = s.pos[i + 2]! - s.cz;
       let r0 = Math.hypot(ox, oz);
@@ -2070,23 +2070,13 @@ function sealHoneyTipLip(
         r0 = 1;
       }
       const inv = 1 / r0;
-      const stemR = Math.min(Math.max(r0, colW * 0.5), lipR);
-      s.pos[i] = mix(s.pos[i]!, ax + ox * inv * stemR, 0.9 * k);
-      s.pos[i + 1] = mix(s.pos[i + 1]!, lipY + colW * 0.012, 0.95 * k);
-      s.pos[i + 2] = mix(s.pos[i + 2]!, s.cz + oz * inv * stemR * 0.96, 0.9 * k);
-      continue;
-    }
-
-    if (!isLipRoot) {
-      // Mild radial gather only — keep letter Y
-      let ox = s.pos[i]! - ax;
-      let oz = s.pos[i + 2]! - s.cz;
-      let r0 = Math.hypot(ox, oz);
-      if (r0 < 1e-5) continue;
-      const inv = 1 / r0;
-      const gatherR = mix(r0, lipR, 0.28 * k);
-      s.pos[i] = mix(s.pos[i]!, ax + ox * inv * gatherR, 0.35 * k);
-      s.pos[i + 2] = mix(s.pos[i + 2]!, s.cz + oz * inv * gatherR * 0.96, 0.35 * k);
+      const tRad = clamp01(r0 / Math.max(lipR * 1.15, 1e-4));
+      const funnel = (1 - tRad * tRad) * hang * 0.24;
+      const wantY = lipY - funnel;
+      const gatherR = mix(r0, mix(lipR, neckR, 1 - tRad), 0.5 * k);
+      s.pos[i] = mix(s.pos[i]!, ax + ox * inv * gatherR, 0.55 * k);
+      s.pos[i + 1] = mix(s.pos[i + 1]!, wantY, 0.7 * k);
+      s.pos[i + 2] = mix(s.pos[i + 2]!, s.cz + oz * inv * gatherR * 0.96, 0.55 * k);
       continue;
     }
 
@@ -2293,6 +2283,8 @@ function sculptHoneyPendant(
   const n = (s.base.length / 3) | 0;
   // Letter lip (s.lo is letter-only after bind) — pendant emerges from glyph
   const lipY = s.lo;
+  // Bury pear lip into letter so funnel meets tip without a flat shelf
+  const pearLipY = lipY + hang * 0.1;
   // Thick neck (concept: seamless stem blend, not wire / gap)
   let neckR = Math.min(
     baseR * mix(0.95, 0.75, clamp01(maps.neckPinch * Math.min(neckMul, 1.3))),
@@ -2332,30 +2324,31 @@ function sculptHoneyPendant(
       : Math.pow(Math.max(0, 1 - Math.min(near, 1)), maps.columnSharp * 0.85);
     if (!isSeed && column < 0.18 && s.downFace[vi]! < 0.5) continue;
 
-    // Letter verts with tip lattice: open-bottom only — tip owns the pendant.
-    // Pear-morphing letter tris here created jagged collar shards vs tip rings.
+    // Letter verts with tip lattice: dig concave funnel into underside (no flat shelf).
+    // Prior snap-UP onto lip disk recreated the hard shelf vs concept art.
     if (!isSeed) {
       const by = s.base[i + 1]!;
       const py = s.pos[i + 1]!;
       if (s.hasTipLattice) {
         const down = s.downFace[vi]!;
-        // Kill hanging spikes — snap UP onto lip disk
-        if (py < lipY - halfH * 0.008) {
-          s.pos[i + 1] = mix(py, Math.max(by, lipY + halfH * 0.008), 0.96 * strength);
-        }
-        // On-column lip: mild radial gather toward stem (no Y pear morph)
-        if (column >= 0.22 && by <= lipY + halfH * 0.22) {
+        if (column >= 0.18 && by <= lipY + halfH * 0.28) {
           let oxL = s.pos[i]! - ax;
           let ozL = s.pos[i + 2]! - s.cz;
           let rL = Math.hypot(oxL, ozL);
+          const tRad = clamp01(rL / Math.max(lipR * 1.15, 1e-4));
+          // Quadratic funnel: center sinks into neck; rim stays on glyph
+          const funnel = (1 - tRad * tRad) * hang * 0.28;
+          const wantY = lipY - funnel;
+          const wJoin = 0.82 * strength * Math.max(column, down * 0.85);
+          s.pos[i + 1] = mix(py, wantY, wJoin);
           if (rL > 1e-5) {
             const inv = 1 / rL;
-            const gatherR = mix(rL, lipR, 0.32 * strength * Math.max(column, down));
-            s.pos[i] = mix(s.pos[i]!, ax + oxL * inv * gatherR, 0.4 * strength);
+            const gatherR = mix(rL, mix(lipR, neckR, 1 - tRad), 0.55 * wJoin);
+            s.pos[i] = mix(s.pos[i]!, ax + oxL * inv * gatherR, 0.55 * wJoin);
             s.pos[i + 2] = mix(
               s.pos[i + 2]!,
               s.cz + ozL * inv * gatherR * 0.96,
-              0.4 * strength,
+              0.55 * wJoin,
             );
           }
         }
@@ -2389,7 +2382,7 @@ function sculptHoneyPendant(
     const [tx, ty, tz] = honeyPendantPoint(
       t,
       ax,
-      lipY,
+      pearLipY,
       s.cz,
       hang,
       neckR,
@@ -2409,7 +2402,7 @@ function sculptHoneyPendant(
     // Reinforce pear radius (not sphere) on tip half
     if (isSeed && t > 0.35) {
       const wantR = honeyPendantRadius(t, neckR, bulbR, lipR);
-      const wantY = honeyPendantY(t, lipY, hang);
+      const wantY = honeyPendantY(t, pearLipY, hang);
       let px = s.pos[i]!;
       let py = s.pos[i + 1]!;
       let pz = s.pos[i + 2]!;

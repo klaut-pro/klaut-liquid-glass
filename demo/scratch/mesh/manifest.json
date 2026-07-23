@@ -9,60 +9,164 @@
   "bevelResolution": 16,
   "resolutionU": 32,
   "subdivLevels": 2,
-  "remeshVoxel": 0.008,
+  "remeshVoxel": 0.009,
+  "tipRemeshVoxel": 0.009,
+  "softBooleanTips": true,
   "targetHeight": 1.15,
   "bakedDimensions": {
-    "x": 6.859269711971283,
-    "y": 0.4588218629360199,
-    "z": 1.149600863456726
+    "x": 6.852664623260498,
+    "y": 0.7133278250694275,
+    "z": 1.148447036743164
   },
-  "vertexCount": 404562,
+  "vertexCount": 363744,
   "mesh": "wordmark-klaut-pro.glb",
   "letters": [
     {
       "index": 0,
       "char": "k",
-      "meshName": "letter_0_k"
+      "meshName": "letter_0_k",
+      "softBoolean": true,
+      "tips": 2,
+      "columns": [
+        -4.946070442199707,
+        -4.627069702148438
+      ],
+      "colW": 0.10633358001708984,
+      "lipY": -0.22941084206104279,
+      "hang": 0.22023440837860106,
+      "neckR": 0.12504829010009766,
+      "bulbR": 0.160061811328125,
+      "lipR": 0.22888303098678586
     },
     {
       "index": 1,
       "char": "l",
-      "meshName": "letter_1_l"
+      "meshName": "letter_1_l",
+      "softBoolean": true,
+      "tips": 1,
+      "columns": [
+        -3.7484230995178223
+      ],
+      "colW": 0.03504281044006348,
+      "lipY": -0.2294108271598816,
+      "hang": 0.22023439407348633,
+      "neckR": 0.04121034507751466,
+      "bulbR": 0.05274924169921876,
+      "lipR": 0.07542964947223663
     },
     {
       "index": 2,
       "char": "a",
-      "meshName": "letter_2_a"
+      "meshName": "letter_2_a",
+      "softBoolean": true,
+      "tips": 2,
+      "columns": [
+        -2.815941505432129,
+        -2.4623165798187254
+      ],
+      "colW": 0.11787497520446777,
+      "lipY": -0.2294108271598816,
+      "hang": 0.22023439407348633,
+      "neckR": 0.1386209708404541,
+      "bulbR": 0.17743484267578125,
+      "lipR": 0.2537258841276169
     },
     {
       "index": 3,
       "char": "u",
-      "meshName": "letter_3_u"
+      "meshName": "letter_3_u",
+      "softBoolean": true,
+      "tips": 2,
+      "columns": [
+        -1.2905780506134032,
+        -0.9699778127670289
+      ],
+      "colW": 0.1068667459487915,
+      "lipY": -0.2294108271598816,
+      "hang": 0.22023439407348633,
+      "neckR": 0.12567529323577883,
+      "bulbR": 0.1608643753417969,
+      "lipR": 0.2300306706547737
     },
     {
       "index": 4,
       "char": "t",
-      "meshName": "letter_4_t"
+      "meshName": "letter_4_t",
+      "softBoolean": true,
+      "tips": 1,
+      "columns": [
+        0.135649174451828
+      ],
+      "colW": 0.06539024114608764,
+      "lipY": -0.2294108271598816,
+      "hang": 0.22023439407348633,
+      "neckR": 0.08202551849365236,
+      "bulbR": 0.10499266367187503,
+      "lipR": 0.15013599367141722
     },
     {
       "index": 5,
       "char": ".",
-      "meshName": "letter_5_dot"
+      "meshName": "letter_5_dot",
+      "softBoolean": true,
+      "tips": 1,
+      "columns": [
+        1.0154312551021576
+      ],
+      "colW": 0.036855846643447876,
+      "lipY": -0.2294108122587204,
+      "hang": 0.25235189348459247,
+      "neckR": 0.04721233955025673,
+      "bulbR": 0.06519799271225929,
+      "lipR": 0.08318364587426186
     },
     {
       "index": 6,
       "char": "p",
-      "meshName": "letter_6_p"
+      "meshName": "letter_6_p",
+      "softBoolean": true,
+      "tips": 1,
+      "columns": [
+        2.095134735107422
+      ],
+      "colW": 0.09241595268249513,
+      "lipY": -0.22941084206104279,
+      "hang": 0.2523519262671471,
+      "neckR": 0.11838483538627625,
+      "bulbR": 0.16348382029533387,
+      "lipR": 0.2085828052043915
     },
     {
       "index": 7,
       "char": "r",
-      "meshName": "letter_7_r"
+      "meshName": "letter_7_r",
+      "softBoolean": true,
+      "tips": 1,
+      "columns": [
+        3.398566722869873
+      ],
+      "colW": 0.10064992904663085,
+      "lipY": -0.2294108271598816,
+      "hang": 0.22023439407348633,
+      "neckR": 0.12625527099609377,
+      "bulbR": 0.161606746875,
+      "lipR": 0.23109223709106444
     },
     {
       "index": 8,
       "char": "o",
-      "meshName": "letter_8_o"
+      "meshName": "letter_8_o",
+      "softBoolean": true,
+      "tips": 1,
+      "columns": [
+        4.7411110401153564
+      ],
+      "colW": 0.14655468463897706,
+      "lipY": -0.2294108271598816,
+      "hang": 0.22023439407348633,
+      "neckR": 0.17234830913543703,
+      "bulbR": 0.2206058356933594,
+      "lipR": 0.3154589586853981
     }
   ],
   "perLetterMeshes": true,
@@ -71,6 +175,7 @@
   "pipeline": [
     "1-font: Arial Black wordmark klaut.pro (per-glyph meshes)",
     "2-mesh: Blender extrude+bevel+subdiv+remesh \u2192 GLB",
+    "2b-soft-boolean: pear tips \u222a letter bottoms + voxel remesh (SDF join)",
     "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
     "4-liquid: GravityMeltSim per-letter overrides",
     "5-sag: frozen viscoplastic neck/bulb (no drip blobs)"

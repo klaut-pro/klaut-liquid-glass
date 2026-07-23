@@ -246,6 +246,14 @@ crease). Hard-projected by `sculptHoneyPendant` / `honeyPendantPoint`. Jagged
 lip strands snapped at weld + seal. Still **no attached drip sphere meshes**
 (`dripBlobs: 0`). Dark plate defaults.
 
+**Bake soft-boolean (2026-07 next):** `scripts/bake-scratch-mesh.py` unions pear
+tip solids into each letter bottom (Blender Exact/Float boolean), then voxel
+remeshes (`TIP_REMESH_VOXEL`) so the glyph body densifies into the filament —
+SDF-style soft join that kills the hard shelf at letter→neck. Manifest /
+`fonts.json` flag `softBooleanTips` + per-letter `lipY`/`hang`/`columns` so
+runtime synthesizes `tipU` and skips dual-lattice loft. Fallback: 1-pass
+budgeted `subdivideLetterLipBand` + runtime loft when bake flag absent.
+
 **Freeze-height cheat sheet:**
 
 | freezeHeight | Affected band | Look |

@@ -2,78 +2,78 @@
   "letters": [
     {
       "ch": "k",
-      "tipCount": 434,
-      "tipW": 0.436,
-      "midW": 0.8491,
-      "bulbRatio": 0.514,
-      "hang": 1.9127
+      "tipCount": 11458,
+      "tipW": 0.3085,
+      "midW": 0.8266,
+      "bulbRatio": 0.373,
+      "hang": 1.2966
     },
     {
       "ch": "l",
-      "tipCount": 217,
-      "tipW": 0.3344,
-      "midW": 0.29,
-      "bulbRatio": 1.153,
-      "hang": 1.8284
+      "tipCount": 4134,
+      "tipW": 0.2661,
+      "midW": 0.3458,
+      "bulbRatio": 0.769,
+      "hang": 1.2519
     },
     {
       "ch": "a",
-      "tipCount": 482,
-      "tipW": 0.3389,
-      "midW": 0.9744,
-      "bulbRatio": 0.348,
-      "hang": 1.5239
+      "tipCount": 8156,
+      "tipW": 0.2997,
+      "midW": 0.9421,
+      "bulbRatio": 0.318,
+      "hang": 1.1057
     },
     {
       "ch": "u",
-      "tipCount": 482,
-      "tipW": 0.324,
-      "midW": 0.8373,
-      "bulbRatio": 0.387,
-      "hang": 1.457
+      "tipCount": 6368,
+      "tipW": 0.2717,
+      "midW": 0.8858,
+      "bulbRatio": 0.307,
+      "hang": 1.0415
     },
     {
       "ch": "t",
-      "tipCount": 217,
-      "tipW": 0.4401,
-      "midW": 0.5435,
-      "bulbRatio": 0.81,
-      "hang": 1.9311
+      "tipCount": 7600,
+      "tipW": 0.3104,
+      "midW": 0.4198,
+      "bulbRatio": 0.739,
+      "hang": 1.3045
     },
     {
       "ch": ".",
-      "tipCount": 337,
-      "tipW": 0.1218,
-      "midW": 0.3213,
-      "bulbRatio": 0.379,
-      "hang": 0.5746
+      "tipCount": 62,
+      "tipW": 0.2528,
+      "midW": 0.316,
+      "bulbRatio": 0.8,
+      "hang": 0.5847
     },
     {
       "ch": "p",
-      "tipCount": 337,
-      "tipW": 0.4368,
-      "midW": 0.631,
-      "bulbRatio": 0.692,
-      "hang": 1.9585
+      "tipCount": 5126,
+      "tipW": 0.1306,
+      "midW": 0.9096,
+      "bulbRatio": 0.144,
+      "hang": 1.3176
     },
     {
       "ch": "r",
-      "tipCount": 241,
-      "tipW": 0.3092,
-      "midW": 0.4141,
-      "bulbRatio": 0.747,
-      "hang": 1.4279
+      "tipCount": 2877,
+      "tipW": 0.2368,
+      "midW": 0.4935,
+      "bulbRatio": 0.48,
+      "hang": 1.0214
     },
     {
       "ch": "o",
-      "tipCount": 241,
+      "tipCount": 5492,
       "tipW": 0.3727,
-      "midW": 0.8616,
-      "bulbRatio": 0.433,
-      "hang": 1.4936
+      "midW": 0.9723,
+      "bulbRatio": 0.383,
+      "hang": 1.0867
     }
   ],
-  "meanBulbRatio": 0.607,
+  "meanBulbRatio": 0.479,
   "bulbsOver13": 0,
   "frozen": true,
   "params": {
@@ -83,15 +83,18 @@
   },
   "bg": "rgb(12, 16, 24)",
   "tipWeld": {
-    "welded": 296,
-    "bridges": 4195,
+    "welded": 0,
+    "bridges": 0,
     "strandsKilled": 0,
-    "lipSoftened": 12748,
-    "loftShared": 9344,
-    "loftVerts": 1888,
-    "tipWeldFlag": true,
-    "tipLoftFlag": true,
-    "sharedVertexFlag": true,
-    "lipSoftFlag": true
+    "lipSoftened": 0,
+    "loftShared": 0,
+    "loftVerts": 0,
+    "tipCount": 86560,
+    "bakedSoftLetters": 9,
+    "tipWeldFlag": false,
+    "tipLoftFlag": false,
+    "sharedVertexFlag": false,
+    "lipSoftFlag": false,
+    "softBooleanBakeFlag": true
   }
 }
