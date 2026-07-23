@@ -1,15 +1,77 @@
-﻿{
-  "note": "pour-v3 k stem dual + o lighter face",
-  "prior": "3a53a7d",
-  "url": "http://localhost:52780/demo/scratch.html",
-  "metrics": {
-    "k": { "tipGroups": 1, "gap": 0.0142, "tipW": 0.1562, "midOuterW": 0.803, "hang": 1.3655 },
-    "a": { "tipGroups": 2, "gap": 0.1689, "tipSpan": 0.4621 },
-    "u": { "tipGroups": 2, "gap": 0.1483, "tipSpan": 0.4205 },
-    "o": { "midOuterW": 0.67, "hang": 0.5003, "extrudeMul": 0.28, "face": "segoeuib", "skipTips": true }
-  },
-  "remaining": {
-    "k": "stem dual columns baked (sep~0.27) but tip band still merges to one filament (gap 0.014 vs a/u ~0.15); left tip stubs above tip band",
-    "o": "midOuterW 0.93→0.67 with Segoe Bold + 0.28× extrude + no tip remesh; counter more open but still heavier than concept open ring"
-  }
+{
+  "akuPath": "C:\\Users\\Julian\\Documents\\Programming\\klaut-liquid-glass\\demo\\frames\\scratch-honey-aku-closeup.png",
+  "oPath": "C:\\Users\\Julian\\Documents\\Programming\\klaut-liquid-glass\\demo\\frames\\scratch-honey-o-closeup.png",
+  "colMetrics": [
+    {
+      "ch": "k",
+      "hang": 1.262,
+      "tipGroups": [
+        {
+          "tipW": 0.014,
+          "n": 1754,
+          "cx": -5.005
+        },
+        {
+          "tipW": 0.0395,
+          "n": 6624,
+          "cx": -4.626
+        }
+      ],
+      "tipSpan": 0.4059,
+      "gap": 0.3524,
+      "midOuterW": 0.8088
+    },
+    {
+      "ch": "a",
+      "hang": 0.9206,
+      "tipGroups": [
+        {
+          "tipW": 0.1614,
+          "n": 5942,
+          "cx": -2.607
+        },
+        {
+          "tipW": 0.1696,
+          "n": 6684,
+          "cx": -2.302
+        }
+      ],
+      "tipSpan": 0.4698,
+      "gap": 0.1388,
+      "midOuterW": 0.855
+    },
+    {
+      "ch": "u",
+      "hang": 0.851,
+      "tipGroups": [
+        {
+          "tipW": 0.149,
+          "n": 5334,
+          "cx": -1.082
+        },
+        {
+          "tipW": 0.1573,
+          "n": 5079,
+          "cx": -0.81
+        }
+      ],
+      "tipSpan": 0.4253,
+      "gap": 0.119,
+      "midOuterW": 0.8197
+    },
+    {
+      "ch": "o",
+      "hang": 0.5003,
+      "tipGroups": [
+        {
+          "tipW": 0.197,
+          "n": 4144,
+          "cx": 4.705
+        }
+      ],
+      "tipSpan": 0.197,
+      "gap": 0.0012,
+      "midOuterW": 0.67
+    }
+  ]
 }

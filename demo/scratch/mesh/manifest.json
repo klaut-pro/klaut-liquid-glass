@@ -16,11 +16,11 @@
   "sdfSoftBlend": 0.0324,
   "targetHeight": 1.15,
   "bakedDimensions": {
-    "x": 6.021696600914002,
+    "x": 6.014090571403504,
     "y": 0.8162423372268677,
     "z": 1.0831010341644287
   },
-  "vertexCount": 433480,
+  "vertexCount": 428666,
   "mesh": "wordmark-klaut-pro.glb",
   "letters": [
     {
@@ -31,19 +31,19 @@
       "sdfUnion": true,
       "tips": 2,
       "columns": [
-        -4.935730402469635,
-        -4.662807400226593
+        -5.016366744041443,
+        -4.626476740837097
       ],
-      "colW": 0.05360987544059753,
+      "colW": 0.03455843210220337,
       "lipY": -0.22941084206104279,
-      "hang": 0.3303516125679016,
-      "neckR": 0.023957181136894226,
-      "bulbR": 0.03191663934355974,
-      "lipR": 0.08077667982012031,
+      "hang": 0.3788031824111938,
+      "neckR": 0.012192214845657351,
+      "bulbR": 0.01763516790175438,
+      "lipR": 0.04091286380499602,
       "poured": true,
       "closedCounter": false,
       "extrudeMul": 1.0,
-      "isoBlendMul": 0.72
+      "isoBlendMul": 0.42
     },
     {
       "index": 1,
@@ -223,7 +223,7 @@
     "1-font: Arial Black wordmark klaut.pro (per-glyph meshes)",
     "2-mesh: Blender extrude+bevel+subdiv \u2192 GLB",
     "2b-gn-sdf: Mesh\u2192SDF Grid \u222a pear tips \u2192 Grid to Mesh (per-glyph iso) + lip morph",
-    "2c-glyph-tune: k dual-tip split + seq union; closed-o light face+thin extrude",
+    "2c-glyph-tune: k stem dual-tip wide-sep + seq union; closed-o Segoe+thin extrude",
     "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
     "4-liquid: GravityMeltSim per-letter overrides",
     "5-sag: frozen viscoplastic neck/bulb (no drip blobs)"

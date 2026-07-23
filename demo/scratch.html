@@ -571,13 +571,12 @@
           if (ch === "k" || ch === "t" || ch === "l") {
             return {
               enable: true,
-              // k: match a/u poured filament — thin neck, lean tip (not bead-first)
-              // Higher freeze keeps bake dual tips from draining into one bead at settle
-              sagAmpMul: ch === "k" ? 1.35 : 1.2,
-              bulbGrowMul: ch === "k" ? 0.85 : 2.1,
-              viscosity: ch === "k" ? 0.88 : 0.9,
-              freezeHeight: ch === "k" ? 0.82 : 0.72,
-              neckPinchMul: ch === "k" ? 2.35 : 1.4,
+              // k: poured dual-stem like a/u — nearest-column sculpt keeps tips split
+              sagAmpMul: ch === "k" ? 1.58 : 1.2,
+              bulbGrowMul: ch === "k" ? 0.95 : 2.1,
+              viscosity: ch === "k" ? 0.86 : 0.9,
+              freezeHeight: ch === "k" ? 0.7 : 0.72,
+              neckPinchMul: ch === "k" ? 2.45 : 1.4,
             };
           }
           if (ch === "a" || ch === "u") {
@@ -988,10 +987,10 @@
           // Dual legs: two honey drips — keep columns tight so tips don't merge into a puddle
           if (!(Array.isArray(lm?.columns) && lm.columns.length)) {
             if (ch === "k") {
-              // Stem-only dual split (concept parallel columns) — not full glyph width
-              const stemMax = bb.min.x + spanX * 0.55;
+              // Stem-only dual split — wide sep so tip gap ≥ ~0.12 (bake parity)
+              const stemMax = bb.min.x + spanX * 0.5;
               const stemSpan = Math.max(stemMax - bb.min.x, 1e-4);
-              const inset = stemSpan * 0.22;
+              const inset = stemSpan * 0.06;
               cols = [bb.min.x + inset, stemMax - inset];
             } else if (ch === "u" || ch === "a" || ch === "n" || ch === "m") {
               const inset = spanX * 0.34;

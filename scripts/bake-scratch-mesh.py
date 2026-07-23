@@ -97,37 +97,38 @@ def glyph_bake_tune(ch: str) -> dict:
         # Multiplies SDF Grid→Mesh negative threshold (soft fillet)
         # Dual-leg: modest iso (aggressive empties dual-tip unions); funnel/morph do the melt
         # Closed o: keep iso tiny — negative blend fills the aperture into a thick blob
-        "iso_blend_mul": 0.06 if closed else (0.72 if is_k else (1.08 if dual else 1.0)),
+        # k: hard-ish iso — soft blend + joined tips collapsed left filament
+        "iso_blend_mul": 0.06 if closed else (0.42 if is_k else (1.08 if dual else 1.0)),
         # dig_funnel_pits sink depth / gather — dual pours deep before tip swell
-        "funnel_sink_mul": 0.28 if closed else (2.85 if is_k else (2.95 if dual else 1.0)),
-        "funnel_gather": 0.24 if closed else (0.95 if is_k else (1.32 if dual else 0.68)),
+        "funnel_sink_mul": 0.28 if closed else (2.55 if is_k else (2.95 if dual else 1.0)),
+        "funnel_gather": 0.24 if closed else (0.7 if is_k else (1.32 if dual else 0.68)),
         # soft_boolean_lip_morph weight — k: lighter morph so dual tips aren't drained into one
-        "lip_morph_w": 0.3 if closed else (1.05 if is_k else (1.72 if dual else 0.95)),
+        "lip_morph_w": 0.3 if closed else (0.82 if is_k else (1.72 if dual else 0.95)),
         # thinner continuous necks on dual-leg; tighter on o (less rim fat)
-        "neck_mul": 0.52 if closed else (0.38 if is_k else (0.52 if dual else 1.0)),
+        "neck_mul": 0.52 if closed else (0.3 if is_k else (0.52 if dual else 1.0)),
         # k: lean lips so tip columns stay split (2*lipR must stay < col sep)
-        "lip_mul": 0.4 if closed else (0.7 if is_k else (1.08 if dual else 1.0)),
+        "lip_mul": 0.4 if closed else (0.55 if is_k else (1.08 if dual else 1.0)),
         # pear tip bury into letter (deeper = better SDF melt, less shelf)
-        "bury_mul": 0.48 if closed else (1.45 if is_k else (1.78 if dual else 1.0)),
-        # elongate hang so poured filament reads before tip (dual); shorten o drip
-        "hang_mul": 0.62 if closed else (1.5 if is_k else (1.45 if dual else 1.0)),
+        "bury_mul": 0.48 if closed else (1.2 if is_k else (1.78 if dual else 1.0)),
+        # elongate hang so both k filaments reach tip band (left was stubbing short)
+        "hang_mul": 0.62 if closed else (1.72 if is_k else (1.45 if dual else 1.0)),
         # dual: lean tip swell vs neck — honey pour, not satellite bead
-        "bulb_mul": 0.58 if closed else (0.42 if is_k else (0.64 if dual else 1.0)),
+        "bulb_mul": 0.58 if closed else (0.36 if is_k else (0.64 if dual else 1.0)),
         # post-SDF remesh fineness (lower = finer, kills stair shelf)
-        "post_sdf_voxel_mul": 1.28 if closed else (0.5 if is_k else (0.58 if dual else 1.0)),
-        "smooth_iters": 2 if closed else (8 if is_k else (12 if dual else 6)),
-        "smooth_factor": 0.12 if closed else (0.4 if is_k else (0.58 if dual else 0.42)),
+        "post_sdf_voxel_mul": 1.28 if closed else (0.48 if is_k else (0.58 if dual else 1.0)),
+        "smooth_iters": 2 if closed else (5 if is_k else (12 if dual else 6)),
+        "smooth_factor": 0.12 if closed else (0.26 if is_k else (0.58 if dual else 0.42)),
         # poured pear profile: longer lip→filament before swell
         "poured": bool(dual),
         # Closed counters: thinner Z extrusion so aperture reads on dark bg
         "extrude_mul": 0.28 if closed else 1.0,
         "bevel_mul": 0.28 if closed else 1.0,
-        # Column inset fraction from glyph edges (lower = wider dual-tip split)
-        "col_inset": 0.22 if is_k else (0.34 if dual else 0.5),
+        # Column inset fraction (lower = wider dual-tip split); k target tip gap ≥ ~0.12
+        "col_inset": 0.06 if is_k else (0.34 if dual else 0.5),
         # Cap lip vs column separation so dual tips do not soft-union into one bead
-        "lip_sep_frac": 0.32 if is_k else (0.42 if dual else 1.0),
-        # Prefer single tip-join when lips won't overlap; sequential remesh can eat a tip
-        "seq_tip_union": False,
+        "lip_sep_frac": 0.22 if is_k else (0.42 if dual else 1.0),
+        # k: sequential tip∪letter so tip–tip softMin cannot merge filaments
+        "seq_tip_union": bool(is_k),
     }
 
 # Display name → Windows font path (plus any already used in demos)
@@ -288,12 +289,13 @@ def letter_drip_columns(ch: str, bb_min_x: float, bb_max_x: float) -> tuple[list
     tune = glyph_bake_tune(ch)
     if ch == "k":
         # Concept: k stem reads as two parallel columns — dual-split the LEFT stem
-        # only (not stem+arm across full glyph width). Keep separation ≥ ~0.28*stem.
-        stem_max = bb_min_x + span_x * 0.55
+        # only (not stem+arm across full glyph width). Prior inset 0.22 → sep≈0.27
+        # and tip gap collapsed to ~0.014; target sep ≥ ~0.38 so tip gap ≥ ~0.12.
+        stem_max = bb_min_x + span_x * 0.5
         stem_span = max(stem_max - bb_min_x, 1e-4)
-        inset = stem_span * 0.22
+        inset = stem_span * float(tune.get("col_inset", 0.06))
         cols = [bb_min_x + inset, stem_max - inset]
-        col_w = max(stem_span * 0.11, 0.02)
+        col_w = max(stem_span * 0.078, 0.016)
         return cols, col_w
     if ch in DUAL_LEG_CHARS:
         # Lower inset → wider dual-tip split (must not bead-merge)
@@ -804,7 +806,7 @@ def soft_boolean_letter_tips(mesh_obj, ch: str) -> dict:
     neck_r = max(neck_r, bulb_r * neck_floor)
     bulb_r = max(bulb_r, neck_r * (1.08 if poured else 1.28))
     # Cap lip so dual columns don't merge into a slab
-    lip_cap = 0.18 if ch == "k" else (0.22 if dual else 0.55)
+    lip_cap = 0.14 if ch == "k" else (0.22 if dual else 0.55)
     lip_r = min(lip_r, span_x * lip_cap)
     if len(cols) > 1:
         col_sep = abs(cols[1] - cols[0])
@@ -1283,7 +1285,7 @@ def main(argv: list[str] | None = None) -> None:
             f"1-font: {primary_entry['label']} wordmark {TEXT} (per-glyph meshes)",
             "2-mesh: Blender extrude+bevel+subdiv → GLB",
             "2b-gn-sdf: Mesh→SDF Grid ∪ pear tips → Grid to Mesh (per-glyph iso) + lip morph",
-            "2c-glyph-tune: k dual-tip split + seq union; closed-o light face+thin extrude",
+            "2c-glyph-tune: k stem dual-tip wide-sep + seq union; closed-o Segoe+thin extrude",
             "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
             "4-liquid: GravityMeltSim per-letter overrides",
             "5-sag: frozen viscoplastic neck/bulb (no drip blobs)",

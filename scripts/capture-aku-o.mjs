@@ -22,11 +22,11 @@ async function zoomChars(page, chars) {
     }
     const c = box.getCenter(new window.THREE.Vector3());
     const size = box.getSize(new window.THREE.Vector3());
-    const dist = Math.max(size.x * 1.15, size.y * 2.5, 2.2);
-    cam.position.set(c.x, c.y - size.y * 0.05, dist);
-    cam.lookAt(c.x, c.y - size.y * 0.28, c.z);
+    const dist = Math.max(size.x * 1.45, size.y * 2.7, 2.6);
+    cam.position.set(c.x - size.x * 0.04, c.y - size.y * 0.08, dist);
+    cam.lookAt(c.x - size.x * 0.04, c.y - size.y * 0.32, c.z);
     if (controls) {
-      controls.target.set(c.x, c.y - size.y * 0.22, c.z);
+      controls.target.set(c.x - size.x * 0.04, c.y - size.y * 0.26, c.z);
       controls.update();
     }
   }, chars);

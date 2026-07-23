@@ -1833,11 +1833,12 @@ export class GravityMeltSim {
             Math.min(1, ease * 1.35) * clamp01(bulbSoft + 0.35),
             plump,
             poured,
+            cols,
           );
           // Re-seal letter lip ↔ tip ring-0 after hard-project (kills air gap)
-          sealHoneyTipLip(s, ax, colW, Math.min(1, ease * 1.2));
+          sealHoneyTipLip(s, ax, colW, Math.min(1, ease * 1.2), cols);
           // Runtime collar soft-boolean + Laplacian (post-sculpt continuity)
-          softenHoneyLipJoinRuntime(s, ax, colW, Math.min(1, ease * 1.15));
+          softenHoneyLipJoinRuntime(s, ax, colW, Math.min(1, ease * 1.15), cols);
         }
       }
 
@@ -2052,11 +2053,27 @@ function buildProximityGraph(base: Float32Array, radius: number): Int32Array[] {
  * After pear sculpt: tip-root reseal + letter strand kill (snap UP).
  * Avoids pear-morphing letter tris (that shredded the collar).
  */
+function nearestDripColumn(bx: number, ax: number, columnXs?: number[]): boolean {
+  if (!columnXs || columnXs.length <= 1) return true;
+  let best = Infinity;
+  let bestAx = ax;
+  for (let i = 0; i < columnXs.length; i++) {
+    const c = columnXs[i]!;
+    const d = Math.abs(bx - c);
+    if (d < best) {
+      best = d;
+      bestAx = c;
+    }
+  }
+  return Math.abs(bestAx - ax) < 1e-9;
+}
+
 function sealHoneyTipLip(
   s: MeshSlot,
   ax: number,
   colW: number,
   strength: number,
+  columnXs?: number[],
 ): void {
   if (strength < 0.05 || !s.hasTipLattice) return;
   const n = (s.base.length / 3) | 0;
@@ -2073,10 +2090,13 @@ function sealHoneyTipLip(
     const i = vi * 3;
     const bx = s.base[i]!;
     const near = Math.abs(bx - ax) / Math.max(colW, 1e-4);
-    const isLipRoot = u > 1e-5 && u <= 0.14;
+    // Dual-leg: tip lip-roots belong to nearest column only
+    const isLipRoot =
+      u > 1e-5 && u <= 0.14 && nearestDripColumn(bx, ax, columnXs);
     const isLetterLip =
       u <= 1e-5 &&
       near < 1.35 &&
+      nearestDripColumn(bx, ax, columnXs) &&
       s.base[i + 1]! <= lipY + colW * 0.5;
 
     if (!isLipRoot && !isLetterLip) continue;
@@ -2139,6 +2159,7 @@ function softenHoneyLipJoinRuntime(
   ax: number,
   colW: number,
   strength: number,
+  columnXs?: number[],
 ): void {
   if (strength < 0.05 || !s.hasTipLattice) return;
   const n = (s.base.length / 3) | 0;
@@ -2157,6 +2178,7 @@ function softenHoneyLipJoinRuntime(
     const i = vi * 3;
     const bx = s.base[i]!;
     const near = Math.abs(bx - ax) / Math.max(colW, 1e-4);
+    if (!nearestDripColumn(bx, ax, columnXs)) continue;
 
     // Letter strand kill + gather shoulder into loft root.
     // Prior path snapped underside UP onto lipY — recreated the flat shelf vs concept.
@@ -2184,6 +2206,7 @@ function softenHoneyLipJoinRuntime(
       continue;
     }
 
+    // Tip collar only for this column (dual-leg: skip foreign filaments)
     if (!(u > 1e-5 && u <= 0.42)) continue;
 
     let ox = s.pos[i]! - ax;
@@ -2281,6 +2304,8 @@ function sculptHoneyPendant(
   plump = 1,
   /** Dual-leg poured profile: lip→thin-neck before bulb. */
   poured = false,
+  /** All drip columns — tip seeds assign to nearest only (dual-leg). */
+  columnXs?: number[],
 ): void {
   if (strength < 0.05) return;
   const halfH = Math.max((s.hi - s.lo) * 0.5, 1e-3);
@@ -2292,7 +2317,8 @@ function sculptHoneyPendant(
     halfH * (poured ? 2.15 : 1.65),
   );
   // Absolute radii from column width — pear needs vertical room vs width
-  const baseR = Math.max(colW * 1.2, halfH * 0.1);
+  // Poured dual: leaner baseR so tip bulbs don't eat the inter-column gap
+  const baseR = Math.max(colW * (poured ? 0.98 : 1.2), halfH * (poured ? 0.08 : 0.1));
   const n = (s.base.length / 3) | 0;
   // Letter lip (s.lo is letter-only after bind) — pendant emerges from glyph
   const lipY = s.lo;
@@ -2320,9 +2346,9 @@ function sculptHoneyPendant(
     (0.9 + 0.38 * maps.bulbGrow * Math.min(bulbMul, poured ? 1.15 : 2.0)) *
     mix(1.0, poured ? 0.88 : 1.18, clamp01(maps.bulbGrow / 2.05)) *
     Math.min(plump, poured ? 0.92 : 1.15);
-  // Elongated pour: tip swell ≤ ~14% of hang (poured) — not a heavy bead
-  bulbR = Math.min(bulbR, hang * (poured ? 0.12 : 0.27));
-  bulbR = Math.max(bulbR, neckR * (poured ? 1.08 : 1.4));
+  // Elongated pour: tip swell ≤ ~10% of hang (poured) — keep dual-tip gap
+  bulbR = Math.min(bulbR, hang * (poured ? 0.1 : 0.27));
+  bulbR = Math.max(bulbR, neckR * (poured ? 1.05 : 1.4));
 
   for (let vi = 0; vi < n; vi++) {
     const seedU = s.tipU[vi]!;
@@ -2340,8 +2366,15 @@ function sculptHoneyPendant(
     // Wider column for letter lip morph so bottom-cap faces don't leave a flat seam
     const colScale = s.hasTipLattice && !isSeed ? 1.75 : 1;
     const near = Math.abs(bx - ax) / Math.max(colW * colScale, 1e-4);
+    // Dual-leg critical: tip seeds belong to nearest column only. Prior code
+    // set column=1 for every seed then looped cols L→R so the last column
+    // stole all filaments (k left tip stubbed above tip band).
+    if (isSeed && !nearestDripColumn(bx, ax, columnXs)) continue;
     // Kill jagged lip strands: letter verts outside drip column stay put
     if (!isSeed && near > 1.05 && s.downFace[vi]! < 0.45) continue;
+    if (!isSeed && columnXs && columnXs.length > 1 && !nearestDripColumn(bx, ax, columnXs)) {
+      continue;
+    }
     const column = isSeed
       ? 1
       : Math.pow(Math.max(0, 1 - Math.min(near, 1)), maps.columnSharp * 0.85);
