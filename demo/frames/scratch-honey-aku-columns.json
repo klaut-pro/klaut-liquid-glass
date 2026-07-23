@@ -1,0 +1,72 @@
+{
+  "akuPath": "C:\\Users\\Julian\\Documents\\Programming\\klaut-liquid-glass\\demo\\frames\\scratch-honey-aku-closeup.png",
+  "oPath": "C:\\Users\\Julian\\Documents\\Programming\\klaut-liquid-glass\\demo\\frames\\scratch-honey-o-closeup.png",
+  "colMetrics": [
+    {
+      "ch": "k",
+      "hang": 1.3136,
+      "tipGroups": [
+        {
+          "tipW": 0.2417,
+          "n": 8230,
+          "cx": -4.64
+        }
+      ],
+      "tipSpan": 0.2417,
+      "gap": 0.0266,
+      "midOuterW": 0.7808
+    },
+    {
+      "ch": "a",
+      "hang": 0.9164,
+      "tipGroups": [
+        {
+          "tipW": 0.1443,
+          "n": 347,
+          "cx": -2.753
+        },
+        {
+          "tipW": 0.1772,
+          "n": 12136,
+          "cx": -2.479
+        }
+      ],
+      "tipSpan": 0.435,
+      "gap": 0.1136,
+      "midOuterW": 0.8491
+    },
+    {
+      "ch": "u",
+      "hang": 0.8367,
+      "tipGroups": [
+        {
+          "tipW": 0.1457,
+          "n": 816,
+          "cx": -1.232
+        },
+        {
+          "tipW": 0.1614,
+          "n": 10663,
+          "cx": -0.983
+        }
+      ],
+      "tipSpan": 0.4025,
+      "gap": 0.0953,
+      "midOuterW": 0.8197
+    },
+    {
+      "ch": "o",
+      "hang": 0.7582,
+      "tipGroups": [
+        {
+          "tipW": 0.308,
+          "n": 8323,
+          "cx": 4.737
+        }
+      ],
+      "tipSpan": 0.308,
+      "gap": 0.004,
+      "midOuterW": 0.929
+    }
+  ]
+}

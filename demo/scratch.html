@@ -494,13 +494,14 @@
           // Closed o: thinner transmission so counter reads open, not thick blob
           if (stage >= 3 && ch === "o") {
             const m = mat.clone();
-            m.thickness = stage === 3 ? 0.22 : 0.26;
-            m.transmission = stage === 3 ? 0.99 : 0.985;
-            m.attenuationDistance = 4.5;
-            m.attenuationColor = new THREE.Color(0xe4f0ff);
-            m.envMapIntensity = stage === 3 ? 1.35 : 1.45;
-            m.roughness = 0.04;
-            m.opacity = 0.92;
+            m.thickness = stage === 3 ? 0.12 : 0.14;
+            m.transmission = stage === 3 ? 0.995 : 0.99;
+            m.attenuationDistance = 6.5;
+            m.attenuationColor = new THREE.Color(0xeef4ff);
+            m.envMapIntensity = stage === 3 ? 1.15 : 1.22;
+            m.roughness = 0.035;
+            m.opacity = 0.88;
+            m.ior = 1.22;
             letterMeshes[i].material = m;
           } else {
             letterMeshes[i].material = mat;
@@ -569,34 +570,34 @@
           if (ch === "k" || ch === "t" || ch === "l") {
             return {
               enable: true,
-              sagAmpMul: ch === "k" ? 1.28 : 1.2,
-              bulbGrowMul: ch === "k" ? 1.82 : 2.1,
+              sagAmpMul: ch === "k" ? 1.55 : 1.2,
+              bulbGrowMul: ch === "k" ? 1.18 : 2.1,
               viscosity: 0.9,
-              freezeHeight: ch === "k" ? 0.68 : 0.72,
-              // Dual-leg k: poured thin neck before bulb
-              neckPinchMul: ch === "k" ? 1.72 : 1.4,
+              freezeHeight: ch === "k" ? 0.7 : 0.72,
+              // Dual-leg k: long pour → thin filament → modest tip
+              neckPinchMul: ch === "k" ? 2.2 : 1.4,
             };
           }
           if (ch === "a" || ch === "u") {
-            // Dual-leg: poured underside melt → thin neck → bulb (less bulb-first)
+            // Dual-leg: continuous underside pour → thin filament (less bead)
             return {
               enable: true,
-              sagAmpMul: 1.32,
-              bulbGrowMul: 1.72,
-              viscosity: 0.88,
-              freezeHeight: 0.66,
-              neckPinchMul: 1.78,
+              sagAmpMul: 1.62,
+              bulbGrowMul: 1.12,
+              viscosity: 0.86,
+              freezeHeight: 0.68,
+              neckPinchMul: 2.3,
             };
           }
           if (ch === "o") {
-            // Closed counter: high freeze + mild melt; thin glass via applyMaterial
+            // Closed counter: near-full freeze + thin glass; bake uses thinner extrude
             return {
               enable: true,
-              sagAmpMul: 0.82,
-              bulbGrowMul: 1.25,
-              freezeHeight: 0.9,
-              neckPinchMul: 1.05,
-              viscosity: 0.95,
+              sagAmpMul: 0.7,
+              bulbGrowMul: 1.05,
+              freezeHeight: 0.93,
+              neckPinchMul: 1.0,
+              viscosity: 0.96,
             };
           }
           if (ch === "r") {

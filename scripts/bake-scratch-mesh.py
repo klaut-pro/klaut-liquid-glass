@@ -83,8 +83,9 @@ def glyph_bake_tune(ch: str) -> dict:
     """
     Per-glyph bake/runtime knobs for GN SDF soft-union + funnel morph.
 
-    Dual-leg (a/k/u): poured underside → thin neck → bulb (concept 1c6PD/EL2Hz).
-    Closed o: minimal iso + thin lip so the counter stays visually open.
+    Dual-leg (a/k/u): long continuous underside pour → thin filament → modest
+    tip swell (concept 1c6PD/EL2Hz honey pour, not bulb-led bead).
+    Closed o: thinner extrusion + near-hard iso so the counter stays open.
     """
     dual = ch in DUAL_LEG_CHARS
     closed = ch in CLOSED_COUNTER_CHARS
@@ -92,27 +93,30 @@ def glyph_bake_tune(ch: str) -> dict:
         # Multiplies SDF Grid→Mesh negative threshold (soft fillet)
         # Dual-leg: modest iso (aggressive empties dual-tip unions); funnel/morph do the melt
         # Closed o: keep iso tiny — negative blend fills the aperture into a thick blob
-        "iso_blend_mul": 0.18 if closed else (1.14 if dual else 1.0),
-        # dig_funnel_pits sink depth / gather — dual pours deep before bulb
-        "funnel_sink_mul": 0.38 if closed else (2.45 if dual else 1.0),
-        "funnel_gather": 0.32 if closed else (1.12 if dual else 0.68),
+        "iso_blend_mul": 0.1 if closed else (1.08 if dual else 1.0),
+        # dig_funnel_pits sink depth / gather — dual pours deep before tip swell
+        "funnel_sink_mul": 0.32 if closed else (2.95 if dual else 1.0),
+        "funnel_gather": 0.28 if closed else (1.32 if dual else 0.68),
         # soft_boolean_lip_morph weight
-        "lip_morph_w": 0.42 if closed else (1.48 if dual else 0.95),
+        "lip_morph_w": 0.36 if closed else (1.72 if dual else 0.95),
         # thinner continuous necks on dual-leg; tighter on o (less rim fat)
-        "neck_mul": 0.74 if closed else (0.68 if dual else 1.0),
-        "lip_mul": 0.58 if closed else (1.02 if dual else 1.0),
+        "neck_mul": 0.62 if closed else (0.52 if dual else 1.0),
+        "lip_mul": 0.48 if closed else (1.08 if dual else 1.0),
         # pear tip bury into letter (deeper = better SDF melt, less shelf)
-        "bury_mul": 0.62 if closed else (1.55 if dual else 1.0),
-        # elongate hang so poured neck reads before bulb (dual); shorten o drip
-        "hang_mul": 0.85 if closed else (1.22 if dual else 1.0),
-        # dual: slightly smaller bulb vs neck so silhouette isn't bulb-first
-        "bulb_mul": 0.78 if closed else (0.86 if dual else 1.0),
+        "bury_mul": 0.55 if closed else (1.78 if dual else 1.0),
+        # elongate hang so poured filament reads before tip (dual); shorten o drip
+        "hang_mul": 0.72 if closed else (1.45 if dual else 1.0),
+        # dual: lean tip swell vs neck — honey pour, not satellite bead
+        "bulb_mul": 0.68 if closed else (0.64 if dual else 1.0),
         # post-SDF remesh fineness (lower = finer, kills stair shelf)
-        "post_sdf_voxel_mul": 1.15 if closed else (0.62 if dual else 1.0),
-        "smooth_iters": 3 if closed else (11 if dual else 6),
-        "smooth_factor": 0.2 if closed else (0.55 if dual else 0.42),
-        # poured pear profile: longer lip→neck before swell
+        "post_sdf_voxel_mul": 1.22 if closed else (0.58 if dual else 1.0),
+        "smooth_iters": 2 if closed else (12 if dual else 6),
+        "smooth_factor": 0.16 if closed else (0.58 if dual else 0.42),
+        # poured pear profile: longer lip→filament before swell
         "poured": bool(dual),
+        # Closed counters: thinner Z extrusion so aperture reads on dark bg
+        "extrude_mul": 0.52 if closed else 1.0,
+        "bevel_mul": 0.55 if closed else 1.0,
     }
 
 # Display name → Windows font path (plus any already used in demos)
@@ -142,11 +146,13 @@ def clear_scene() -> None:
 
 
 def make_letter(font, ch: str, name: str):
+    tune = glyph_bake_tune(ch)
     curve = bpy.data.curves.new(name=name, type="FONT")
     curve.body = ch if ch != " " else "·"
     curve.font = font
-    curve.extrude = EXTRUDE
-    curve.bevel_depth = BEVEL_DEPTH
+    # Closed counters (o): thinner extrusion so aperture reads on dark bg
+    curve.extrude = EXTRUDE * float(tune.get("extrude_mul", 1.0))
+    curve.bevel_depth = BEVEL_DEPTH * float(tune.get("bevel_mul", 1.0))
     curve.bevel_resolution = BEVEL_RES
     curve.resolution_u = RESOLUTION_U
     curve.fill_mode = "BOTH"
@@ -214,29 +220,32 @@ def honey_pendant_radius(
 ) -> float:
     """Match GravityMeltSim.honeyPendantRadius — lip → neck → pear bulb.
 
-    poured=True (dual-leg): longer lip→thin-neck phase before bulb so the
-    underside reads as continuous melt, not bulb-first.
+    poured=True (dual-leg): long underside pour → thin filament → modest tip
+    swell (honey pour, not bulb-led bead).
     """
     t = _clamp01(u)
-    # Poured: allow thinner neck vs bulb (concept filament before pear)
-    neck_floor = 0.52 if poured else 0.72
+    # Poured: thin filament floor so neck reads before tip swell
+    neck_floor = 0.34 if poured else 0.72
     neck = max(neck_r, bulb_r * neck_floor)
-    bulb = max(bulb_r, neck * (1.38 if poured else 1.28))
-    lip = lip_r if lip_r is not None else neck * (1.28 if poured else 1.2)
-    lip = max(min(lip, neck * (1.55 if poured else 1.35)), neck * 1.05)
-    # Poured: hold thin neck longer (0→0.52) before pear swell
-    lip_end = 0.52 if poured else 0.38
-    bulb_peak = 0.8 if poured else 0.72
-    bulb_end = 0.86 if poured else 0.78
+    bulb = max(bulb_r, neck * (1.14 if poured else 1.28))
+    lip = lip_r if lip_r is not None else neck * (1.32 if poured else 1.2)
+    lip = max(min(lip, neck * (1.72 if poured else 1.35)), neck * 1.05)
+    # Poured: hold pour/filament through most of hang; swell only near tip
+    lip_end = 0.64 if poured else 0.38
+    bulb_peak = 0.9 if poured else 0.72
+    bulb_end = 0.94 if poured else 0.78
     if t < lip_end:
-        s = _smoothstep(0.0, lip_end, t) ** (0.78 if poured else 0.85)
+        s = _smoothstep(0.0, lip_end, t) ** (0.68 if poured else 0.85)
         return lip + (neck - lip) * s
     if t < bulb_end:
-        s = _smoothstep(lip_end, bulb_peak, t) ** (0.92 if poured else 0.88)
+        s = _smoothstep(lip_end, bulb_peak, t) ** (1.05 if poured else 0.88)
         return neck + (bulb - neck) * s
-    tip = _smoothstep(bulb_end, 1.0, t) ** 1.3
-    tip_r = bulb + (bulb * 0.42 - bulb) * tip
-    tip_floor = bulb * (0.5 + (0.36 - 0.5) * tip)
+    tip = _smoothstep(bulb_end, 1.0, t) ** (1.15 if poured else 1.3)
+    tip_scale = 0.55 if poured else 0.42
+    tip_r = bulb + (bulb * tip_scale - bulb) * tip
+    tip_hi = 0.42 if poured else 0.5
+    tip_lo = 0.28 if poured else 0.36
+    tip_floor = bulb * (tip_hi + (tip_lo - tip_hi) * tip)
     return max(tip_floor, tip_r)
 
 
@@ -249,15 +258,15 @@ def honey_pendant_y(
 ) -> float:
     """Match GravityMeltSim.honeyPendantY — neck then pear body.
 
-    poured=True: longer vertical neck so pour reads before bulb.
+    poured=True: half the hang is continuous pour/filament before tip mass.
     """
     t = _clamp01(u)
-    neck_frac = 0.38 if poured else 0.22
+    neck_frac = 0.52 if poured else 0.22
     if t <= neck_frac:
         nu = t / max(neck_frac, 1e-6)
-        return lip_y - hang * neck_frac * (nu ** 0.95)
+        return lip_y - hang * neck_frac * (nu ** (0.88 if poured else 0.95))
     bu = (t - neck_frac) / (1.0 - neck_frac)
-    return lip_y - hang * (neck_frac + (1.0 - neck_frac) * (bu ** 0.72))
+    return lip_y - hang * (neck_frac + (1.0 - neck_frac) * (bu ** (0.82 if poured else 0.72)))
 
 
 def letter_drip_columns(ch: str, bb_min_x: float, bb_max_x: float) -> tuple[list[float], float]:
@@ -621,8 +630,8 @@ def soft_boolean_lip_morph(
     for v in bm.verts:
         x, y, z = v.co.x, v.co.y, v.co.z
         # Collar from shoulder into upper neck (poured: dig further into body)
-        shoulder = hang * (0.38 if poured else 0.28)
-        if y > lip_y + shoulder or y < lip_y - hang * (0.78 if poured else 0.65):
+        shoulder = hang * (0.48 if poured else 0.28)
+        if y > lip_y + shoulder or y < lip_y - hang * (0.88 if poured else 0.65):
             continue
         best_ci = 0
         best_d = 1e9
@@ -654,11 +663,11 @@ def soft_boolean_lip_morph(
         want_y = honey_pendant_y(u, lip_y + hang * 0.06, hang, poured=poured)
         if y >= lip_y - hang * 0.06:
             want_y = min(want_y, lip_y - hang * 0.12 * (1.0 - u * 0.4))
-        # Dual-leg / poured: pull shelf deeper into thin continuous neck before bulb
-        if (poured or len(cols) > 1) and y >= lip_y - hang * 0.32:
-            pour = hang * (0.36 if poured else 0.22) * (1.0 - best_d / max(lip_r, 1e-4))
+        # Dual-leg / poured: pull shelf deeper into thin continuous filament
+        if (poured or len(cols) > 1) and y >= lip_y - hang * 0.42:
+            pour = hang * (0.48 if poured else 0.22) * (1.0 - best_d / max(lip_r, 1e-4))
             want_y = min(want_y, lip_y - pour)
-        ny = y + (want_y - y) * w * (0.96 if poured else 0.92)
+        ny = y + (want_y - y) * w * (0.98 if poured else 0.92)
         if r > 1e-6:
             s = blend_r / r
             nx = cx + (x - cx) * (1.0 + (s - 1.0) * w)
@@ -712,14 +721,14 @@ def soft_boolean_letter_tips(mesh_obj, ch: str) -> dict:
     neck_r = col_w * (1.05 if spike else 1.12) * plump * tune["neck_mul"]
     lip_r = col_w * (1.85 if spike else 2.05) * plump * tune["lip_mul"]
     bulb_r = col_w * (1.45 if spike else 1.35) * plump * float(tune.get("bulb_mul", 1.0))
-    # Poured dual-leg: thinner neck floor so filament reads before bulb
-    neck_floor = 0.52 if poured else (0.68 if closed else 0.72)
+    # Poured dual-leg: thin filament floor so pour reads before modest tip swell
+    neck_floor = 0.34 if poured else (0.62 if closed else 0.72)
     neck_r = max(neck_r, bulb_r * neck_floor)
-    bulb_r = max(bulb_r, neck_r * (1.38 if poured else 1.28))
+    bulb_r = max(bulb_r, neck_r * (1.14 if poured else 1.28))
     # Cap lip so dual columns don't merge into a slab; closed o keeps hole open
-    lip_cap = 0.3 if dual else (0.34 if closed else 0.55)
+    lip_cap = 0.28 if dual else (0.3 if closed else 0.55)
     lip_r = min(lip_r, span_x * lip_cap)
-    lip_r = max(lip_r, neck_r * (1.15 if dual else (1.1 if closed else 1.25)))
+    lip_r = max(lip_r, neck_r * (1.2 if dual else (1.08 if closed else 1.25)))
 
     tip_objs = []
     for ti, cx in enumerate(cols):
@@ -775,7 +784,7 @@ def soft_boolean_letter_tips(mesh_obj, ch: str) -> dict:
     soft_blend = max(SDF_SOFT_BLEND, col_w * 0.35) * tune["iso_blend_mul"]
     if closed:
         # Prefer starting near-hard iso — soft blend fills the aperture into a blob
-        soft_blend = min(soft_blend, SDF_SOFT_BLEND * 0.32, col_w * 0.08)
+        soft_blend = min(soft_blend, SDF_SOFT_BLEND * 0.22, col_w * 0.055)
     used_volume, blend_used = volume_soft_union(
         mesh_obj,
         tip_union,
@@ -877,6 +886,8 @@ def soft_boolean_letter_tips(mesh_obj, ch: str) -> dict:
         "dualLeg": bool(dual),
         "closedCounter": bool(closed),
         "poured": bool(poured),
+        "extrudeMul": float(tune.get("extrude_mul", 1.0)),
+        "bevelMul": float(tune.get("bevel_mul", 1.0)),
     }
 
 
@@ -1012,6 +1023,10 @@ def bake_one(font_id: str, label: str, font_path: Path, primary: bool) -> dict:
             "neckR": tm.get("neckR"),
             "bulbR": tm.get("bulbR"),
             "lipR": tm.get("lipR"),
+            "poured": bool(tm.get("poured")),
+            "closedCounter": bool(tm.get("closedCounter")),
+            "extrudeMul": tm.get("extrudeMul"),
+            "isoBlendMul": tm.get("isoBlendMul"),
         })
     entry = {
         "id": font_id,
@@ -1158,7 +1173,7 @@ def main(argv: list[str] | None = None) -> None:
             f"1-font: {primary_entry['label']} wordmark {TEXT} (per-glyph meshes)",
             "2-mesh: Blender extrude+bevel+subdiv → GLB",
             "2b-gn-sdf: Mesh→SDF Grid ∪ pear tips → Grid to Mesh (per-glyph iso) + lip morph",
-            "2c-glyph-tune: dual-leg poured funnel/neck; closed-o thin aperture iso",
+            "2c-glyph-tune: dual-leg poured filament; closed-o thin extrude+iso",
             "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
             "4-liquid: GravityMeltSim per-letter overrides",
             "5-sag: frozen viscoplastic neck/bulb (no drip blobs)",

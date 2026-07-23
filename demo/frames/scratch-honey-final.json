@@ -1,100 +1,168 @@
-{
-  "letters": [
-    {
-      "ch": "k",
-      "tipCount": 10760,
-      "tipW": 0.3038,
-      "midW": 0.7474,
-      "bulbRatio": 0.407,
-      "hang": 1.3405
-    },
-    {
-      "ch": "l",
-      "tipCount": 3664,
-      "tipW": 0.2661,
-      "midW": 0.2803,
-      "bulbRatio": 0.949,
-      "hang": 1.196
-    },
-    {
-      "ch": "a",
-      "tipCount": 10001,
-      "tipW": 0.1806,
-      "midW": 0.8602,
-      "bulbRatio": 0.21,
-      "hang": 0.9899
-    },
-    {
-      "ch": "u",
-      "tipCount": 8039,
-      "tipW": 0.1694,
-      "midW": 0.8128,
-      "bulbRatio": 0.208,
-      "hang": 0.9281
-    },
-    {
-      "ch": "t",
-      "tipCount": 7716,
-      "tipW": 0.2962,
-      "midW": 0.3459,
-      "bulbRatio": 0.856,
-      "hang": 1.2449
-    },
-    {
-      "ch": ".",
-      "tipCount": 51,
-      "tipW": 0.1141,
-      "midW": 0.2234,
-      "bulbRatio": 0.511,
-      "hang": 0.5408
-    },
-    {
-      "ch": "p",
-      "tipCount": 4974,
-      "tipW": 0.1191,
-      "midW": 0.8431,
-      "bulbRatio": 0.141,
-      "hang": 1.2645
-    },
-    {
-      "ch": "r",
-      "tipCount": 3226,
-      "tipW": 0.1219,
-      "midW": 0.4227,
-      "bulbRatio": 0.289,
-      "hang": 0.9158
-    },
-    {
-      "ch": "o",
-      "tipCount": 7179,
-      "tipW": 0.3224,
-      "midW": 0.9583,
-      "bulbRatio": 0.336,
-      "hang": 0.9746
-    }
-  ],
-  "meanBulbRatio": 0.434,
-  "bulbsOver13": 0,
-  "frozen": true,
-  "params": {
-    "gravity": 0.9,
-    "viscosity": 0.9,
-    "freezeHeight": 0.68
-  },
-  "bg": "rgb(7, 9, 14)",
-  "tipWeld": {
-    "welded": 0,
-    "bridges": 0,
-    "strandsKilled": 0,
-    "lipSoftened": 0,
-    "loftShared": 0,
-    "loftVerts": 0,
-    "tipCount": 105697,
-    "bakedSoftLetters": 9,
-    "tipWeldFlag": false,
-    "tipLoftFlag": false,
-    "sharedVertexFlag": false,
-    "lipSoftFlag": false,
-    "softBooleanBakeFlag": true
-  }
+﻿{
+    "letters":  [
+                    {
+                        "ch":  "k",
+                        "tipCount":  8882,
+                        "tipW":  0.2417,
+                        "midW":  0.7532,
+                        "bulbRatio":  0.321,
+                        "hang":  1.3136
+                    },
+                    {
+                        "ch":  "l",
+                        "tipCount":  3658,
+                        "tipW":  0.2661,
+                        "midW":  0.2799,
+                        "bulbRatio":  0.951,
+                        "hang":  1.1871
+                    },
+                    {
+                        "ch":  "a",
+                        "tipCount":  13635,
+                        "tipW":  0.4388,
+                        "midW":  0.8637,
+                        "bulbRatio":  0.508,
+                        "hang":  0.9164
+                    },
+                    {
+                        "ch":  "u",
+                        "tipCount":  12377,
+                        "tipW":  0.4066,
+                        "midW":  0.8196,
+                        "bulbRatio":  0.496,
+                        "hang":  0.8367
+                    },
+                    {
+                        "ch":  "t",
+                        "tipCount":  7714,
+                        "tipW":  0.2961,
+                        "midW":  0.3455,
+                        "bulbRatio":  0.857,
+                        "hang":  1.2443
+                    },
+                    {
+                        "ch":  ".",
+                        "tipCount":  52,
+                        "tipW":  0.1268,
+                        "midW":  0.2271,
+                        "bulbRatio":  0.558,
+                        "hang":  0.5334
+                    },
+                    {
+                        "ch":  "p",
+                        "tipCount":  4974,
+                        "tipW":  0.1191,
+                        "midW":  0.8422,
+                        "bulbRatio":  0.141,
+                        "hang":  1.2645
+                    },
+                    {
+                        "ch":  "r",
+                        "tipCount":  3194,
+                        "tipW":  0.1219,
+                        "midW":  0.4228,
+                        "bulbRatio":  0.288,
+                        "hang":  0.9154
+                    },
+                    {
+                        "ch":  "o",
+                        "tipCount":  8657,
+                        "tipW":  0.308,
+                        "midW":  0.9294,
+                        "bulbRatio":  0.331,
+                        "hang":  0.7582
+                    }
+                ],
+    "meanBulbRatio":  0.495,
+    "bulbsOver13":  0,
+    "frozen":  true,
+    "params":  {
+                   "gravity":  0.9,
+                   "viscosity":  0.9,
+                   "freezeHeight":  0.68
+               },
+    "bg":  "rgb(7, 9, 14)",
+    "tipWeld":  {
+                    "welded":  0,
+                    "bridges":  0,
+                    "strandsKilled":  0,
+                    "lipSoftened":  0,
+                    "loftShared":  0,
+                    "loftVerts":  0,
+                    "tipCount":  105158,
+                    "bakedSoftLetters":  9,
+                    "tipWeldFlag":  false,
+                    "tipLoftFlag":  false,
+                    "sharedVertexFlag":  false,
+                    "lipSoftFlag":  false,
+                    "softBooleanBakeFlag":  true
+                },
+    "perColumnTips":  [
+                          {
+                              "ch":  "k",
+                              "hang":  1.3136,
+                              "tipGroups":  [
+                                                {
+                                                    "tipW":  0.2417,
+                                                    "n":  8230,
+                                                    "cx":  -4.64
+                                                }
+                                            ],
+                              "tipSpan":  0.2417,
+                              "gap":  0.0266,
+                              "midOuterW":  0.7808
+                          },
+                          {
+                              "ch":  "a",
+                              "hang":  0.9164,
+                              "tipGroups":  [
+                                                {
+                                                    "tipW":  0.1443,
+                                                    "n":  347,
+                                                    "cx":  -2.753
+                                                },
+                                                {
+                                                    "tipW":  0.1772,
+                                                    "n":  12136,
+                                                    "cx":  -2.479
+                                                }
+                                            ],
+                              "tipSpan":  0.435,
+                              "gap":  0.1136,
+                              "midOuterW":  0.8491
+                          },
+                          {
+                              "ch":  "u",
+                              "hang":  0.8367,
+                              "tipGroups":  [
+                                                {
+                                                    "tipW":  0.1457,
+                                                    "n":  816,
+                                                    "cx":  -1.232
+                                                },
+                                                {
+                                                    "tipW":  0.1614,
+                                                    "n":  10663,
+                                                    "cx":  -0.983
+                                                }
+                                            ],
+                              "tipSpan":  0.4025,
+                              "gap":  0.0953,
+                              "midOuterW":  0.8197
+                          },
+                          {
+                              "ch":  "o",
+                              "hang":  0.7582,
+                              "tipGroups":  [
+                                                {
+                                                    "tipW":  0.308,
+                                                    "n":  8323,
+                                                    "cx":  4.737
+                                                }
+                                            ],
+                              "tipSpan":  0.308,
+                              "gap":  0.004,
+                              "midOuterW":  0.929
+                          }
+                      ]
 }
