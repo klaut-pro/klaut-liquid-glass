@@ -150,30 +150,33 @@ async function main() {
     const meshes = window.__scratchLetterMeshes || [];
     let welded = 0,
       bridges = 0,
-      strandsKilled = 0;
+      strandsKilled = 0,
+      lipSoftened = 0;
     for (const m of meshes) {
       const w = m.geometry?.userData?.tipWeld;
       if (!w) continue;
       welded += w.welded || 0;
       bridges += w.bridges || 0;
       strandsKilled += w.strandsKilled || 0;
+      lipSoftened += w.lipSoftened || 0;
     }
     return {
       welded,
       bridges,
       strandsKilled,
+      lipSoftened,
       tipWeldFlag: !!window.__scratch?.roundness?.tipWeld,
+      lipSoftFlag: !!window.__scratch?.roundness?.lipSoft,
     };
   });
   await writeFile(join(outDir, "scratch-honey-final.json"), JSON.stringify(metrics, null, 2));
 
-  // Keep before/after pair for weld evidence
+  // Keep after-lip evidence (before-lip frames are prior weld tip)
   try {
-    await copyFile(full, join(outDir, "scratch-honey-after-weld.png"));
-    await copyFile(closeup, join(outDir, "scratch-honey-after-weld-closeup.png"));
+    await copyFile(full, join(outDir, "scratch-honey-after-lip.png"));
+    await copyFile(closeup, join(outDir, "scratch-honey-after-lip-closeup.png"));
   } catch (_) {}
 
-  // Side-by-side evidence: copy a concept ref next to final
   try {
     await copyFile(
       join(

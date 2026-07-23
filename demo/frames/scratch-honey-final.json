@@ -4,7 +4,7 @@
       "ch": "k",
       "tipCount": 322,
       "tipW": 0.4359,
-      "midW": 0.849,
+      "midW": 0.8491,
       "bulbRatio": 0.513,
       "hang": 1.9127
     },
@@ -19,18 +19,18 @@
     {
       "ch": "a",
       "tipCount": 362,
-      "tipW": 0.3381,
-      "midW": 0.9746,
+      "tipW": 0.3384,
+      "midW": 0.9744,
       "bulbRatio": 0.347,
-      "hang": 1.5208
+      "hang": 1.5224
     },
     {
       "ch": "u",
       "tipCount": 362,
-      "tipW": 0.3235,
+      "tipW": 0.3236,
       "midW": 0.8383,
       "bulbRatio": 0.386,
-      "hang": 1.455
+      "hang": 1.4556
     },
     {
       "ch": "t",
@@ -52,28 +52,28 @@
       "ch": "p",
       "tipCount": 265,
       "tipW": 0.4368,
-      "midW": 0.7358,
-      "bulbRatio": 0.594,
+      "midW": 0.631,
+      "bulbRatio": 0.692,
       "hang": 1.9585
     },
     {
       "ch": "r",
       "tipCount": 181,
       "tipW": 0.3092,
-      "midW": 0.3676,
-      "bulbRatio": 0.841,
-      "hang": 1.4278
+      "midW": 0.3648,
+      "bulbRatio": 0.848,
+      "hang": 1.4279
     },
     {
       "ch": "o",
       "tipCount": 181,
       "tipW": 0.3727,
-      "midW": 0.8617,
+      "midW": 0.8616,
       "bulbRatio": 0.433,
-      "hang": 1.4935
+      "hang": 1.4951
     }
   ],
-  "meanBulbRatio": 0.606,
+  "meanBulbRatio": 0.618,
   "bulbsOver13": 0,
   "frozen": true,
   "params": {
@@ -84,8 +84,10 @@
   "bg": "rgb(12, 16, 24)",
   "tipWeld": {
     "welded": 248,
-    "bridges": 379,
+    "bridges": 377,
     "strandsKilled": 0,
-    "tipWeldFlag": true
+    "lipSoftened": 7716,
+    "tipWeldFlag": true,
+    "lipSoftFlag": true
   }
 }

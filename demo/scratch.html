@@ -294,7 +294,7 @@
       <p class="hint">
         Drag to orbit · scroll to zoom · click a glyph mesh to select<br />
         Stage 5: <code>GravityMeltSim</code> — master + per-letter overrides<br />
-        Round pear pendants: tip weld + remesh · thick lip neck · teardrop sculpt<br />
+        Round pear pendants: tip weld + lip soft-boolean · remesh · teardrop sculpt<br />
         Mesh: <code id="meshHint">demo/scratch/mesh/wordmark-klaut-pro.glb</code>
       </p>
     </aside>
@@ -677,7 +677,7 @@
         const statusEl = document.getElementById("meltStatus");
         const enabled = letterOverrides.filter((o) => o.enable !== false).length;
         statusEl.textContent = st.frozen
-          ? `frozen · ${enabled}/${st.slotCount} letters · tipWeld · tipRemesh · softMin · dripBlobs 0`
+          ? `frozen · ${enabled}/${st.slotCount} letters · tipWeld · lipSoft · tipRemesh · softMin · dripBlobs 0`
           : `settling ${(st.settle * 100).toFixed(0)}% · ${enabled}/${st.slotCount} letters`;
 
         if (window.__scratch) {
@@ -707,6 +707,7 @@
             pearRadius: true,
             tipRemesh: true,
             tipWeld: true,
+            lipSoft: true,
           };
         }
       }
@@ -836,6 +837,7 @@
           welded: weld.welded,
           bridges: weld.bridges,
           strandsKilled: weld.strandsKilled,
+          lipSoftened: weld.lipSoftened,
         };
         return tipU;
       }
@@ -970,6 +972,7 @@
             pearRadius: true,
             tipRemesh: true,
             tipWeld: true,
+            lipSoft: true,
           },
         };
         window.__scratchLetterMeshes = letterMeshes;

@@ -27,6 +27,7 @@ export {
   meltViscosityMaps,
   buildHoneyTipCapsuleBuffers,
   weldHoneyTipIntoLetter,
+  softenHoneyLipJoin,
   honeyPendantRadius,
   honeyPendantY,
   honeyPendantPoint,
@@ -38,6 +39,7 @@ export {
   type HoneyTipCapsuleBuffers,
   type WeldHoneyTipOpts,
   type WeldHoneyTipResult,
+  type SoftenHoneyLipOpts,
 } from "./field/GravityMeltSim.js";
 export { softMin, sdRoundBox } from "./field/SDF.js";
 export {
