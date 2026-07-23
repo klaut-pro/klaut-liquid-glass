@@ -294,7 +294,7 @@
       <p class="hint">
         Drag to orbit · scroll to zoom · click a glyph mesh to select<br />
         Stage 5: <code>GravityMeltSim</code> — master + per-letter overrides<br />
-        Round honey pendants: tip remesh + pear sculpt + softMin plump<br />
+        Round pear pendants: tip remesh + thick lip neck + teardrop sculpt<br />
         Mesh: <code id="meshHint">demo/scratch/mesh/wordmark-klaut-pro.glb</code>
       </p>
     </aside>
@@ -753,8 +753,8 @@
       }
 
       /**
-       * Local tip remesh: append pear-lattice capsules under drip columns so
-       * melt bottoms have south-hemisphere topology (round honey tips).
+       * Local tip remesh: append pear-of-revolution lattices under drip columns
+       * so melt bottoms have continuous lip→neck→teardrop topology (not UV-spheres).
        * Returns tipU Float32Array aligned with the densified position buffer.
        */
       function densifyLetterTipGeometry(geometry, columnXs, colW, ch) {
@@ -763,17 +763,18 @@
         const spanY = Math.max(bb.max.y - bb.min.y, 1e-4);
         const spanX = Math.max(bb.max.x - bb.min.x, 1e-4);
         const spike = ch === "p" || ch === "." || ch === "g" || ch === "y" || ch === "j";
-        const plump = spike ? 1.2 : ch === "r" || ch === "t" ? 1.1 : 1.0;
+        const plump = spike ? 1.18 : ch === "r" || ch === "t" ? 1.08 : 1.0;
         const tip = buildHoneyTipCapsuleBuffers({
           columnXs: columnXs.length ? columnXs : [(bb.min.x + bb.max.x) * 0.5],
           lipY: bb.min.y,
           cz: (bb.min.z + bb.max.z) * 0.5,
           colW: Math.max(colW, spanX * 0.08),
-          hang: spanY * (spike ? 0.48 : 0.36),
-          neckR: colW * (spike ? 0.32 : 0.38),
-          bulbR: colW * (spike ? 1.55 : 1.35),
-          rings: spike ? 16 : 12,
-          segs: spike ? 24 : 18,
+          hang: spanY * (spike ? 0.52 : 0.44),
+          neckR: colW * (spike ? 0.82 : 0.88),
+          lipR: colW * (spike ? 1.05 : 1.1),
+          bulbR: colW * (spike ? 1.32 : 1.22),
+          rings: spike ? 20 : 16,
+          segs: spike ? 24 : 20,
           seedHangFrac: 0.05,
           plump,
         });

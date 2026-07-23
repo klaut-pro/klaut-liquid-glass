@@ -80,6 +80,7 @@ async function main() {
   await mkdir(outDir, { recursive: true });
   const browser = await chromium.launch({
     headless: true,
+    channel: "chrome",
     args: ["--use-gl=angle", "--enable-webgl", "--ignore-gpu-blocklist"],
   });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
