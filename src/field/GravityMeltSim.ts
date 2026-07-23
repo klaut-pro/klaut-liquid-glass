@@ -8,8 +8,12 @@
  * Per-letter: each bound mesh slot can enable/disable melt and override
  * gravity / freeze / viscosity / sag / neck / bulb independently.
  *
- * Roundness: cosine teardrop radial profile + softMin bulb SDF tip overlay +
- * Taubin smooth on yielded verts (no attached drip sphere meshes).
+ * Roundness (geometry-level):
+ * - Local tip remesh: pear-lattice capsules densify melt bottoms (south-hemisphere
+ *   rings — not stretched original quads collapsing to a spike)
+ * - Absolute pear / teardrop sculpt + softMin tip plump
+ * - Tip-seed hard-project onto parametric pendant (keeps bulb round under Taubin)
+ * - No attached drip sphere meshes (`dripBlobs: 0`)
  */
 
 import { softMin } from "./SDF.js";
@@ -30,6 +34,267 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 function bulbEaseSafe(t: number): number {
   const u = clamp01(t);
   return u * u * (3 - 2 * u);
+}
+
+/**
+ * Parametric honey-pendant radius along profile u∈[0,1] (neck → pear bulb).
+ * Tip stays plump (finite south-pole radius) — never collapses to a cone point.
+ */
+export function honeyPendantRadius(
+  u: number,
+  neckR: number,
+  bulbR: number,
+): number {
+  const t = clamp01(u);
+  const neckWave = Math.sin(Math.PI * smoothstep(0.02, 0.48, t));
+  const rNeck = mix(mix(neckR * 1.35, neckR, 0.35), neckR, neckWave);
+  // Widest near u~0.72; soft tip floor keeps round teardrop (not spike)
+  const bulbWave = Math.sin(Math.PI * Math.min(smoothstep(0.32, 1.0, t) / 0.78, 1));
+  const pear = mix(rNeck, bulbR, bulbWave);
+  const tipFloor = bulbR * mix(0.72, 0.42, Math.pow(smoothstep(0.78, 1, t), 1.35));
+  return Math.max(tipFloor, pear * (1 - 0.12 * Math.pow(smoothstep(0.85, 1, t), 2.2)));
+}
+
+/** Y along pendant: lip → tip pole (south). */
+export function honeyPendantY(u: number, lipY: number, hang: number): number {
+  const t = clamp01(u);
+  // Slight ease so bulb mass sits lower (honey hang)
+  return lipY - hang * Math.pow(t, 0.82);
+}
+
+export type HoneyTipCapsuleSpec = {
+  columnXs: number[];
+  /** Letter bottom lip Y in mesh-local space. */
+  lipY: number;
+  cz: number;
+  /** Column half-width (drives neck/bulb scale). */
+  colW: number;
+  /** Full pendant hang length (sculpt target). Rest seed uses a fraction. */
+  hang: number;
+  neckR?: number;
+  bulbR?: number;
+  /** Latitude rings from neck→tip (default 12). */
+  rings?: number;
+  /** Azimuth segments (default 18). */
+  segs?: number;
+  /**
+   * Rest-pose hang as fraction of `hang` (collapsed seed under lip so stages
+   * 1–4 stay clean). Default 0.08.
+   */
+  seedHangFrac?: number;
+  /** Extra plump for spike-prone glyphs (p / . / descenders). */
+  plump?: number;
+};
+
+export type HoneyTipCapsuleBuffers = {
+  positions: Float32Array;
+  normals: Float32Array;
+  /** Parametric u per vert ∈ (0,1]; used as tipSeed hard-project. */
+  tipU: Float32Array;
+  indices: Uint32Array;
+  vertCount: number;
+};
+
+/**
+ * Build a denser pear / teardrop lattice per drip column.
+ * Closed UV-sphere bulb + neck rings — solid from any camera angle
+ * (open shells read as hollow cups / suction pads from below).
+ */
+export function buildHoneyTipCapsuleBuffers(
+  spec: HoneyTipCapsuleSpec,
+): HoneyTipCapsuleBuffers {
+  const cols = spec.columnXs.length ? spec.columnXs : [0];
+  const neckRings = Math.max(3, Math.min(10, Math.round((spec.rings ?? 12) * 0.35)));
+  const bulbRings = Math.max(8, Math.min(20, spec.rings ?? 12));
+  const segs = Math.max(10, Math.min(32, spec.segs ?? 18));
+  const plump = Math.max(0.85, spec.plump ?? 1);
+  const neckR = Math.max(
+    (spec.neckR ?? spec.colW * 0.42) * plump,
+    spec.colW * 0.16,
+  );
+  const bulbR = Math.max(
+    (spec.bulbR ?? spec.colW * 1.55) * plump,
+    neckR * 1.85,
+  );
+  const hang = Math.max(spec.hang, bulbR * 2.4);
+  const seedHang = hang * clamp01(spec.seedHangFrac ?? 0.06);
+  const lipY = spec.lipY;
+  const cz = spec.cz;
+
+  // Neck rings + bulb latitude rings + south pole (+ optional north pole of bulb)
+  const vertsPerCol = neckRings * segs + bulbRings * segs + 2;
+  const vertCount = vertsPerCol * cols.length;
+  const positions = new Float32Array(vertCount * 3);
+  const normals = new Float32Array(vertCount * 3);
+  const tipU = new Float32Array(vertCount);
+  const indices: number[] = [];
+
+  for (let ci = 0; ci < cols.length; ci++) {
+    const ax = cols[ci]!;
+    const base = ci * vertsPerCol;
+    let cursor = 0;
+
+    // --- Neck filament rings (u 0.05 → 0.45) ---
+    for (let r = 0; r < neckRings; r++) {
+      const u = mix(0.06, 0.42, r / Math.max(neckRings - 1, 1));
+      const R = honeyPendantRadius(u, neckR, bulbR) * 0.35; // rest seed compact
+      const y = lipY - seedHang * Math.pow(u, 0.85);
+      for (let s = 0; s < segs; s++) {
+        const ang = (s / segs) * Math.PI * 2;
+        const vi = base + cursor++;
+        const i = vi * 3;
+        positions[i] = ax + Math.cos(ang) * R;
+        positions[i + 1] = y;
+        positions[i + 2] = cz + Math.sin(ang) * R * 0.96;
+        normals[i] = Math.cos(ang);
+        normals[i + 1] = 0;
+        normals[i + 2] = Math.sin(ang);
+        tipU[vi] = u;
+      }
+    }
+    const neckVertCount = neckRings * segs;
+
+    // --- Closed bulb as UV sphere (full solid silhouette) ---
+    // Rest: tiny sphere under lip; sculpt expands via tipU
+    const bulbSeedR = bulbR * 0.22;
+    const bulbCy = lipY - seedHang * 0.85;
+    for (let r = 0; r < bulbRings; r++) {
+      // lat 0 = north (neck join) → 1 = south pole approach
+      const lat = (r + 0.5) / bulbRings;
+      const theta = lat * Math.PI; // 0..π full sphere
+      const ringR = bulbSeedR * Math.sin(theta);
+      const y = bulbCy + bulbSeedR * Math.cos(theta);
+      const u = mix(0.48, 0.98, lat);
+      for (let s = 0; s < segs; s++) {
+        const ang = (s / segs) * Math.PI * 2;
+        const vi = base + cursor++;
+        const i = vi * 3;
+        const nx = Math.sin(theta) * Math.cos(ang);
+        const ny = Math.cos(theta);
+        const nz = Math.sin(theta) * Math.sin(ang);
+        positions[i] = ax + Math.cos(ang) * ringR;
+        positions[i + 1] = y;
+        positions[i + 2] = cz + Math.sin(ang) * ringR * 0.96;
+        normals[i] = nx;
+        normals[i + 1] = ny;
+        normals[i + 2] = nz;
+        tipU[vi] = u;
+      }
+    }
+    const bulbStart = neckVertCount;
+
+    // North + south poles of bulb
+    const north = base + cursor++;
+    {
+      const i = north * 3;
+      positions[i] = ax;
+      positions[i + 1] = bulbCy + bulbSeedR;
+      positions[i + 2] = cz;
+      normals[i] = 0;
+      normals[i + 1] = 1;
+      normals[i + 2] = 0;
+      tipU[north] = 0.45;
+    }
+    const south = base + cursor++;
+    {
+      const i = south * 3;
+      positions[i] = ax;
+      positions[i + 1] = bulbCy - bulbSeedR;
+      positions[i + 2] = cz;
+      normals[i] = 0;
+      normals[i + 1] = -1;
+      normals[i + 2] = 0;
+      tipU[south] = 1;
+    }
+
+    // Neck side quads
+    for (let r = 0; r < neckRings - 1; r++) {
+      for (let s = 0; s < segs; s++) {
+        const s2 = (s + 1) % segs;
+        const a = base + r * segs + s;
+        const b = base + r * segs + s2;
+        const c = base + (r + 1) * segs + s2;
+        const d = base + (r + 1) * segs + s;
+        indices.push(a, b, c, a, c, d);
+      }
+    }
+    // Connect last neck ring → first bulb ring (north hemisphere)
+    if (neckRings > 0 && bulbRings > 0) {
+      for (let s = 0; s < segs; s++) {
+        const s2 = (s + 1) % segs;
+        const a = base + (neckRings - 1) * segs + s;
+        const b = base + (neckRings - 1) * segs + s2;
+        const c = base + bulbStart + s2;
+        const d = base + bulbStart + s;
+        indices.push(a, b, c, a, c, d);
+      }
+    }
+    // Bulb side quads
+    for (let r = 0; r < bulbRings - 1; r++) {
+      for (let s = 0; s < segs; s++) {
+        const s2 = (s + 1) % segs;
+        const a = base + bulbStart + r * segs + s;
+        const b = base + bulbStart + r * segs + s2;
+        const c = base + bulbStart + (r + 1) * segs + s2;
+        const d = base + bulbStart + (r + 1) * segs + s;
+        indices.push(a, b, c, a, c, d);
+      }
+    }
+    // Fan north pole → first bulb ring
+    for (let s = 0; s < segs; s++) {
+      const s2 = (s + 1) % segs;
+      const a = base + bulbStart + s;
+      const b = base + bulbStart + s2;
+      indices.push(north, a, b);
+    }
+    // Fan south pole ← last bulb ring
+    const last = bulbRings - 1;
+    for (let s = 0; s < segs; s++) {
+      const s2 = (s + 1) % segs;
+      const a = base + bulbStart + last * segs + s;
+      const b = base + bulbStart + last * segs + s2;
+      indices.push(a, b, south);
+    }
+  }
+
+  return {
+    positions,
+    normals,
+    tipU,
+    indices: Uint32Array.from(indices),
+    vertCount,
+  };
+}
+
+/**
+ * Absolute pear sample at parametric u — used by tip-seed hard-project.
+ */
+export function honeyPendantPoint(
+  u: number,
+  ax: number,
+  lipY: number,
+  cz: number,
+  hang: number,
+  neckR: number,
+  bulbR: number,
+  ang: number,
+): [number, number, number] {
+  const t = clamp01(u);
+  // Neck filament then closed sphere bulb (solid from every angle)
+  const neckLen = hang * 0.42;
+  const bulbCy = lipY - neckLen - bulbR * 0.15;
+  if (t < 0.45) {
+    const nu = t / 0.45;
+    const rr = mix(neckR * 1.15, neckR, Math.sin(Math.PI * 0.5 * nu));
+    const yy = lipY - neckLen * Math.pow(nu, 0.9);
+    return [ax + Math.cos(ang) * rr, yy, cz + Math.sin(ang) * rr * 0.96];
+  }
+  // Map tipU 0.45..1 → sphere lat 0..π (north at neck join → south pole)
+  const lat = smoothstep(0.45, 1, t);
+  const theta = lat * Math.PI;
+  const rr = bulbR * Math.sin(theta);
+  const yy = bulbCy + bulbR * Math.cos(theta);
+  return [ax + Math.cos(ang) * rr, yy, cz + Math.sin(ang) * rr * 0.96];
 }
 
 export type MeltViscosityMaps = {
@@ -156,6 +421,11 @@ type MeshSlot = {
   hNorm: Float32Array;
   /** Downward-face weight from rest normals. */
   downFace: Float32Array;
+  /**
+   * Tip-seed parametric u ∈ (0,1] for remeshed pear-lattice verts; 0 = letter mesh.
+   * Hard-projected onto honey pendant each settle step.
+   */
+  tipU: Float32Array;
   lo: number;
   hi: number;
   halfW: number;
@@ -164,6 +434,8 @@ type MeshSlot = {
   cz: number;
   /** Adjacency for Taubin smooth (built once from proximity). */
   neighbors: Int32Array[];
+  /** True if this slot has pear-lattice tip-seed verts. */
+  hasTipLattice: boolean;
 };
 
 function resolveParams(
@@ -209,9 +481,11 @@ export class GravityMeltSim {
       pos: Float32Array;
       base: Float32Array;
       normal: Float32Array;
+      /** Optional tip-seed u per vert from `buildHoneyTipCapsuleBuffers`. */
+      tipU?: Float32Array;
     }>,
   ): void {
-    this.slots = meshes.map(({ pos, base, normal }) => {
+    this.slots = meshes.map(({ pos, base, normal, tipU: tipUIn }) => {
       let lo = Infinity;
       let hi = -Infinity;
       let minX = Infinity;
@@ -219,24 +493,40 @@ export class GravityMeltSim {
       let minZ = Infinity;
       let maxZ = -Infinity;
       for (let i = 0; i < base.length; i += 3) {
-        lo = Math.min(lo, base[i + 1]);
-        hi = Math.max(hi, base[i + 1]);
-        minX = Math.min(minX, base[i]);
-        maxX = Math.max(maxX, base[i]);
-        minZ = Math.min(minZ, base[i + 2]);
-        maxZ = Math.max(maxZ, base[i + 2]);
+        lo = Math.min(lo, base[i + 1]!);
+        hi = Math.max(hi, base[i + 1]!);
+        minX = Math.min(minX, base[i]!);
+        maxX = Math.max(maxX, base[i]!);
+        minZ = Math.min(minZ, base[i + 2]!);
+        maxZ = Math.max(maxZ, base[i + 2]!);
       }
       const span = Math.max(hi - lo, 1e-4);
       const n = (base.length / 3) | 0;
       const hNorm = new Float32Array(n);
       const downFace = new Float32Array(n);
+      const tipU = new Float32Array(n);
+      if (tipUIn && tipUIn.length >= n) tipU.set(tipUIn.subarray(0, n));
       for (let vi = 0; vi < n; vi++) {
         const i = vi * 3;
-        hNorm[vi] = clamp01((base[i + 1] - lo) / span);
-        downFace[vi] = Math.max(0, -normal[i + 1]);
+        // Tip-seed verts: treat as fully yielded bottom lip (ignore rest Y inside seed)
+        if (tipU[vi]! > 1e-5) {
+          hNorm[vi] = mix(0.02, 0.18, 1 - tipU[vi]!);
+          downFace[vi] = 1;
+        } else {
+          hNorm[vi] = clamp01((base[i + 1]! - lo) / span);
+          downFace[vi] = Math.max(0, -normal[i + 1]!);
+        }
       }
       const halfW = Math.max((maxX - minX) * 0.5, 0.2);
-      const neighbors = buildProximityGraph(base, halfW * 0.32);
+      // Denser graph radius so tip-lattice rings smooth with letter lip
+      const neighbors = buildProximityGraph(base, halfW * 0.28);
+      let hasTipLattice = false;
+      for (let ti = 0; ti < n; ti++) {
+        if (tipU[ti]! > 1e-5) {
+          hasTipLattice = true;
+          break;
+        }
+      }
       return {
         pos,
         base,
@@ -244,12 +534,14 @@ export class GravityMeltSim {
         vel: new Float32Array(base.length),
         hNorm,
         downFace,
+        tipU,
         lo,
         hi,
         halfW,
         cx: (minX + maxX) * 0.5,
         cz: (minZ + maxZ) * 0.5,
         neighbors,
+        hasTipLattice,
       };
     });
     this.letterOverrides = this.slots.map(() => ({}));
@@ -353,18 +645,20 @@ export class GravityMeltSim {
     const bulbPhase = smoothstep(0.42, 1.0, t);
     const pear = Math.pow(bulbEaseSafe(bulbPhase), 0.92);
     const bulbRound = Math.sin((Math.PI * 0.5) * pear);
-    // Soft tip pole only — do not crush the bulb (concept: fat tip)
-    const tipCap = Math.pow(smoothstep(0.88, 1.0, t), 1.8);
+    // Soft tip pole only — keep finite radius (concept: plump teardrop, not spike)
+    const tipCap = Math.pow(smoothstep(0.9, 1.0, t), 2.4);
     // Neck much thinner than base; tip bulb clearly exceeds neck
     const neckR = base * (1 - neckPinch * neckWave * 1.05);
     const bulbR =
       base *
-      (1 + bulbGrow * (bulbRound * 2.15 + tipCap * 0.25)) *
-      mix(1.1, 2.0, clamp01(bulbGrow / 2.05));
+      (1 + bulbGrow * (bulbRound * 2.15 + tipCap * 0.12)) *
+      mix(1.15, 2.15, clamp01(bulbGrow / 2.05));
     const uNeck = smoothstep(0.04, 0.48, t);
     const uBulb = smoothstep(0.38, 1.0, t);
     const r = mix(base, Math.max(neckR, base * 0.08), uNeck);
-    return Math.max(base * 0.1, mix(r, Math.max(r, bulbR), uBulb));
+    // Floor tip radius — south pole stays round
+    const tipFloor = bulbR * mix(0.78, 0.48, tipCap);
+    return Math.max(tipFloor, mix(r, Math.max(r, bulbR), uBulb));
   }
 
   /**
@@ -406,6 +700,10 @@ export class GravityMeltSim {
     bulbMul: number,
     bulbSoft: number,
   ): [number, number, number] {
+    // Tip-lattice verts are authored for pear topology — sculpt hard-projects them.
+    // Never run letter-stretch delta on them (that recreates spikes).
+    if (s.tipU[vi]! > 1e-5) return [0, 0, 0];
+
     const i = vi * 3;
     const bx = s.base[i];
     const by = s.base[i + 1];
@@ -453,8 +751,9 @@ export class GravityMeltSim {
       tipWeight *
       neckElongate *
       (0.35 + 1.2 * Math.max(column, profileT * 0.35));
-    // Cap — hanging pendant above floor, long enough for clear neck
-    const sagCap = halfH * mix(0.42, 0.78, clamp01(maps.bulbGrow / 2.05)) * sagMul;
+    // Cap — hanging pendant above floor; letter verts only form the neck root.
+    // Tip lattice owns the bulb silhouette (avoid stretched letter spikes).
+    const sagCap = halfH * mix(0.28, 0.48, clamp01(maps.bulbGrow / 2.05)) * sagMul;
     sag = Math.min(sag, sagCap);
 
     const targetR = GravityMeltSim.pearRadius(
@@ -508,7 +807,25 @@ export class GravityMeltSim {
     }
     let dy = -sag;
 
-    // Shared tip bulb — south-hemisphere pear (round hang, not flat disk)
+    // With tip lattice: letter mesh only forms a short lip melt.
+    // Remeshed pear capsule owns the hanging teardrop (avoids flared letter spikes).
+    const hasTipLattice = s.hasTipLattice;
+    if (hasTipLattice) {
+      // Kill letter pear-radial / stretch — lattice owns silhouette
+      dx *= 0.08 * (1 - tipWeight);
+      dz *= 0.08 * (1 - tipWeight);
+      dy = Math.max(dy, -halfH * mix(0.05, 0.12, tipWeight) * sagMul);
+      // Mild radial gather into column — no softMin slab
+      if (restR > 1e-6 && column > 0.25) {
+        const gather = 0.35 * column * tipWeight;
+        const targetGatherR = mix(restR, Math.min(restR, colW * 0.7), gather);
+        const invR = 1 / restR;
+        dx = mix(dx, ax + ox * invR * targetGatherR - bx, gather);
+        dz = mix(dz, s.cz + oz * invR * targetGatherR * 0.95 - bz, gather);
+      }
+      return [dx, dy, dz];
+    }
+
     const tipGate = Math.max(column, profileT * 0.9);
     const tipHang = Math.min(
       sagCap * mix(0.75, 1.05, tipGate),
@@ -523,7 +840,6 @@ export class GravityMeltSim {
       const neckR = baseR * mix(0.55, 0.28, maps.neckPinch);
       const tipCx = ax;
       const tipCz = s.cz;
-      // Sphere center below letter lip; tip pole at south
       const cy = s.lo - tipHang * 0.42;
       const tipY = cy - bulbR * 0.95;
 
@@ -531,7 +847,6 @@ export class GravityMeltSim {
       let py0 = by + dy;
       let pz0 = bz + dz;
 
-      // lat: 0 at neck join → 1 at tip pole (south hemisphere pear)
       const lat = smoothstep(0.38, 1.0, profileT);
       const tipSnap =
         clamp01(bulbSoft) * Math.pow(lat, 0.95) * (0.6 + 0.4 * tipGate);
@@ -545,13 +860,14 @@ export class GravityMeltSim {
           rXZ = Math.hypot(ox2, oz2);
         }
         const inv2 = 1 / Math.max(rXZ, 1e-5);
-        // Pear: widest near lat~0.72, mild tip pole taper only
         const pearWave = Math.sin(Math.PI * Math.min(lat / 0.78, 1));
-        const wantR =
-          mix(neckR, bulbR, pearWave) * (1 - 0.28 * Math.pow(lat, 2.8));
-        const wantY = mix(cy + bulbR * 0.08, tipY, Math.pow(lat, 1.1));
-        const tx = tipCx + ox2 * inv2 * Math.max(wantR, neckR * 0.2);
-        const tz = tipCz + oz2 * inv2 * Math.max(wantR, neckR * 0.2) * 0.95;
+        const wantR = Math.max(
+          bulbR * mix(0.72, 0.45, Math.pow(lat, 1.8)),
+          mix(neckR, bulbR, pearWave) * (1 - 0.1 * Math.pow(lat, 2.4)),
+        );
+        const wantY = mix(cy + bulbR * 0.08, tipY, Math.pow(lat, 1.05));
+        const tx = tipCx + ox2 * inv2 * wantR;
+        const tz = tipCz + oz2 * inv2 * wantR * 0.95;
         dx += (tx - px0) * tipSnap;
         dy += (wantY - py0) * tipSnap;
         dz += (tz - pz0) * tipSnap;
@@ -561,15 +877,15 @@ export class GravityMeltSim {
       }
 
       const dSphere = Math.hypot(px0 - tipCx, py0 - cy, pz0 - tipCz) - bulbR;
-      const stemR = neckR * mix(1.05, 0.65, lat);
+      const stemR = neckR * mix(1.05, 0.7, lat);
       const dStem = Math.hypot(px0 - tipCx, pz0 - tipCz) - stemR;
-      const k = mix(0.12, 0.36, maps.bulbGrow) * halfH;
+      const k = mix(0.16, 0.48, maps.bulbGrow) * halfH;
       const dField = softMin(dStem, dSphere, k);
       const pull =
         clamp01(bulbSoft) *
-        smoothstep(0.4, 0.98, profileT) *
-        (0.4 + 0.6 * tipGate) *
-        0.9;
+        smoothstep(0.35, 0.98, profileT) *
+        (0.5 + 0.5 * tipGate) *
+        1.05;
       if (pull > 0.01 && Math.abs(dField) < bulbR * 3.8) {
         const eps = 1e-3;
         const ddx =
@@ -696,8 +1012,11 @@ export class GravityMeltSim {
       }
 
       // Sculpt clear honey pendant silhouettes per drip column
-      if (ease > 0.15) {
+      if (ease > 0.12) {
         const cols = columns.length ? columns : [s.cx];
+        // Spike-prone: denser tip lattice + extra plump (descenders / period)
+        const tipSeedN = s.tipU.reduce((a, u) => a + (u > 0 ? 1 : 0), 0);
+        const plump = tipSeedN > 40 ? 1.28 : 1.12;
         for (const ax of cols) {
           sculptHoneyPendant(
             s,
@@ -709,13 +1028,15 @@ export class GravityMeltSim {
             sagMul,
             neckMul,
             bulbMul,
-            // Stronger late-ease snap so tip spheres read as round honey bulbs
-            Math.min(1, ease * 1.15) * clamp01(bulbSoft + 0.25),
+            // Full snap on tip lattice once ease advances
+            Math.min(1, ease * 1.35) * clamp01(bulbSoft + 0.35),
+            plump,
           );
         }
       }
 
-      const passes = Math.max(0, Math.min(8, Math.round(p.smoothPasses ?? 6)));
+      // Mild Taubin — tip seeds mostly skip (lattice owns roundness)
+      const passes = Math.max(0, Math.min(8, Math.round(p.smoothPasses ?? 4)));
       if (passes > 0 && ease > 0.12) {
         taubinSmoothSlot(s, freezeHeight, falloffPower, passes, ease);
       }
@@ -923,7 +1244,8 @@ function buildProximityGraph(base: Float32Array, radius: number): Int32Array[] {
 
 /**
  * Post-sculpt: remap yielded column verts onto a parametric honey pendant
- * (neck → pear bulb). Keeps rest angular position so the mesh stays continuous.
+ * (neck → pear bulb). Tip-seed lattice verts (tipU>0) are hard-projected so
+ * south-hemisphere rings stay round — original letter topology cannot do this.
  */
 function sculptHoneyPendant(
   s: MeshSlot,
@@ -936,80 +1258,99 @@ function sculptHoneyPendant(
   neckMul: number,
   bulbMul: number,
   strength: number,
+  /** Extra plump for spike-prone glyphs (p / .). */
+  plump = 1,
 ): void {
   if (strength < 0.05) return;
   const halfH = Math.max((s.hi - s.lo) * 0.5, 1e-3);
-  // Keep tip above the demo floor (visual clearance)
   const hang = Math.min(
-    halfH * mix(0.36, 0.7, clamp01(maps.bulbGrow / 2.05)) * sagMul,
-    halfH * 0.95,
+    halfH * mix(0.7, 1.15, clamp01(maps.bulbGrow / 2.05)) * sagMul,
+    halfH * 1.55,
   );
-  const baseR = Math.max(colW * 0.85, halfH * 0.06);
+  // Absolute radii from column width — clamp vs hang so tips stay teardrops not pancakes
+  const baseR = Math.max(colW * 1.05, halfH * 0.08);
   const n = (s.base.length / 3) | 0;
   const lipY = s.lo;
-  const tipY = lipY - hang;
-  const neckR =
-    baseR * mix(0.48, 0.2, clamp01(maps.neckPinch * Math.min(neckMul, 1.9)));
-  const bulbR =
+  const neckR = Math.min(
+    baseR * mix(0.55, 0.34, clamp01(maps.neckPinch * Math.min(neckMul, 1.6))),
+    hang * 0.18,
+  );
+  let bulbR =
     baseR *
-    (1.25 + 1.15 * maps.bulbGrow * bulbMul) *
-    mix(1.05, 1.55, clamp01(maps.bulbGrow / 2.05));
+    (1.15 + 0.55 * maps.bulbGrow * Math.min(bulbMul, 2.2)) *
+    mix(1.05, 1.35, clamp01(maps.bulbGrow / 2.05)) *
+    Math.min(plump, 1.25);
+  // Concept teardrop: bulb diameter ≤ ~70% of hang (pear silhouette)
+  bulbR = Math.min(bulbR, hang * 0.36);
+  bulbR = Math.max(bulbR, neckR * 2.05);
 
   for (let vi = 0; vi < n; vi++) {
+    const seedU = s.tipU[vi]!;
+    const isSeed = seedU > 1e-5;
     const w = GravityMeltSim.yieldWeight(
       s.hNorm[vi]!,
       freezeHeight,
       falloffPower,
       s.downFace[vi]!,
     );
-    if (w < 0.08) continue;
+    if (!isSeed && w < 0.08) continue;
     const i = vi * 3;
     const bx = s.base[i]!;
     const bz = s.base[i + 2]!;
     const near = Math.abs(bx - ax) / Math.max(colW, 1e-4);
-    if (near > 1.15) continue;
-    const column = Math.pow(Math.max(0, 1 - near), maps.columnSharp);
-    if (column < 0.12) continue;
+    if (!isSeed && near > 1.2) continue;
+    const column = isSeed
+      ? 1
+      : Math.pow(Math.max(0, 1 - near), maps.columnSharp);
+    if (!isSeed && column < 0.12) continue;
 
-    const t = clamp01(w * (0.04 + 0.96 * column));
-    if (t < 0.18) continue;
-
-    // Parametric honey pendant along drip profile u∈[0,1]
-    const u = Math.pow(t, 0.72);
-    const neckWave = Math.sin(Math.PI * smoothstep(0.04, 0.5, u));
-    const bulbWave = Math.pow(smoothstep(0.4, 1.0, u), 1.0);
-    const bulbRound = Math.sin(Math.PI * Math.min(bulbWave / 0.85, 1));
-    // Radius: base → thin neck → fat bulb → soft tip pole
-    const rNeck = mix(baseR, neckR, neckWave);
-    const rBulb = mix(rNeck, bulbR, bulbRound);
-    const tipPole = Math.pow(smoothstep(0.88, 1, u), 2.2);
-    const R = Math.max(neckR * 0.35, rBulb * (1 - 0.2 * tipPole));
+    // Tip-seed: parametric u is authored on the lattice; letter verts use yield
+    const t = isSeed
+      ? seedU
+      : clamp01(w * (0.04 + 0.96 * column));
+    if (!isSeed && t < 0.18) continue;
 
     let ox = bx - ax;
     let oz = bz - s.cz;
     let r0 = Math.hypot(ox, oz);
     if (r0 < 1e-5) {
-      ox = (near < 0.01 ? colW : bx - ax) * 0.4 || colW * 0.35;
-      oz = 0.01;
+      // Preserve azimuth from live pos if rest is on axis
+      ox = s.pos[i]! - ax;
+      oz = s.pos[i + 2]! - s.cz;
       r0 = Math.hypot(ox, oz);
+      if (r0 < 1e-5) {
+        ox = colW * 0.35;
+        oz = 0.01;
+        r0 = Math.hypot(ox, oz);
+      }
     }
-    const inv = 1 / r0;
-    // Y: hang along filament; tip heavier
-    const ty = mix(lipY - hang * 0.05, tipY, Math.pow(u, 0.78));
-    const tx = ax + ox * inv * R;
-    const tz = s.cz + oz * inv * R * 0.96;
-    const k =
-      strength * smoothstep(0.18, 0.98, t) * (0.55 + 0.45 * column);
+    const ang = Math.atan2(oz, ox);
+
+    const [tx, ty, tz] = honeyPendantPoint(
+      t,
+      ax,
+      lipY,
+      s.cz,
+      hang,
+      neckR,
+      bulbR,
+      ang,
+    );
+
+    const k = isSeed
+      ? Math.min(1, strength * 1.05)
+      : strength * smoothstep(0.18, 0.98, t) * (0.55 + 0.45 * column);
 
     s.pos[i] = mix(s.pos[i]!, tx, k);
     s.pos[i + 1] = mix(s.pos[i + 1]!, ty, k);
     s.pos[i + 2] = mix(s.pos[i + 2]!, tz, k);
 
-    // Tip sphere fill — round hanging bulb (concept honey teardrop)
-    if (u > 0.5) {
-      const lat = smoothstep(0.5, 1.0, u);
-      const cy = tipY + bulbR * 0.55;
-      const sphereR = bulbR * mix(0.95, 1.05, maps.bulbGrow / 2.05);
+    // Extra softMin plump on tip half — round hanging bulb (closed sphere)
+    if (t > 0.45) {
+      const lat = smoothstep(0.45, 1.0, t);
+      const neckLen = hang * 0.42;
+      const cy = lipY - neckLen - bulbR * 0.15;
+      const sphereR = bulbR;
       let px = s.pos[i]!;
       let py = s.pos[i + 1]!;
       let pz = s.pos[i + 2]!;
@@ -1018,21 +1359,17 @@ function sculptHoneyPendant(
       let vz = pz - s.cz;
       let len = Math.hypot(vx, vy, vz);
       if (len < 1e-5) {
-        vx = ox;
-        vy = -sphereR * lat;
-        vz = oz;
+        const theta = lat * Math.PI;
+        vx = Math.cos(ang) * Math.sin(theta);
+        vy = Math.cos(theta);
+        vz = Math.sin(ang) * Math.sin(theta);
         len = Math.hypot(vx, vy, vz);
       }
-      // Keep southern hemisphere for hanging drop
-      if (vy > sphereR * 0.15) vy = -Math.abs(vy) * 0.25 - sphereR * 0.2 * lat;
       const invL = 1 / Math.max(len, 1e-5);
-      // Slight pear: wider at mid-bulb, round tip
-      const pear = mix(1.08, 0.92, Math.pow(lat, 1.6));
-      const tr = sphereR * pear;
-      const snap = strength * Math.pow(lat, 0.85) * (0.65 + 0.35 * column);
-      s.pos[i] = mix(px, ax + vx * invL * tr, snap);
-      s.pos[i + 1] = mix(py, cy + vy * invL * tr, snap);
-      s.pos[i + 2] = mix(pz, s.cz + vz * invL * tr * 0.96, snap);
+      const snap = (isSeed ? 1 : strength) * (0.75 + 0.25 * column);
+      s.pos[i] = mix(px, ax + vx * invL * sphereR, snap);
+      s.pos[i + 1] = mix(py, cy + vy * invL * sphereR, snap);
+      s.pos[i + 2] = mix(pz, s.cz + vz * invL * sphereR * 0.96, snap);
     }
   }
 }
@@ -1062,7 +1399,8 @@ function taubinSmoothSlot(
         falloffPower,
         s.downFace[vi]!,
       );
-      if (w < 0.04) continue;
+      const tipSeed = s.tipU[vi]! > 1e-5;
+      if (w < 0.04 && !tipSeed) continue;
       const nbrs = s.neighbors[vi]!;
       if (!nbrs.length) continue;
       let ax = 0;
@@ -1079,9 +1417,11 @@ function taubinSmoothSlot(
       ay *= inv;
       az *= inv;
       const i = vi * 3;
-      // Preserve tip bulbs: less Laplacian on extreme tip (softMin owns roundness)
-      const tipBoost = mix(1.05, 0.22, Math.pow(w, 1.6));
-      const blend = factor * w * tipBoost;
+      // Tip lattice owns roundness — barely Taubin (prevents spike collapse)
+      const tipBoost = tipSeed
+        ? 0.08
+        : mix(1.05, 0.18, Math.pow(w, 1.6));
+      const blend = factor * (tipSeed ? 1 : w) * tipBoost;
       scratch[i] = s.pos[i]! + (ax - s.pos[i]!) * blend;
       scratch[i + 1] = s.pos[i + 1]! + (ay - s.pos[i + 1]!) * blend;
       scratch[i + 2] = s.pos[i + 2]! + (az - s.pos[i + 2]!) * blend;

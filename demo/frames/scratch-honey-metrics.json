@@ -2,82 +2,84 @@
   "letters": [
     {
       "ch": "k",
-      "tipCount": 832,
-      "tipW": 1.2892,
-      "midW": 0.8576,
-      "bulbRatio": 1.503,
-      "hang": 1.8423
+      "tipCount": 376,
+      "tipW": 0.6604,
+      "midW": 0.8617,
+      "bulbRatio": 0.766,
+      "hang": 1.8008
     },
     {
       "ch": "l",
-      "tipCount": 310,
-      "tipW": 0.2717,
-      "midW": 0.3337,
-      "bulbRatio": 0.814,
-      "hang": 1.5118
+      "tipCount": 173,
+      "tipW": 0.4728,
+      "midW": 0.3257,
+      "bulbRatio": 1.452,
+      "hang": 1.6677
     },
     {
       "ch": "a",
-      "tipCount": 758,
-      "tipW": 1.5002,
-      "midW": 0.9744,
-      "bulbRatio": 1.54,
-      "hang": 1.5533
+      "tipCount": 482,
+      "tipW": 0.7453,
+      "midW": 0.9806,
+      "bulbRatio": 0.76,
+      "hang": 1.4568
     },
     {
       "ch": "u",
-      "tipCount": 694,
-      "tipW": 1.3192,
-      "midW": 0.8505,
-      "bulbRatio": 1.551,
-      "hang": 1.4196
+      "tipCount": 380,
+      "tipW": 0.5559,
+      "midW": 0.8544,
+      "bulbRatio": 0.651,
+      "hang": 1.389
     },
     {
       "ch": "t",
-      "tipCount": 312,
-      "tipW": 0.5616,
-      "midW": 0.5485,
-      "bulbRatio": 1.024,
-      "hang": 1.6852
+      "tipCount": 217,
+      "tipW": 0.5454,
+      "midW": 0.5481,
+      "bulbRatio": 0.995,
+      "hang": 1.8017
     },
     {
       "ch": ".",
-      "tipCount": 114,
-      "tipW": 0.2982,
-      "midW": 0.333,
-      "bulbRatio": 0.895,
-      "hang": 0.56
+      "tipCount": 193,
+      "tipW": 0.1565,
+      "midW": 0.3356,
+      "bulbRatio": 0.466,
+      "hang": 0.5553
     },
     {
       "ch": "p",
-      "tipCount": 282,
-      "tipW": 0.12,
-      "midW": 0.8982,
-      "bulbRatio": 0.134,
-      "hang": 1.4232
+      "tipCount": 193,
+      "tipW": 0.556,
+      "midW": 0.7475,
+      "bulbRatio": 0.744,
+      "hang": 1.8649
     },
     {
       "ch": "r",
-      "tipCount": 504,
-      "tipW": 0.5708,
-      "midW": 0.3603,
-      "bulbRatio": 1.584,
-      "hang": 1.2313
+      "tipCount": 109,
+      "tipW": 0.3912,
+      "midW": 0.3544,
+      "bulbRatio": 1.104,
+      "hang": 1.3676
     },
     {
       "ch": "o",
-      "tipCount": 626,
-      "tipW": 1.4595,
-      "midW": 0.8616,
-      "bulbRatio": 1.694,
-      "hang": 1.5169
+      "tipCount": 271,
+      "tipW": 0.4158,
+      "midW": 0.8895,
+      "bulbRatio": 0.467,
+      "hang": 1.4536
     }
   ],
-  "viscosity": 0.96,
-  "bulb": {
-    "teardrop": true,
-    "softMinBulb": true,
-    "taubin": true,
-    "dripBlobs": 0
-  }
+  "meanBulbRatio": 0.823,
+  "bulbsOver13": 1,
+  "frozen": true,
+  "params": {
+    "gravity": 0.9,
+    "viscosity": 0.9,
+    "freezeHeight": 0.68
+  },
+  "bg": "rgb(12, 16, 24)"
 }

@@ -235,7 +235,11 @@ One-shot settle → freeze (static sculpture)
 | mid (~0.55) | medium | medium | medium pear | mid | syrup glass |
 | high (~0.78–0.9) | longer hang | thick neck | **fat honey bulb** | slow | honey / molten chrome |
 
-**Honey morphology (2026-07):** defaults bias toward high Oh — tip-heavy sag, cosine/pear `teardropRadial`, shared softMin tip sphere + stem capsule, tip-boosted Taubin. Column half-width ~0.2× glyph so melt concentrates into pendant bulbs (not jagged bottom slabs). Still **no attached drip sphere meshes** (`dripBlobs: 0`).
+**Honey morphology (2026-07):** tip **remesh** — closed UV-sphere bulbs + neck rings
+appended per drip column (`buildHoneyTipCapsuleBuffers`), hard-projected by
+`sculptHoneyPendant` / `honeyPendantPoint`. Letter verts only short lip sag when
+lattice present (avoids stretched spikes). SoftMin plump + mild Taubin. Still
+**no attached drip sphere meshes** (`dripBlobs: 0`). Dark plate defaults.
 
 **Freeze-height cheat sheet:**
 

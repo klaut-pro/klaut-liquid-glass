@@ -25,10 +25,16 @@ export {
 export {
   GravityMeltSim,
   meltViscosityMaps,
+  buildHoneyTipCapsuleBuffers,
+  honeyPendantRadius,
+  honeyPendantY,
+  honeyPendantPoint,
   type MeltViscosityMaps,
   type GravityMeltParams,
   type GravityMeltStatus,
   type LetterMeltOverride,
+  type HoneyTipCapsuleSpec,
+  type HoneyTipCapsuleBuffers,
 } from "./field/GravityMeltSim.js";
 export { softMin, sdRoundBox } from "./field/SDF.js";
 export {
