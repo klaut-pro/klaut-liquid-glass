@@ -16,11 +16,11 @@
   "sdfSoftBlend": 0.0324,
   "targetHeight": 1.15,
   "bakedDimensions": {
-    "x": 6.242422196865082,
-    "y": 0.6484614610671997,
+    "x": 6.2607076501846315,
+    "y": 0.6956721544265747,
     "z": 1.0831447839736938
   },
-  "vertexCount": 468306,
+  "vertexCount": 455146,
   "mesh": "wordmark-klaut-pro.glb",
   "letters": [
     {
@@ -31,15 +31,15 @@
       "sdfUnion": true,
       "tips": 2,
       "columns": [
-        -4.946070442199707,
-        -4.627069702148438
+        -4.910625915527344,
+        -4.6625142288208
       ],
-      "colW": 0.10633358001708984,
+      "colW": 0.08861131668090821,
       "lipY": -0.22941084206104279,
-      "hang": 0.22023440837860106,
-      "neckR": 0.1085240517654419,
-      "bulbR": 0.15072784967422487,
-      "lipR": 0.2563489947052002
+      "hang": 0.2686859782218933,
+      "neckR": 0.0708606977233887,
+      "bulbR": 0.10802162559986116,
+      "lipR": 0.19455057633876802
     },
     {
       "index": 1,
@@ -66,15 +66,15 @@
       "sdfUnion": true,
       "tips": 2,
       "columns": [
-        -2.815941505432129,
-        -2.4623165798187254
+        -2.7766498470306398,
+        -2.5016082382202147
       ],
-      "colW": 0.11787497520446777,
+      "colW": 0.09822914600372315,
       "lipY": -0.2294108271598816,
-      "hang": 0.22023439407348633,
-      "neckR": 0.12030319969367981,
-      "bulbR": 0.16708777735233307,
-      "lipR": 0.2841729902229309
+      "hang": 0.2686859607696533,
+      "neckR": 0.07855188347625734,
+      "bulbR": 0.11974624043583872,
+      "lipR": 0.21566700150847434
     },
     {
       "index": 3,
@@ -84,15 +84,15 @@
       "sdfUnion": true,
       "tips": 2,
       "columns": [
-        -1.2905780506134032,
-        -0.9699778127670289
+        -1.2549558019638063,
+        -1.0056000614166258
       ],
-      "colW": 0.1068667459487915,
+      "colW": 0.08905562162399293,
       "lipY": -0.2294108271598816,
-      "hang": 0.22023439407348633,
-      "neckR": 0.10906820091533662,
-      "bulbR": 0.15148361238241198,
-      "lipR": 0.2576343511333466
+      "hang": 0.2686859607696533,
+      "neckR": 0.07121599950027468,
+      "bulbR": 0.10856325554072857,
+      "lipR": 0.19552607005655764
     },
     {
       "index": 4,
@@ -174,10 +174,10 @@
       ],
       "colW": 0.14655468463897706,
       "lipY": -0.2294108271598816,
-      "hang": 0.22023439407348633,
-      "neckR": 0.15856044440460207,
-      "bulbR": 0.20774126547575,
-      "lipR": 0.2586763461220264
+      "hang": 0.18719923496246338,
+      "neckR": 0.1275377487602234,
+      "bulbR": 0.16324831841308593,
+      "lipR": 0.18296619603753086
     }
   ],
   "perLetterMeshes": true,
@@ -187,7 +187,7 @@
     "1-font: Arial Black wordmark klaut.pro (per-glyph meshes)",
     "2-mesh: Blender extrude+bevel+subdiv \u2192 GLB",
     "2b-gn-sdf: Mesh\u2192SDF Grid \u222a pear tips \u2192 Grid to Mesh (per-glyph iso) + lip morph",
-    "2c-glyph-tune: dual-leg funnel/neck; closed-o reduced iso blend",
+    "2c-glyph-tune: dual-leg poured funnel/neck; closed-o thin aperture iso",
     "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
     "4-liquid: GravityMeltSim per-letter overrides",
     "5-sag: frozen viscoplastic neck/bulb (no drip blobs)"

@@ -18,7 +18,7 @@
         margin: 0;
         height: 100%;
         overflow: hidden;
-        background: #0c1018;
+        background: #07090e;
         color: var(--ink);
       }
       #c {
@@ -28,7 +28,7 @@
         display: block;
         width: 100%;
         height: 100%;
-        background: #0c1018;
+        background: #07090e;
       }
       .hud {
         position: fixed;
@@ -334,8 +334,8 @@
 
       const scene = new THREE.Scene();
       // Dark charcoal plate — concept art contrast so glass rims / droplets read
-      scene.background = new THREE.Color(0x0c1018);
-      scene.fog = new THREE.Fog(0x0c1018, 28, 62);
+      scene.background = new THREE.Color(0x07090e);
+      scene.fog = new THREE.Fog(0x07090e, 26, 58);
 
       const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.05, 80);
       camera.position.set(0, 0.55, 7.2);
@@ -489,8 +489,22 @@
       function applyMaterial() {
         const mat =
           stage <= 2 ? matSolid : stage === 3 ? matGlass : matLiquid;
-        for (const mesh of letterMeshes) {
-          mesh.material = mat;
+        for (let i = 0; i < letterMeshes.length; i++) {
+          const ch = letterChars[i] || "";
+          // Closed o: thinner transmission so counter reads open, not thick blob
+          if (stage >= 3 && ch === "o") {
+            const m = mat.clone();
+            m.thickness = stage === 3 ? 0.22 : 0.26;
+            m.transmission = stage === 3 ? 0.99 : 0.985;
+            m.attenuationDistance = 4.5;
+            m.attenuationColor = new THREE.Color(0xe4f0ff);
+            m.envMapIntensity = stage === 3 ? 1.35 : 1.45;
+            m.roughness = 0.04;
+            m.opacity = 0.92;
+            letterMeshes[i].material = m;
+          } else {
+            letterMeshes[i].material = mat;
+          }
         }
       }
 
@@ -555,33 +569,34 @@
           if (ch === "k" || ch === "t" || ch === "l") {
             return {
               enable: true,
-              sagAmpMul: 1.2,
-              bulbGrowMul: 2.1,
+              sagAmpMul: ch === "k" ? 1.28 : 1.2,
+              bulbGrowMul: ch === "k" ? 1.82 : 2.1,
               viscosity: 0.9,
-              freezeHeight: 0.72,
-              // Dual-leg k: stronger pinch → thin continuous necks into underside melt
-              neckPinchMul: ch === "k" ? 1.55 : 1.4,
+              freezeHeight: ch === "k" ? 0.68 : 0.72,
+              // Dual-leg k: poured thin neck before bulb
+              neckPinchMul: ch === "k" ? 1.72 : 1.4,
             };
           }
           if (ch === "a" || ch === "u") {
-            // Dual-leg: thin continuous necks melting from letter underside
+            // Dual-leg: poured underside melt → thin neck → bulb (less bulb-first)
             return {
               enable: true,
-              sagAmpMul: 1.18,
-              bulbGrowMul: 2.05,
-              viscosity: 0.9,
-              freezeHeight: 0.72,
-              neckPinchMul: 1.55,
+              sagAmpMul: 1.32,
+              bulbGrowMul: 1.72,
+              viscosity: 0.88,
+              freezeHeight: 0.66,
+              neckPinchMul: 1.78,
             };
           }
           if (ch === "o") {
-            // Closed counter: keep freeze high / pinch mild so hole doesn't blob
+            // Closed counter: high freeze + mild melt; thin glass via applyMaterial
             return {
               enable: true,
-              sagAmpMul: 1.05,
-              bulbGrowMul: 1.85,
-              freezeHeight: 0.78,
-              neckPinchMul: 1.25,
+              sagAmpMul: 0.82,
+              bulbGrowMul: 1.25,
+              freezeHeight: 0.9,
+              neckPinchMul: 1.05,
+              viscosity: 0.95,
             };
           }
           if (ch === "r") {
@@ -970,7 +985,7 @@
           // Dual legs: two honey drips — keep columns tight so tips don't merge into a puddle
           if (!(Array.isArray(lm?.columns) && lm.columns.length)) {
             if (ch === "k" || ch === "u" || ch === "a" || ch === "n" || ch === "m") {
-              const inset = spanX * 0.32;
+              const inset = spanX * 0.36;
               cols = [bb.min.x + inset, bb.max.x - inset];
             }
           }
@@ -1177,6 +1192,7 @@
         document.getElementById("iorVal").textContent = ior.toFixed(2);
         matGlass.ior = ior;
         matLiquid.ior = ior;
+        applyMaterial();
       });
 
       document.getElementById("letterEnable").addEventListener("change", (e) => {

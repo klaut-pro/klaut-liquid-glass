@@ -42,43 +42,57 @@ function bulbEaseSafe(t: number): number {
 
 /**
  * Parametric honey-pendant radius along profile u∈[0,1].
- * Concept: stem-matched lip → thick taper neck → pear bulb (widest low) → plump tip.
- * Neck stays ≥ ~62% of bulb so it never reads as wire / empty gap.
+ * Concept: stem-matched lip → taper neck → pear bulb (widest low) → plump tip.
+ * poured=true (dual-leg): longer lip→thin-neck before bulb so underside reads
+ * as continuous melt, not bulb-first.
  */
 export function honeyPendantRadius(
   u: number,
   neckR: number,
   bulbR: number,
   lipR?: number,
+  poured = false,
 ): number {
   const t = clamp01(u);
-  const neck = Math.max(neckR, bulbR * 0.72); // thick honey neck — never wire
-  const bulb = Math.max(bulbR, neck * 1.28);
-  // Lip ≈ stem — avoid vase-flare that reads as detached cup
-  const lip = Math.max(Math.min(lipR ?? neck * 1.2, neck * 1.35), neck * 1.05);
+  const neckFloor = poured ? 0.52 : 0.72;
+  const neck = Math.max(neckR, bulbR * neckFloor);
+  const bulb = Math.max(bulbR, neck * (poured ? 1.38 : 1.28));
+  // Lip ≈ stem — poured allows a wider shoulder into the funnel
+  const lip = Math.max(
+    Math.min(lipR ?? neck * (poured ? 1.28 : 1.2), neck * (poured ? 1.55 : 1.35)),
+    neck * 1.05,
+  );
 
-  // 0→0.38: lip → neck (long thick stem join into letter)
-  if (t < 0.38) {
-    const s = Math.pow(smoothstep(0, 0.38, t), 0.85);
+  const lipEnd = poured ? 0.52 : 0.38;
+  const bulbPeak = poured ? 0.8 : 0.72;
+  const bulbEnd = poured ? 0.86 : 0.78;
+
+  // lip → neck (poured holds thin filament longer)
+  if (t < lipEnd) {
+    const s = Math.pow(smoothstep(0, lipEnd, t), poured ? 0.78 : 0.85);
     return mix(lip, neck, s);
   }
-  // 0.38→0.78: neck → pear swell (peak ~0.72 — lower half fatter)
-  if (t < 0.78) {
-    const s = Math.pow(smoothstep(0.38, 0.72, t), 0.88);
+  // neck → pear swell
+  if (t < bulbEnd) {
+    const s = Math.pow(smoothstep(lipEnd, bulbPeak, t), poured ? 0.92 : 0.88);
     return mix(neck, bulb, s);
   }
-  // 0.78→1: soft tip taper with plump floor (teardrop, not spike)
-  const tip = Math.pow(smoothstep(0.78, 1, t), 1.3);
+  // soft tip taper with plump floor (teardrop, not spike)
+  const tip = Math.pow(smoothstep(bulbEnd, 1, t), 1.3);
   const tipR = mix(bulb, bulb * 0.42, tip);
   const tipFloor = bulb * mix(0.5, 0.36, tip);
   return Math.max(tipFloor, tipR);
 }
 
-/** Y along pendant: lip → tip. Short neck + elongated pear body. */
-export function honeyPendantY(u: number, lipY: number, hang: number): number {
+/** Y along pendant: lip → tip. poured=true elongates neck before pear body. */
+export function honeyPendantY(
+  u: number,
+  lipY: number,
+  hang: number,
+  poured = false,
+): number {
   const t = clamp01(u);
-  // Short neck (22%) then pear body — avoids long invisible filament
-  const neckFrac = 0.22;
+  const neckFrac = poured ? 0.38 : 0.22;
   if (t <= neckFrac) {
     const nu = t / Math.max(neckFrac, 1e-6);
     return lipY - hang * neckFrac * Math.pow(nu, 0.95);
@@ -1048,10 +1062,11 @@ export function honeyPendantPoint(
   bulbR: number,
   ang: number,
   lipR?: number,
+  poured = false,
 ): [number, number, number] {
   const t = clamp01(u);
-  const rr = honeyPendantRadius(t, neckR, bulbR, lipR);
-  const yy = honeyPendantY(t, lipY, hang);
+  const rr = honeyPendantRadius(t, neckR, bulbR, lipR, poured);
+  const yy = honeyPendantY(t, lipY, hang, poured);
   return [ax + Math.cos(ang) * rr, yy, cz + Math.sin(ang) * rr * 0.96];
 }
 
@@ -1797,6 +1812,8 @@ export class GravityMeltSim {
         // Spike-prone: denser tip lattice + extra plump (descenders / period)
         const tipSeedN = s.tipU.reduce((a, u) => a + (u > 0 ? 1 : 0), 0);
         const plump = tipSeedN > 40 ? 1.28 : 1.12;
+        // Dual-leg: poured underside → thin neck before bulb
+        const poured = cols.length > 1;
         for (const ax of cols) {
           sculptHoneyPendant(
             s,
@@ -1811,6 +1828,7 @@ export class GravityMeltSim {
             // Full snap on tip lattice once ease advances
             Math.min(1, ease * 1.35) * clamp01(bulbSoft + 0.35),
             plump,
+            poured,
           );
           // Re-seal letter lip ↔ tip ring-0 after hard-project (kills air gap)
           sealHoneyTipLip(s, ax, colW, Math.min(1, ease * 1.2));
@@ -2071,12 +2089,12 @@ function sealHoneyTipLip(
       }
       const inv = 1 / r0;
       const tRad = clamp01(r0 / Math.max(lipR * 1.15, 1e-4));
-      const funnel = (1 - tRad * tRad) * hang * 0.36;
+      const funnel = (1 - tRad * tRad) * hang * 0.5;
       const wantY = lipY - funnel;
-      const gatherR = mix(r0, mix(lipR, neckR, 1 - tRad), 0.62 * k);
-      s.pos[i] = mix(s.pos[i]!, ax + ox * inv * gatherR, 0.65 * k);
-      s.pos[i + 1] = mix(s.pos[i + 1]!, wantY, 0.82 * k);
-      s.pos[i + 2] = mix(s.pos[i + 2]!, s.cz + oz * inv * gatherR * 0.96, 0.65 * k);
+      const gatherR = mix(r0, mix(lipR, neckR * 0.85, 1 - tRad), 0.72 * k);
+      s.pos[i] = mix(s.pos[i]!, ax + ox * inv * gatherR, 0.72 * k);
+      s.pos[i + 1] = mix(s.pos[i + 1]!, wantY, 0.9 * k);
+      s.pos[i + 2] = mix(s.pos[i + 2]!, s.cz + oz * inv * gatherR * 0.96, 0.72 * k);
       continue;
     }
 
@@ -2146,15 +2164,15 @@ function softenHoneyLipJoinRuntime(
         let r0 = Math.hypot(ox, oz) || 1;
         const inv = 1 / r0;
         const tRad = clamp01(r0 / Math.max(lipR * 1.2, 1e-4));
-        const funnel = (1 - tRad * tRad) * hang * 0.34;
+        const funnel = (1 - tRad * tRad) * hang * 0.48;
         const wantY = lipY - funnel;
-        const gatherR = mix(r0, mix(lipR, neckR * 0.92, 1 - tRad), 0.68 * k);
-        s.pos[i] = mix(s.pos[i]!, ax + ox * inv * gatherR, 0.72 * k);
-        s.pos[i + 1] = mix(s.pos[i + 1]!, wantY, 0.88 * k);
+        const gatherR = mix(r0, mix(lipR, neckR * 0.82, 1 - tRad), 0.78 * k);
+        s.pos[i] = mix(s.pos[i]!, ax + ox * inv * gatherR, 0.8 * k);
+        s.pos[i + 1] = mix(s.pos[i + 1]!, wantY, 0.92 * k);
         s.pos[i + 2] = mix(
           s.pos[i + 2]!,
           s.cz + oz * inv * gatherR * 0.96,
-          0.72 * k,
+          0.8 * k,
         );
         collar.add(vi);
         continue;
@@ -2242,6 +2260,7 @@ function softenHoneyLipJoinRuntime(
  * Post-sculpt: remap yielded column verts onto a parametric honey pendant
  * (thick lip → taper neck → pear bulb). Tip-seed lattice verts (tipU>0) are
  * hard-projected so rings stay pear-shaped — no UV-sphere snap.
+ * poured=true (dual-leg): elongated thin neck before bulb.
  */
 function sculptHoneyPendant(
   s: MeshSlot,
@@ -2256,12 +2275,17 @@ function sculptHoneyPendant(
   strength: number,
   /** Extra plump for spike-prone glyphs (p / .). */
   plump = 1,
+  /** Dual-leg poured profile: lip→thin-neck before bulb. */
+  poured = false,
 ): void {
   if (strength < 0.05) return;
   const halfH = Math.max((s.hi - s.lo) * 0.5, 1e-3);
   const hang = Math.min(
-    halfH * mix(0.75, 1.25, clamp01(maps.bulbGrow / 2.05)) * sagMul,
-    halfH * 1.65,
+    halfH *
+      mix(0.75, poured ? 1.4 : 1.25, clamp01(maps.bulbGrow / 2.05)) *
+      sagMul *
+      (poured ? 1.12 : 1),
+    halfH * (poured ? 1.85 : 1.65),
   );
   // Absolute radii from column width — pear needs vertical room vs width
   const baseR = Math.max(colW * 1.2, halfH * 0.1);
@@ -2269,22 +2293,32 @@ function sculptHoneyPendant(
   // Letter lip (s.lo is letter-only after bind) — pendant emerges from glyph
   const lipY = s.lo;
   // Bury pear lip into letter so funnel meets tip without a flat shelf
-  const pearLipY = lipY + hang * 0.1;
+  const pearLipY = lipY + hang * (poured ? 0.14 : 0.1);
   // Thick neck (concept: seamless stem blend, not wire / gap)
+  // Poured: allow thinner filament so neck reads before bulb
   let neckR = Math.min(
-    baseR * mix(0.95, 0.75, clamp01(maps.neckPinch * Math.min(neckMul, 1.3))),
-    hang * 0.34,
+    baseR *
+      mix(
+        poured ? 0.82 : 0.95,
+        poured ? 0.55 : 0.75,
+        clamp01(maps.neckPinch * Math.min(neckMul, poured ? 1.55 : 1.3)),
+      ),
+    hang * (poured ? 0.26 : 0.34),
   );
-  neckR = Math.max(neckR, baseR * 0.65, colW * 0.75);
-  const lipR = Math.max(neckR * 1.15, baseR * 0.95, colW * 0.92);
+  neckR = Math.max(neckR, baseR * (poured ? 0.48 : 0.65), colW * (poured ? 0.55 : 0.75));
+  const lipR = Math.max(
+    neckR * (poured ? 1.35 : 1.15),
+    baseR * (poured ? 1.05 : 0.95),
+    colW * (poured ? 1.05 : 0.92),
+  );
   let bulbR =
     baseR *
-    (0.9 + 0.38 * maps.bulbGrow * Math.min(bulbMul, 2.0)) *
-    mix(1.0, 1.18, clamp01(maps.bulbGrow / 2.05)) *
-    Math.min(plump, 1.15);
-  // Elongated pear: bulb diameter ≤ ~46% of hang
-  bulbR = Math.min(bulbR, hang * 0.27);
-  bulbR = Math.max(bulbR, neckR * 1.4);
+    (0.9 + 0.38 * maps.bulbGrow * Math.min(bulbMul, poured ? 1.75 : 2.0)) *
+    mix(1.0, poured ? 1.08 : 1.18, clamp01(maps.bulbGrow / 2.05)) *
+    Math.min(plump, poured ? 1.08 : 1.15);
+  // Elongated pear: bulb diameter ≤ ~46% of hang (tighter when poured)
+  bulbR = Math.min(bulbR, hang * (poured ? 0.22 : 0.27));
+  bulbR = Math.max(bulbR, neckR * (poured ? 1.35 : 1.4));
 
   for (let vi = 0; vi < n; vi++) {
     const seedU = s.tipU[vi]!;
@@ -2316,24 +2350,28 @@ function sculptHoneyPendant(
       const py = s.pos[i + 1]!;
       if (s.hasTipLattice) {
         const down = s.downFace[vi]!;
-        if (column >= 0.18 && by <= lipY + halfH * 0.28) {
+        if (column >= 0.18 && by <= lipY + halfH * (poured ? 0.36 : 0.28)) {
           let oxL = s.pos[i]! - ax;
           let ozL = s.pos[i + 2]! - s.cz;
           let rL = Math.hypot(oxL, ozL);
           const tRad = clamp01(rL / Math.max(lipR * 1.15, 1e-4));
           // Quadratic funnel: center sinks into neck; rim stays on glyph
-          const funnel = (1 - tRad * tRad) * hang * 0.4;
+          const funnel = (1 - tRad * tRad) * hang * (poured ? 0.62 : 0.55);
           const wantY = lipY - funnel;
-          const wJoin = 0.88 * strength * Math.max(column, down * 0.85);
+          const wJoin = 0.92 * strength * Math.max(column, down * 0.85);
           s.pos[i + 1] = mix(py, wantY, wJoin);
           if (rL > 1e-5) {
             const inv = 1 / rL;
-            const gatherR = mix(rL, mix(lipR, neckR * 0.9, 1 - tRad), 0.62 * wJoin);
-            s.pos[i] = mix(s.pos[i]!, ax + oxL * inv * gatherR, 0.62 * wJoin);
+            const gatherR = mix(
+              rL,
+              mix(lipR, neckR * (poured ? 0.72 : 0.8), 1 - tRad),
+              (poured ? 0.82 : 0.72) * wJoin,
+            );
+            s.pos[i] = mix(s.pos[i]!, ax + oxL * inv * gatherR, (poured ? 0.8 : 0.72) * wJoin);
             s.pos[i + 2] = mix(
               s.pos[i + 2]!,
               s.cz + ozL * inv * gatherR * 0.96,
-              0.62 * wJoin,
+              (poured ? 0.8 : 0.72) * wJoin,
             );
           }
         }
@@ -2374,6 +2412,7 @@ function sculptHoneyPendant(
       bulbR,
       ang,
       lipR,
+      poured,
     );
 
     const k = isSeed
@@ -2386,8 +2425,8 @@ function sculptHoneyPendant(
 
     // Reinforce pear radius (not sphere) on tip half
     if (isSeed && t > 0.35) {
-      const wantR = honeyPendantRadius(t, neckR, bulbR, lipR);
-      const wantY = honeyPendantY(t, pearLipY, hang);
+      const wantR = honeyPendantRadius(t, neckR, bulbR, lipR, poured);
+      const wantY = honeyPendantY(t, pearLipY, hang, poured);
       let px = s.pos[i]!;
       let py = s.pos[i + 1]!;
       let pz = s.pos[i + 2]!;
