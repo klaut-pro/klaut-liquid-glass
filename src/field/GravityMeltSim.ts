@@ -11,10 +11,10 @@
  * Roundness (geometry-level):
  * - Local tip remesh: continuous pear-of-revolution lattice (thick lip → taper
  *   neck → squashed teardrop bulb) — not UV-spheres on thin sticks
- * - Topological weld: tip ring-0 shares letter lip verts + bridge to ring-1
- *   so letter→filament→bulb is one indexed surface (no floating bulbs)
- * - Soft lip join: soft-boolean radial blend + Laplacian/Taubin on collar
- *   (letter lip + tip rings 0–2) so the join reads continuous, not faceted
+ * - Shared-vertex loft: letter bottom remapped onto tip ring-0 + denser loft
+ *   rings into the glyph so letter→filament→bulb is one indexed surface
+ *   (no dual-vertex collar crease / floating bulbs)
+ * - Soft lip join: soft-boolean radial blend + Laplacian/Taubin on loft collar
  * - Absolute pear / teardrop sculpt; tip-seed hard-project onto same profile
  * - Letter lip gather + off-column strand kill for seamless letter→neck join
  * - No attached drip sphere meshes (`dripBlobs: 0`)
@@ -135,18 +135,33 @@ export type WeldHoneyTipOpts = {
   rings: number;
   segs: number;
   hang: number;
+  /**
+   * Extra loft rings buried into the letter above tip ring-0 (shared-vertex
+   * remesh density). Default 5.
+   */
+  loftRings?: number;
 };
 
 export type WeldHoneyTipResult = {
   indices: Uint32Array;
+  /** Expanded position buffer when loft rings are inserted. */
+  positions: Float32Array;
+  /** Expanded tipU aligned with `positions`. */
+  tipU: Float32Array;
+  /** Expanded normals when loft rings are inserted (may be approximate). */
+  normals?: Float32Array;
   /** Tip ring-0 verts pinned to lip circle. */
   welded: number;
-  /** Collar triangles tip ring-0 ↔ letter lip. */
+  /** Loft / shoulder triangles connecting letter → tip ring-0. */
   bridges: number;
   /** Hanging letter strand verts snapped back to lip. */
   strandsKilled: number;
   /** Collar verts touched by soft-boolean / Laplacian remesh. */
   lipSoftened: number;
+  /** Letter bottom verts index-remapped onto tip ring-0 (shared vertex). */
+  loftShared: number;
+  /** Inserted loft-ring vertex count. */
+  loftVerts: number;
 };
 
 export type SoftenHoneyLipOpts = {
@@ -162,6 +177,10 @@ export type SoftenHoneyLipOpts = {
   blendK?: number;
   /** Laplacian/Taubin passes on collar (default 5). */
   smoothPasses?: number;
+  /** Extra loft rings inserted above tip ring-0 (for collar extent). */
+  loftRings?: number;
+  /** Vertex count after loft insertion (positions/tipU length/3). */
+  totalVertCount?: number;
 };
 
 /**
@@ -288,24 +307,137 @@ export function buildHoneyTipCapsuleBuffers(
 }
 
 /**
- * Topologically weld appended tip lattices into the letter mesh.
+ * Densify letter bottom topology (1–2 midpoint subdiv passes on near-lip
+ * on-column tris) so shared-vertex loft has enough rim samples.
+ * Mutates geometry buffers; returns new letter vert count + index buffer.
+ */
+export function subdivideLetterLipBand(
+  positions: Float32Array,
+  normals: Float32Array | undefined,
+  indexArr: Uint32Array,
+  opts: {
+    columnXs: number[];
+    colW: number;
+    lipY: number;
+    cz: number;
+    /** Subdivision passes (default 2). */
+    passes?: number;
+  },
+): {
+  positions: Float32Array;
+  normals?: Float32Array;
+  indices: Uint32Array;
+  vertCount: number;
+  added: number;
+} {
+  const cols = opts.columnXs.length ? opts.columnXs : [0];
+  const colW = Math.max(opts.colW, 1e-4);
+  const lipY = opts.lipY;
+  const cz = opts.cz;
+  const passes = Math.max(0, Math.min(3, Math.round(opts.passes ?? 2)));
+
+  let posArr = Array.from(positions);
+  let norArr = normals ? Array.from(normals) : null;
+  let indices = Array.from(indexArr);
+  let added = 0;
+
+  if (passes === 0) {
+    return {
+      positions,
+      normals,
+      indices: indexArr,
+      vertCount: (positions.length / 3) | 0,
+      added: 0,
+    };
+  }
+
+  const onColumnLip = (ax: number, ay: number, az: number): boolean => {
+    if (ay > lipY + colW * 0.4) return false;
+    for (let ci = 0; ci < cols.length; ci++) {
+      const dx = ax - cols[ci]!;
+      const dz = az - cz;
+      if (Math.hypot(dx, dz) < colW * 1.25) return true;
+    }
+    return false;
+  };
+
+  for (let pass = 0; pass < passes; pass++) {
+    const edgeMid = new Map<string, number>();
+    const midOf = (a: number, b: number): number => {
+      const lo = Math.min(a, b);
+      const hi = Math.max(a, b);
+      const key = `${lo}:${hi}`;
+      const hit = edgeMid.get(key);
+      if (hit !== undefined) return hit;
+      const ia = a * 3;
+      const ib = b * 3;
+      const mx = (posArr[ia]! + posArr[ib]!) * 0.5;
+      const my = (posArr[ia + 1]! + posArr[ib + 1]!) * 0.5;
+      const mz = (posArr[ia + 2]! + posArr[ib + 2]!) * 0.5;
+      const vi = (posArr.length / 3) | 0;
+      posArr.push(mx, my, mz);
+      if (norArr) {
+        const nx = (norArr[ia]! + norArr[ib]!) * 0.5;
+        const ny = (norArr[ia + 1]! + norArr[ib + 1]!) * 0.5;
+        const nz = (norArr[ia + 2]! + norArr[ib + 2]!) * 0.5;
+        const nlen = Math.hypot(nx, ny, nz) || 1;
+        norArr.push(nx / nlen, ny / nlen, nz / nlen);
+      }
+      edgeMid.set(key, vi);
+      added++;
+      return vi;
+    };
+
+    const next: number[] = [];
+    for (let t = 0; t < indices.length; t += 3) {
+      const a = indices[t]!;
+      const b = indices[t + 1]!;
+      const c = indices[t + 2]!;
+      const ax = (posArr[a * 3]! + posArr[b * 3]! + posArr[c * 3]!) / 3;
+      const ay = (posArr[a * 3 + 1]! + posArr[b * 3 + 1]! + posArr[c * 3 + 1]!) / 3;
+      const az = (posArr[a * 3 + 2]! + posArr[b * 3 + 2]! + posArr[c * 3 + 2]!) / 3;
+      if (!onColumnLip(ax, ay, az)) {
+        next.push(a, b, c);
+        continue;
+      }
+      const ab = midOf(a, b);
+      const bc = midOf(b, c);
+      const ca = midOf(c, a);
+      next.push(a, ab, ca, ab, b, bc, ca, bc, c, ab, bc, ca);
+    }
+    indices = next;
+  }
+
+  return {
+    positions: Float32Array.from(posArr),
+    normals: norArr ? Float32Array.from(norArr) : undefined,
+    indices: Uint32Array.from(indices),
+    vertCount: (posArr.length / 3) | 0,
+    added,
+  };
+}
+
+/**
+ * Shared-vertex loft remesh: weld tip lattices into the letter mesh.
  *
- * Keeps tip ring-0 as its own verts (avoids fan-collapse when many tip
- * samples map onto few letter lip verts — that previously made the neck
- * read as jagged strands + a floating bulb).
+ * Prior dual-vertex collar (tip ring-0 + bridge tris to letter lip) left a
+ * faceted crease. This remeshes the letter bottom onto tip ring-0 indices and
+ * inserts denser loft rings so letter→filament is topologically continuous.
  *
- * 1. Kill hanging letter lip strands (snap back onto lip disk).
- * 2. Pin tip ring-0 slightly into the letter (open bottom — no flat hard shelf).
- * 3. Add collar triangles: each tip ring-0 sample ↔ 2 nearest letter lip verts.
- * 4. Soft-boolean + Laplacian remesh on collar (letter lip + tip rings 0–2).
+ * 1. Kill hanging letter lip strands (snap onto tip ring-0 / lip disk).
+ * 2. Insert loft rings above tip ring-0 (letter interior → lip).
+ * 3. Pin tip ring-0; index-remap letter bottom verts → tip ring-0 (shared).
+ * 4. Loft quads: shoulder → loft rings → tip ring-0 (same verts as tip lattice).
+ * 5. Soft-boolean + Laplacian on loft collar.
  *
- * Mutates `positions` / `tipU` in place; returns a new index buffer.
+ * May expand `positions` / `tipU` when loft rings are inserted.
  */
 export function weldHoneyTipIntoLetter(
   positions: Float32Array,
   tipU: Float32Array,
   indexArr: Uint32Array,
   opts: WeldHoneyTipOpts,
+  normals?: Float32Array,
 ): WeldHoneyTipResult {
   const cols = opts.columnXs.length ? opts.columnXs : [0];
   const rings = Math.max(2, opts.rings);
@@ -315,134 +447,328 @@ export function weldHoneyTipIntoLetter(
   const lipY = opts.lipY;
   const cz = opts.cz;
   const hang = Math.max(opts.hang, colW * 2);
-  const vertsPerCol = rings * segs + 1;
+  const loftRings = Math.max(3, Math.min(10, Math.round(opts.loftRings ?? 6)));
+  const tipVertsPerCol = rings * segs + 1;
+  const tipTotal = cols.length * tipVertsPerCol;
+  const loftVertsPerCol = loftRings * segs;
+  const loftTotal = cols.length * loftVertsPerCol;
 
+  // Expand buffers: [letter | tip lattices | loft rings]
+  const oldN = (positions.length / 3) | 0;
+  const expectedTipEnd = letterN + tipTotal;
+  if (oldN < expectedTipEnd) {
+    return {
+      indices: indexArr,
+      positions,
+      tipU,
+      normals,
+      welded: 0,
+      bridges: 0,
+      strandsKilled: 0,
+      lipSoftened: 0,
+      loftShared: 0,
+      loftVerts: 0,
+    };
+  }
+
+  const newN = expectedTipEnd + loftTotal;
+  let pos = positions;
+  let tip = tipU;
+  let nor = normals;
+  if (newN > oldN) {
+    const p2 = new Float32Array(newN * 3);
+    p2.set(positions);
+    pos = p2;
+    const t2 = new Float32Array(newN);
+    t2.set(tipU);
+    tip = t2;
+    if (normals) {
+      const n2 = new Float32Array(newN * 3);
+      n2.set(normals);
+      nor = n2;
+    }
+  }
+
+  const loftBase0 = expectedTipEnd;
   let welded = 0;
   let strandsKilled = 0;
+  let loftShared = 0;
   const bridgeTris: number[] = [];
+  // Identity remap; letter bottom → tip ring-0 for shared vertices
+  const remap = new Int32Array(newN);
+  for (let i = 0; i < newN; i++) remap[i] = i;
 
   for (let ci = 0; ci < cols.length; ci++) {
     const ax = cols[ci]!;
-    const base = letterN + ci * vertsPerCol;
-    if (base + vertsPerCol > ((positions.length / 3) | 0)) continue;
+    const tipBase = letterN + ci * tipVertsPerCol;
+    const loftBase = loftBase0 + ci * loftVertsPerCol;
 
     type LipVert = { vi: number; ang: number; r: number; y: number };
-    const lipVerts: LipVert[] = [];
+    const bottomCapVerts: LipVert[] = [];
+    const shoulderVerts: LipVert[] = [];
 
     for (let vi = 0; vi < letterN; vi++) {
       const i = vi * 3;
-      const x = positions[i]!;
-      const y = positions[i + 1]!;
-      const z = positions[i + 2]!;
+      const x = pos[i]!;
+      const y = pos[i + 1]!;
+      const z = pos[i + 2]!;
       const dx = x - ax;
       const dz = z - cz;
       const r = Math.hypot(dx, dz);
-      if (r > colW * 2.1) continue;
-      if (y > lipY + colW * 0.65) continue;
+      if (r > colW * 2.15) continue;
+      if (y > lipY + colW * 1.05) continue;
 
-      // Kill jagged strands hanging below the lip — snap onto lip disk
-      if (y < lipY - colW * 0.04) {
+      // Kill jagged strands — position snap only (never remap wall verts onto
+      // tip ring-0: that fans side tris into long strand shards).
+      if (y < lipY - colW * 0.03) {
         const ang = Math.atan2(dz, dx || 1e-8);
-        const stemR = Math.min(Math.max(r, colW * 0.45), colW * 1.05);
-        positions[i] = ax + Math.cos(ang) * stemR;
-        positions[i + 1] = lipY + hang * 0.008;
-        positions[i + 2] = cz + Math.sin(ang) * stemR * 0.96;
-        tipU[vi] = 0;
+        const stemR = Math.min(Math.max(r, colW * 0.55), colW * 1.0);
+        pos[i] = ax + Math.cos(ang) * stemR;
+        pos[i + 1] = lipY + hang * 0.01;
+        pos[i + 2] = cz + Math.sin(ang) * stemR * 0.96;
+        tip[vi] = 0;
         strandsKilled++;
       }
 
-      const y2 = positions[i + 1]!;
-      const dx2 = positions[i]! - ax;
-      const dz2 = positions[i + 2]! - cz;
+      const y2 = pos[i + 1]!;
+      const dx2 = pos[i]! - ax;
+      const dz2 = pos[i + 2]! - cz;
       const r2 = Math.hypot(dx2, dz2);
-      if (y2 > lipY + colW * 0.5) continue;
-      if (r2 > colW * 1.85) continue;
-      lipVerts.push({
-        vi,
-        ang: Math.atan2(dz2, dx2 || 1e-8),
-        r: r2,
-        y: y2,
-      });
+      if (r2 > colW * 1.9) continue;
+      const ang = Math.atan2(dz2, dx2 || 1e-8);
+      const lv = { vi, ang, r: r2, y: y2 };
+      // Interior bottom-cap only — safe to share with tip without wall fans
+      if (y2 <= lipY + colW * 0.18 && r2 < colW * 0.72) {
+        bottomCapVerts.push(lv);
+      } else if (y2 <= lipY + colW * 0.95 && r2 >= colW * 0.45) {
+        shoulderVerts.push(lv);
+      }
     }
 
-    // Stem-matched lip radius from letter samples (fallback colW)
     let lipR = colW * 0.95;
-    if (lipVerts.length) {
+    if (shoulderVerts.length) {
       let sumR = 0;
-      for (const lv of lipVerts) sumR += lv.r;
-      lipR = Math.max(colW * 0.7, Math.min(colW * 1.25, sumR / lipVerts.length));
+      for (const lv of shoulderVerts) sumR += lv.r;
+      lipR = Math.max(colW * 0.7, Math.min(colW * 1.25, sumR / shoulderVerts.length));
+    } else if (bottomCapVerts.length) {
+      let sumR = 0;
+      for (const lv of bottomCapVerts) sumR += lv.r;
+      lipR = Math.max(colW * 0.7, Math.min(colW * 1.25, sumR / bottomCapVerts.length));
     }
 
-    // Pin tip ring-0 slightly ABOVE lipY (buried into letter open bottom) so
-    // the visible join is the soft neck below — not a flat hard shelf.
-    const bury = hang * 0.012;
+    const neckR = Math.max(colW * 0.86, lipR * 0.88);
+    const bulbR = Math.max(colW * 1.22, neckR * 1.4);
+    const bury = hang * 0.01;
+
+    // Pin tip ring-0 on lip circle (shared loft foot)
     for (let s = 0; s < segs; s++) {
-      const tipVi = base + s;
+      const tipVi = tipBase + s;
       const i = tipVi * 3;
       const ang = (s / segs) * Math.PI * 2;
-      positions[i] = ax + Math.cos(ang) * lipR;
-      positions[i + 1] = lipY + bury;
-      positions[i + 2] = cz + Math.sin(ang) * lipR * 0.96;
-      tipU[tipVi] = 0.015;
+      pos[i] = ax + Math.cos(ang) * lipR;
+      pos[i + 1] = lipY + bury;
+      pos[i + 2] = cz + Math.sin(ang) * lipR * 0.96;
+      tip[tipVi] = 0.012;
+      if (nor) {
+        nor[i] = Math.cos(ang);
+        nor[i + 1] = 0.15;
+        nor[i + 2] = Math.sin(ang);
+      }
       welded++;
     }
 
-    // Soft-seal: pull letter lip verts toward tip ring-0 circle (keep tipU=0)
-    for (const lv of lipVerts) {
-      const i = lv.vi * 3;
-      const ang = lv.ang;
-      const tx = ax + Math.cos(ang) * lipR;
-      const ty = lipY + bury * 0.35;
-      const tz = cz + Math.sin(ang) * lipR * 0.96;
-      positions[i] = mix(positions[i]!, tx, 0.62);
-      positions[i + 1] = mix(positions[i + 1]!, ty, 0.55);
-      positions[i + 2] = mix(positions[i + 2]!, tz, 0.62);
-      tipU[lv.vi] = 0;
+    // Denser loft rings: letter interior → tip ring-0 (shared foot)
+    for (let lr = 0; lr < loftRings; lr++) {
+      // lr=0 near shoulder (higher Y); lr=loftRings-1 just above tip ring-0
+      const t = (lr + 1) / (loftRings + 1);
+      const u = mix(0.002, 0.055, t);
+      const yLift = mix(colW * 0.72, bury * 1.2, Math.pow(t, 0.85));
+      const ringR = mix(lipR * 1.08, lipR, Math.pow(t, 0.7));
+      for (let s = 0; s < segs; s++) {
+        const vi = loftBase + lr * segs + s;
+        const i = vi * 3;
+        const ang = (s / segs) * Math.PI * 2;
+        const [tx, ty, tz] = honeyPendantPoint(
+          u,
+          ax,
+          lipY + yLift,
+          cz,
+          hang,
+          neckR,
+          bulbR,
+          ang,
+          ringR,
+        );
+        // Soft-boolean stem vs pear at loft
+        const pearR = Math.hypot(tx - ax, (tz - cz) / 0.96);
+        const blendR = -softMin(-ringR, -pearR, colW * 0.28);
+        pos[i] = ax + Math.cos(ang) * blendR;
+        pos[i + 1] = ty;
+        pos[i + 2] = cz + Math.sin(ang) * blendR * 0.96;
+        tip[vi] = u;
+        if (nor) {
+          nor[i] = Math.cos(ang);
+          nor[i + 1] = 0.35;
+          nor[i + 2] = Math.sin(ang);
+        }
+      }
     }
 
-    if (!lipVerts.length) continue;
-
-    // Collar triangles: tip ring-0 ↔ nearest letter lip verts (sealed join)
-    for (let s = 0; s < segs; s++) {
-      const tipA = base + s;
-      const tipB = base + ((s + 1) % segs);
-      const angA = (s / segs) * Math.PI * 2;
-      const angB = (((s + 1) % segs) / segs) * Math.PI * 2;
-
-      const nearest = (ang: number): number => {
-        let bestVi = lipVerts[0]!.vi;
-        let bestD = Infinity;
-        for (const lv of lipVerts) {
-          let dAng = Math.abs(lv.ang - ang);
-          if (dAng > Math.PI) dAng = Math.PI * 2 - dAng;
-          const score = dAng + Math.abs(lv.y - lipY) / Math.max(colW, 1e-4) * 0.15;
-          if (score < bestD) {
-            bestD = score;
-            bestVi = lv.vi;
-          }
+    // Shared-vertex: interior bottom-cap → tip ring-0 only (keep wall topology)
+    const nearestTipSeg = (ang: number): number => {
+      let best = 0;
+      let bestD = Infinity;
+      for (let s = 0; s < segs; s++) {
+        const a = (s / segs) * Math.PI * 2;
+        let d = Math.abs(a - ang);
+        if (d > Math.PI) d = Math.PI * 2 - d;
+        if (d < bestD) {
+          bestD = d;
+          best = s;
         }
-        return bestVi;
-      };
+      }
+      return best;
+    };
 
-      const la = nearest(angA);
-      const lb = nearest(angB);
-      // Letter above (+Y), tip below (−Y): la→lb→tipB→tipA for outward normals
-      if (la === lb) {
-        bridgeTris.push(la, tipB, tipA);
-      } else {
-        bridgeTris.push(la, lb, tipB, la, tipB, tipA);
+    for (const lv of bottomCapVerts) {
+      const s = nearestTipSeg(lv.ang);
+      remap[lv.vi] = tipBase + s;
+      loftShared++;
+    }
+
+    // Lowest wall band → loft ring 0 (shared, higher Y than tip — short fillets,
+    // not tip-ring fans that shred into strands under pear sculpt).
+    if (loftRings > 0) {
+      for (const lv of shoulderVerts) {
+        if (lv.y > lipY + colW * 0.42) continue;
+        if (lv.r < colW * 0.5 || lv.r > colW * 1.35) continue;
+        const s = nearestTipSeg(lv.ang);
+        const loftVi = loftBase + s;
+        remap[lv.vi] = loftVi;
+        tip[lv.vi] = Math.max(tip[lv.vi]!, tip[loftVi]!);
+        loftShared++;
+      }
+    }
+
+    // Loft quads between loft rings (shared topology into tip ring-0)
+    for (let lr = 0; lr < loftRings - 1; lr++) {
+      for (let s = 0; s < segs; s++) {
+        const s2 = (s + 1) % segs;
+        const a = loftBase + lr * segs + s;
+        const b = loftBase + lr * segs + s2;
+        const c = loftBase + (lr + 1) * segs + s2;
+        const d = loftBase + (lr + 1) * segs + s;
+        // outward when descending −Y
+        bridgeTris.push(a, d, c, a, c, b);
+      }
+    }
+    // Last loft ring → tip ring-0 (SHARED verts with tip lattice)
+    if (loftRings > 0) {
+      const last = loftRings - 1;
+      for (let s = 0; s < segs; s++) {
+        const s2 = (s + 1) % segs;
+        const a = loftBase + last * segs + s;
+        const b = loftBase + last * segs + s2;
+        const c = tipBase + s2;
+        const d = tipBase + s;
+        bridgeTris.push(a, d, c, a, c, b);
+      }
+    }
+
+    // Shoulder wall → first loft ring — denser seal; verts already shared via remap
+    // still add loft fill for angular gaps where remap missed.
+    const topRing = loftRings > 0 ? loftBase : tipBase;
+    if (shoulderVerts.length) {
+      for (let s = 0; s < segs; s++) {
+        const tipA = topRing + s;
+        const tipB = topRing + ((s + 1) % segs);
+        const angA = (s / segs) * Math.PI * 2;
+        const angB = (((s + 1) % segs) / segs) * Math.PI * 2;
+        const nearest = (ang: number): number => {
+          let bestVi = shoulderVerts[0]!.vi;
+          let bestD = Infinity;
+          for (const lv of shoulderVerts) {
+            if (lv.y > lipY + colW * 0.7) continue;
+            let dAng = Math.abs(lv.ang - ang);
+            if (dAng > Math.PI) dAng = Math.PI * 2 - dAng;
+            const score =
+              dAng + (Math.abs(lv.y - (lipY + colW * 0.55)) / Math.max(colW, 1e-4)) * 0.1;
+            if (score < bestD) {
+              bestD = score;
+              bestVi = lv.vi;
+            }
+          }
+          return bestVi;
+        };
+        const la0 = nearest(angA);
+        const lb0 = nearest(angB);
+        const la = remap[la0]!;
+        const lb = remap[lb0]!;
+        // Prefer loft/tip shared verts; skip if both already on topRing
+        if (la === tipA && lb === tipB) continue;
+        if (la === lb) {
+          bridgeTris.push(la, tipB, tipA);
+        } else {
+          bridgeTris.push(la, lb, tipB, la, tipB, tipA);
+        }
       }
     }
   }
 
-  const out = new Uint32Array(indexArr.length + bridgeTris.length);
-  out.set(indexArr);
-  for (let i = 0; i < bridgeTris.length; i++) {
-    out[indexArr.length + i] = bridgeTris[i]!;
+  // Apply shared-vertex remap to all indices
+  const remapped = new Uint32Array(indexArr.length);
+  for (let i = 0; i < indexArr.length; i++) {
+    const v = indexArr[i]!;
+    remapped[i] = v < remap.length ? remap[v]! : v;
   }
 
-  // Open-bottom bury + tip-ring remesh (letter body stays; join hidden)
-  const soft = softenHoneyLipJoin(positions, tipU, {
+  // Drop degenerate tris after remap + drop flat bottom-cap faces still on letter
+  const clean: number[] = [];
+  for (let t = 0; t < remapped.length; t += 3) {
+    const a = remapped[t]!;
+    const b = remapped[t + 1]!;
+    const c = remapped[t + 2]!;
+    if (a === b || b === c || a === c) continue;
+    // Drop near-lip flat caps (all 3 verts letter-side, low Y, on-column) so loft owns join
+    if (a < letterN && b < letterN && c < letterN) {
+      const ay = pos[a * 3 + 1]!;
+      const by = pos[b * 3 + 1]!;
+      const cy = pos[c * 3 + 1]!;
+      if (ay <= lipY + colW * 0.12 && by <= lipY + colW * 0.12 && cy <= lipY + colW * 0.12) {
+        const axv = (pos[a * 3]! + pos[b * 3]! + pos[c * 3]!) / 3;
+        let onCol = false;
+        for (let ci = 0; ci < cols.length; ci++) {
+          if (Math.abs(axv - cols[ci]!) < colW * 1.15) {
+            onCol = true;
+            break;
+          }
+        }
+        if (onCol) continue;
+      }
+    }
+    clean.push(a, b, c);
+  }
+  for (let i = 0; i < bridgeTris.length; i++) {
+    const v = bridgeTris[i]!;
+    bridgeTris[i] = v < remap.length ? remap[v]! : v;
+  }
+  // Filter degenerate bridge tris
+  const bridgesClean: number[] = [];
+  for (let t = 0; t < bridgeTris.length; t += 3) {
+    const a = bridgeTris[t]!;
+    const b = bridgeTris[t + 1]!;
+    const c = bridgeTris[t + 2]!;
+    if (a === b || b === c || a === c) continue;
+    bridgesClean.push(a, b, c);
+  }
+
+  const out = new Uint32Array(clean.length + bridgesClean.length);
+  for (let i = 0; i < clean.length; i++) out[i] = clean[i]!;
+  for (let i = 0; i < bridgesClean.length; i++) {
+    out[clean.length + i] = bridgesClean[i]!;
+  }
+
+  const soft = softenHoneyLipJoin(pos, tip, {
     columnXs: cols,
     colW,
     lipY,
@@ -451,31 +777,36 @@ export function weldHoneyTipIntoLetter(
     rings,
     segs,
     hang,
-    blendK: 0.35,
-    smoothPasses: 7,
+    blendK: 0.4,
+    smoothPasses: 9,
+    loftRings,
+    totalVertCount: newN,
   });
 
   return {
     indices: out,
+    positions: pos,
+    tipU: tip,
+    normals: nor,
     welded,
-    bridges: (bridgeTris.length / 3) | 0,
+    bridges: (bridgesClean.length / 3) | 0,
     strandsKilled: strandsKilled + soft.strandsKilled,
     lipSoftened: soft.softened,
+    loftShared,
+    loftVerts: loftTotal,
   };
 }
 
 /**
  * Soften the letter→filament join into one continuous surface.
  *
- * Strategy (open bottom + tip remesh):
- * 1. Kill letter strands hanging below lip (snap UP onto lip disk — no pear morph
- *    of letter tris, which shredded the collar into shards).
- * 2. Bury tip rings 0–4 into the letter / upper neck on the pear profile so the
- *    visible join is inside the glyph volume.
- * 3. Soft-boolean only on tip-ring radii (letter stem vs pear) — not letter verts.
- * 4. Laplacian/Taubin on tip collar rings only.
+ * Strategy (shared-vertex loft):
+ * 1. Kill letter strands hanging below lip (snap UP — no pear morph of letter
+ *    tris, which shredded the collar into shards).
+ * 2. Project loft rings + tip rings 0–6 onto pear/soft-boolean profile.
+ * 3. Laplacian/Taubin on loft + tip collar (and nearby letter shoulder).
  *
- * Call after weld (also invoked inside \weldHoneyTipIntoLetter\).
+ * Call after weld (also invoked inside `weldHoneyTipIntoLetter`).
  */
 export function softenHoneyLipJoin(
   positions: Float32Array,
@@ -490,10 +821,14 @@ export function softenHoneyLipJoin(
   const lipY = opts.lipY;
   const cz = opts.cz;
   const hang = Math.max(opts.hang, colW * 2);
-  const blendK = Math.max(0.15, opts.blendK ?? 0.35) * colW;
-  const passes = Math.max(0, Math.min(12, Math.round(opts.smoothPasses ?? 7)));
-  const vertsPerCol = rings * segs + 1;
-  const n = (positions.length / 3) | 0;
+  const blendK = Math.max(0.15, opts.blendK ?? 0.4) * colW;
+  const passes = Math.max(0, Math.min(14, Math.round(opts.smoothPasses ?? 9)));
+  const loftRings = Math.max(0, opts.loftRings ?? 0);
+  const tipVertsPerCol = rings * segs + 1;
+  const tipTotal = cols.length * tipVertsPerCol;
+  const loftVertsPerCol = loftRings * segs;
+  const loftBase0 = letterN + tipTotal;
+  const n = opts.totalVertCount ?? ((positions.length / 3) | 0);
 
   let softened = 0;
   let strandsKilled = 0;
@@ -501,62 +836,97 @@ export function softenHoneyLipJoin(
 
   for (let ci = 0; ci < cols.length; ci++) {
     const ax = cols[ci]!;
-    const base = letterN + ci * vertsPerCol;
-    if (base + vertsPerCol > n) continue;
+    const tipBase = letterN + ci * tipVertsPerCol;
+    const loftBase = loftBase0 + ci * loftVertsPerCol;
+    if (tipBase + tipVertsPerCol > n) continue;
 
     const neckR = colW * 0.88;
     const bulbR = Math.max(colW * 1.22, neckR * 1.4);
     const lipR = Math.max(colW * 0.95, neckR * 1.12);
 
-    // Letter: open bottom cap + strand kill — tip owns the visible pendant
+    // Letter: strand kill + open-bottom gather (no pear morph of letter tris)
     for (let vi = 0; vi < letterN; vi++) {
       const i = vi * 3;
       const x = positions[i]!;
       const y = positions[i + 1]!;
       const z = positions[i + 2]!;
-      if (Math.abs(x - ax) > colW * 1.35) continue;
+      if (Math.abs(x - ax) > colW * 1.4) continue;
       const dx = x - ax;
       const dz = z - cz;
       const r = Math.hypot(dx, dz);
-      if (r > colW * 1.55) continue;
-      if (y > lipY + colW * 0.55) continue;
+      if (r > colW * 1.6) continue;
+      if (y > lipY + colW * 0.9) continue;
 
-      if (y < lipY - colW * 0.02) {
-        // Strand kill — snap UP
+      if (y < lipY - colW * 0.015) {
         const ang = Math.atan2(dz, dx || 1e-8);
         const stemR = Math.min(Math.max(r, colW * 0.5), lipR * 1.05);
         positions[i] = ax + Math.cos(ang) * stemR;
-        positions[i + 1] = lipY + hang * 0.01;
+        positions[i + 1] = lipY + hang * 0.008;
         positions[i + 2] = cz + Math.sin(ang) * stemR * 0.96;
         tipU[vi] = 0;
         strandsKilled++;
         softened++;
-      } else if (r < colW * 1.15 && y <= lipY + colW * 0.28) {
-        // Open bottom: pull on-column lip verts UP into the glyph so the
-        // flat bottom face no longer forms a hard shelf over the tip root.
+        collar.add(vi);
+      } else if (r < colW * 1.2 && y <= lipY + colW * 0.55) {
         const ang = Math.atan2(dz, dx || 1e-8);
-        const lift = mix(colW * 0.08, colW * 0.32, clamp01(1 - r / (colW * 1.15)));
-        const gatherR = mix(r, lipR * 0.92, 0.45);
-        positions[i] = mix(x, ax + Math.cos(ang) * gatherR, 0.55);
-        positions[i + 1] = mix(y, lipY + lift, 0.72);
-        positions[i + 2] = mix(z, cz + Math.sin(ang) * gatherR * 0.96, 0.55);
+        const lift = mix(colW * 0.06, colW * 0.38, clamp01(1 - r / (colW * 1.2)));
+        const gatherR = mix(r, lipR * 0.96, 0.4);
+        positions[i] = mix(x, ax + Math.cos(ang) * gatherR, 0.48);
+        positions[i + 1] = mix(y, lipY + lift, 0.55);
+        positions[i + 2] = mix(z, cz + Math.sin(ang) * gatherR * 0.96, 0.48);
         tipU[vi] = 0;
         softened++;
+        if (y <= lipY + colW * 0.45) collar.add(vi);
       }
     }
 
-    // Tip rings 0–4: continuous pear from buried open bottom → upper neck
-    const ringMax = Math.min(5, rings);
+    // Inserted loft rings: continuous soft-boolean pear into letter
+    if (loftRings > 0 && loftBase + loftVertsPerCol <= n) {
+      for (let lr = 0; lr < loftRings; lr++) {
+        const t = (lr + 1) / (loftRings + 1);
+        const u = mix(0.002, 0.06, t);
+        const yLift = mix(colW * 0.7, hang * 0.008, Math.pow(t, 0.85));
+        for (let s = 0; s < segs; s++) {
+          const vi = loftBase + lr * segs + s;
+          const ang = (s / segs) * Math.PI * 2;
+          const [tx, ty, tz] = honeyPendantPoint(
+            u,
+            ax,
+            lipY + yLift,
+            cz,
+            hang,
+            neckR,
+            bulbR,
+            ang,
+            lipR,
+          );
+          const i = vi * 3;
+          const pearR = Math.hypot(tx - ax, (tz - cz) / 0.96);
+          const blendR = -softMin(-lipR, -pearR, blendK);
+          const c = Math.cos(ang);
+          const sn = Math.sin(ang);
+          positions[i] = mix(positions[i]!, ax + c * blendR, 0.92);
+          positions[i + 1] = mix(positions[i + 1]!, ty, 0.92);
+          positions[i + 2] = mix(positions[i + 2]!, cz + sn * blendR * 0.96, 0.92);
+          tipU[vi] = Math.max(tipU[vi]!, u);
+          collar.add(vi);
+          softened++;
+        }
+      }
+    }
+
+    // Tip rings 0–7: continuous pear from shared lip → upper neck
+    const ringMax = Math.min(8, rings);
     for (let r = 0; r < ringMax; r++) {
       const rN = r / Math.max(rings - 1, 1);
-      const u = mix(0.008, 0.34, Math.pow(rN, 0.78));
+      const u = mix(0.01, 0.38, Math.pow(rN, 0.75));
       for (let s = 0; s < segs; s++) {
-        const vi = base + r * segs + s;
+        const vi = tipBase + r * segs + s;
         const ang = (s / segs) * Math.PI * 2;
         const [tx, ty, tz] = honeyPendantPoint(
           u,
           ax,
-          lipY + hang * 0.02,
+          lipY + hang * 0.015,
           cz,
           hang,
           neckR,
@@ -569,7 +939,7 @@ export function softenHoneyLipJoin(
         const blendR = -softMin(-lipR, -pearR, blendK);
         const c = Math.cos(ang);
         const sn = Math.sin(ang);
-        const snap = mix(0.98, 0.7, r / Math.max(ringMax - 1, 1));
+        const snap = mix(0.98, 0.72, r / Math.max(ringMax - 1, 1));
         positions[i] = mix(positions[i]!, ax + c * blendR, snap);
         positions[i + 1] = mix(positions[i + 1]!, ty, snap);
         positions[i + 2] = mix(positions[i + 2]!, cz + sn * blendR * 0.96, snap);
@@ -1776,20 +2146,48 @@ function softenHoneyLipJoinRuntime(
     const bx = s.base[i]!;
     const near = Math.abs(bx - ax) / Math.max(colW, 1e-4);
 
-    // Letter strand kill only
-    if (u <= 1e-5 && near < 1.3 && s.pos[i + 1]! < lipY - colW * 0.05) {
-      let ox = s.pos[i]! - ax;
-      let oz = s.pos[i + 2]! - s.cz;
-      let r0 = Math.hypot(ox, oz) || 1;
-      const inv = 1 / r0;
-      const stemR = Math.min(Math.max(r0, colW * 0.5), lipR);
-      s.pos[i] = mix(s.pos[i]!, ax + ox * inv * stemR, 0.9 * k);
-      s.pos[i + 1] = mix(s.pos[i + 1]!, lipY + colW * 0.01, 0.95 * k);
-      s.pos[i + 2] = mix(s.pos[i + 2]!, s.cz + oz * inv * stemR * 0.96, 0.9 * k);
+    // Letter strand kill + gather shoulder into loft root
+    if (u <= 1e-5 && near < 1.3) {
+      if (s.pos[i + 1]! < lipY - colW * 0.05) {
+        let ox = s.pos[i]! - ax;
+        let oz = s.pos[i + 2]! - s.cz;
+        let r0 = Math.hypot(ox, oz) || 1;
+        const inv = 1 / r0;
+        const stemR = Math.min(Math.max(r0, colW * 0.5), lipR);
+        s.pos[i] = mix(s.pos[i]!, ax + ox * inv * stemR, 0.9 * k);
+        s.pos[i + 1] = mix(s.pos[i + 1]!, lipY + colW * 0.01, 0.95 * k);
+        s.pos[i + 2] = mix(s.pos[i + 2]!, s.cz + oz * inv * stemR * 0.96, 0.9 * k);
+        continue;
+      }
+      // Shoulder band: pull toward pear lip so dual-vertex seams don't reopen
+      if (s.pos[i + 1]! <= lipY + colW * 0.55 && near < 1.05) {
+        let ox = s.pos[i]! - ax;
+        let oz = s.pos[i + 2]! - s.cz;
+        let r0 = Math.hypot(ox, oz);
+        if (r0 > 1e-5) {
+          const ang = Math.atan2(oz, ox);
+          const [px, py, pz] = honeyPendantPoint(
+            0.04,
+            ax,
+            lipY + hang * 0.02,
+            s.cz,
+            hang,
+            neckR,
+            bulbR,
+            ang,
+            lipR,
+          );
+          const snap = 0.45 * k;
+          s.pos[i] = mix(s.pos[i]!, px, snap);
+          s.pos[i + 1] = mix(s.pos[i + 1]!, py, snap * 0.7);
+          s.pos[i + 2] = mix(s.pos[i + 2]!, pz, snap);
+          collar.add(vi);
+        }
+      }
       continue;
     }
 
-    if (!(u > 1e-5 && u <= 0.34)) continue;
+    if (!(u > 1e-5 && u <= 0.42)) continue;
 
     let ox = s.pos[i]! - ax;
     let oz = s.pos[i + 2]! - s.cz;

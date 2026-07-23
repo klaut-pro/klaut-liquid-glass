@@ -151,7 +151,9 @@ async function main() {
     let welded = 0,
       bridges = 0,
       strandsKilled = 0,
-      lipSoftened = 0;
+      lipSoftened = 0,
+      loftShared = 0,
+      loftVerts = 0;
     for (const m of meshes) {
       const w = m.geometry?.userData?.tipWeld;
       if (!w) continue;
@@ -159,20 +161,44 @@ async function main() {
       bridges += w.bridges || 0;
       strandsKilled += w.strandsKilled || 0;
       lipSoftened += w.lipSoftened || 0;
+      loftShared += w.loftShared || 0;
+      loftVerts += w.loftVerts || 0;
     }
     return {
       welded,
       bridges,
       strandsKilled,
       lipSoftened,
+      loftShared,
+      loftVerts,
       tipWeldFlag: !!window.__scratch?.roundness?.tipWeld,
+      tipLoftFlag: !!window.__scratch?.roundness?.tipLoft,
+      sharedVertexFlag: !!window.__scratch?.roundness?.sharedVertex,
       lipSoftFlag: !!window.__scratch?.roundness?.lipSoft,
     };
   });
   await writeFile(join(outDir, "scratch-honey-final.json"), JSON.stringify(metrics, null, 2));
 
-  // Keep after-lip evidence (before-lip frames are prior weld tip)
+  // Preserve prior lip-soft as before-loft only if before-loft missing
   try {
+    const { access } = await import("node:fs/promises");
+    try {
+      await access(join(outDir, "scratch-honey-before-loft.png"));
+    } catch {
+      await copyFile(
+        join(outDir, "scratch-honey-after-lip.png"),
+        join(outDir, "scratch-honey-before-loft.png"),
+      );
+      await copyFile(
+        join(outDir, "scratch-honey-after-lip-closeup.png"),
+        join(outDir, "scratch-honey-before-loft-closeup.png"),
+      );
+    }
+  } catch (_) {}
+
+  try {
+    await copyFile(full, join(outDir, "scratch-honey-after-loft.png"));
+    await copyFile(closeup, join(outDir, "scratch-honey-after-loft-closeup.png"));
     await copyFile(full, join(outDir, "scratch-honey-after-lip.png"));
     await copyFile(closeup, join(outDir, "scratch-honey-after-lip-closeup.png"));
   } catch (_) {}

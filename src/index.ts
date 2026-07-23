@@ -28,6 +28,7 @@ export {
   buildHoneyTipCapsuleBuffers,
   weldHoneyTipIntoLetter,
   softenHoneyLipJoin,
+  subdivideLetterLipBand,
   honeyPendantRadius,
   honeyPendantY,
   honeyPendantPoint,

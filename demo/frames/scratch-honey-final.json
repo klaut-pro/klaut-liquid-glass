@@ -2,15 +2,15 @@
   "letters": [
     {
       "ch": "k",
-      "tipCount": 322,
-      "tipW": 0.4359,
+      "tipCount": 434,
+      "tipW": 0.436,
       "midW": 0.8491,
-      "bulbRatio": 0.513,
+      "bulbRatio": 0.514,
       "hang": 1.9127
     },
     {
       "ch": "l",
-      "tipCount": 161,
+      "tipCount": 217,
       "tipW": 0.3344,
       "midW": 0.29,
       "bulbRatio": 1.153,
@@ -18,23 +18,23 @@
     },
     {
       "ch": "a",
-      "tipCount": 362,
-      "tipW": 0.3384,
+      "tipCount": 482,
+      "tipW": 0.3389,
       "midW": 0.9744,
-      "bulbRatio": 0.347,
-      "hang": 1.5224
+      "bulbRatio": 0.348,
+      "hang": 1.5239
     },
     {
       "ch": "u",
-      "tipCount": 362,
-      "tipW": 0.3236,
-      "midW": 0.8383,
-      "bulbRatio": 0.386,
-      "hang": 1.4556
+      "tipCount": 482,
+      "tipW": 0.324,
+      "midW": 0.8373,
+      "bulbRatio": 0.387,
+      "hang": 1.457
     },
     {
       "ch": "t",
-      "tipCount": 161,
+      "tipCount": 217,
       "tipW": 0.4401,
       "midW": 0.5435,
       "bulbRatio": 0.81,
@@ -42,7 +42,7 @@
     },
     {
       "ch": ".",
-      "tipCount": 265,
+      "tipCount": 337,
       "tipW": 0.1218,
       "midW": 0.3213,
       "bulbRatio": 0.379,
@@ -50,7 +50,7 @@
     },
     {
       "ch": "p",
-      "tipCount": 265,
+      "tipCount": 337,
       "tipW": 0.4368,
       "midW": 0.631,
       "bulbRatio": 0.692,
@@ -58,22 +58,22 @@
     },
     {
       "ch": "r",
-      "tipCount": 181,
+      "tipCount": 241,
       "tipW": 0.3092,
-      "midW": 0.3648,
-      "bulbRatio": 0.848,
+      "midW": 0.4141,
+      "bulbRatio": 0.747,
       "hang": 1.4279
     },
     {
       "ch": "o",
-      "tipCount": 181,
+      "tipCount": 241,
       "tipW": 0.3727,
       "midW": 0.8616,
       "bulbRatio": 0.433,
-      "hang": 1.4951
+      "hang": 1.4936
     }
   ],
-  "meanBulbRatio": 0.618,
+  "meanBulbRatio": 0.607,
   "bulbsOver13": 0,
   "frozen": true,
   "params": {
@@ -83,11 +83,15 @@
   },
   "bg": "rgb(12, 16, 24)",
   "tipWeld": {
-    "welded": 248,
-    "bridges": 377,
+    "welded": 296,
+    "bridges": 4195,
     "strandsKilled": 0,
-    "lipSoftened": 7716,
+    "lipSoftened": 12748,
+    "loftShared": 9344,
+    "loftVerts": 1888,
     "tipWeldFlag": true,
+    "tipLoftFlag": true,
+    "sharedVertexFlag": true,
     "lipSoftFlag": true
   }
 }
