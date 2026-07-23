@@ -1,0 +1,85 @@
+{
+  "letters": [
+    {
+      "ch": "k",
+      "tipCount": 556,
+      "tipW": 1.2005,
+      "midW": 0.8442,
+      "bulbRatio": 1.422,
+      "hang": 1.9926
+    },
+    {
+      "ch": "l",
+      "tipCount": 304,
+      "tipW": 0.4726,
+      "midW": 0.3292,
+      "bulbRatio": 1.436,
+      "hang": 1.6081
+    },
+    {
+      "ch": "a",
+      "tipCount": 568,
+      "tipW": 0.8612,
+      "midW": 0.9574,
+      "bulbRatio": 0.9,
+      "hang": 1.6672
+    },
+    {
+      "ch": "u",
+      "tipCount": 499,
+      "tipW": 1.17,
+      "midW": 0.8238,
+      "bulbRatio": 1.42,
+      "hang": 1.5316
+    },
+    {
+      "ch": "t",
+      "tipCount": 298,
+      "tipW": 0.762,
+      "midW": 0.5482,
+      "bulbRatio": 1.39,
+      "hang": 1.7868
+    },
+    {
+      "ch": ".",
+      "tipCount": 106,
+      "tipW": 0.1204,
+      "midW": 0.3039,
+      "bulbRatio": 0.396,
+      "hang": 0.6088
+    },
+    {
+      "ch": "p",
+      "tipCount": 4024,
+      "tipW": 0.4033,
+      "midW": 0.915,
+      "bulbRatio": 0.441,
+      "hang": 1.2614
+    },
+    {
+      "ch": "r",
+      "tipCount": 660,
+      "tipW": 1.2008,
+      "midW": 0.3596,
+      "bulbRatio": 3.339,
+      "hang": 1.2678
+    },
+    {
+      "ch": "o",
+      "tipCount": 446,
+      "tipW": 1.0199,
+      "midW": 0.7458,
+      "bulbRatio": 1.367,
+      "hang": 1.6969
+    }
+  ],
+  "meanBulbRatio": 1.346,
+  "bulbsOver13": 6,
+  "frozen": true,
+  "params": {
+    "gravity": 0.9,
+    "viscosity": 0.9,
+    "freezeHeight": 0.68
+  },
+  "bg": "rgb(12, 16, 24)"
+}

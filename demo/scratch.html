@@ -18,7 +18,7 @@
         margin: 0;
         height: 100%;
         overflow: hidden;
-        background: #9eb0cc;
+        background: #0c1018;
         color: var(--ink);
       }
       #c {
@@ -28,7 +28,7 @@
         display: block;
         width: 100%;
         height: 100%;
-        background: #1a2233;
+        background: #0c1018;
       }
       .hud {
         position: fixed;
@@ -219,28 +219,28 @@
         <p class="mode-pill">Applies to letters without overrides</p>
         <label class="row">
           Gravity
-          <input id="gravity" type="range" min="0" max="1" step="0.01" value="0.78" />
-          <span id="gravityVal">0.78</span>
+          <input id="gravity" type="range" min="0" max="1" step="0.01" value="0.9" />
+          <span id="gravityVal">0.90</span>
         </label>
         <label class="row">
           Freeze ht
-          <input id="freezeHeight" type="range" min="0.15" max="0.9" step="0.01" value="0.52" />
-          <span id="freezeHeightVal">0.52</span>
+          <input id="freezeHeight" type="range" min="0.15" max="0.9" step="0.01" value="0.68" />
+          <span id="freezeHeightVal">0.68</span>
         </label>
         <label class="row">
           Viscosity
-          <input id="viscosity" type="range" min="0.05" max="1" step="0.01" value="0.78" />
-          <span id="viscosityVal">0.78</span>
+          <input id="viscosity" type="range" min="0.05" max="1" step="0.01" value="0.9" />
+          <span id="viscosityVal">0.90</span>
         </label>
         <label class="row">
           Sag amp
-          <input id="sagAmp" type="range" min="0.2" max="2" step="0.01" value="1" />
-          <span id="sagAmpVal">1.00</span>
+          <input id="sagAmp" type="range" min="0.2" max="2.5" step="0.01" value="1.25" />
+          <span id="sagAmpVal">1.25</span>
         </label>
         <label class="row">
           Bulb soft
-          <input id="bulbSoft" type="range" min="0" max="1" step="0.01" value="0.95" />
-          <span id="bulbSoftVal">0.95</span>
+          <input id="bulbSoft" type="range" min="0" max="1" step="0.01" value="1" />
+          <span id="bulbSoftVal">1.00</span>
         </label>
         <label class="row">
           IOR
@@ -278,7 +278,7 @@
         </label>
         <label class="row">
           L-Bulb
-          <input id="letterBulb" type="range" min="0.2" max="2.5" step="0.01" value="1" />
+          <input id="letterBulb" type="range" min="0.2" max="3.5" step="0.01" value="1" />
           <span id="letterBulbVal">1.00</span>
         </label>
         <div class="actions">
@@ -330,11 +330,12 @@
       renderer.setSize(innerWidth, innerHeight, false);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.55;
+      renderer.toneMappingExposure = 1.25;
 
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x9eb0cc);
-      scene.fog = new THREE.Fog(0x9eb0cc, 22, 48);
+      // Dark charcoal plate — concept art contrast so glass rims / droplets read
+      scene.background = new THREE.Color(0x0c1018);
+      scene.fog = new THREE.Fog(0x0c1018, 28, 62);
 
       const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.05, 80);
       camera.position.set(0, 0.55, 7.2);
@@ -347,49 +348,49 @@
       controls.target.set(0, 0.05, 0);
 
       const backplate = new THREE.Mesh(
-        new THREE.PlaneGeometry(28, 10),
+        new THREE.PlaneGeometry(32, 14),
         new THREE.MeshStandardMaterial({
-          color: 0xd8e4f5,
-          roughness: 0.88,
-          metalness: 0,
-          emissive: 0x6a86b0,
-          emissiveIntensity: 0.28,
+          color: 0x141a24,
+          roughness: 0.92,
+          metalness: 0.05,
+          emissive: 0x1a2436,
+          emissiveIntensity: 0.22,
         }),
       );
-      backplate.position.set(0, 1.0, -3.2);
+      backplate.position.set(0, 0.6, -3.6);
       scene.add(backplate);
 
       const floor = new THREE.Mesh(
         new THREE.CircleGeometry(14, 64),
         new THREE.MeshStandardMaterial({
-          color: 0xd2dcec,
-          roughness: 0.5,
-          metalness: 0.04,
+          color: 0x121820,
+          roughness: 0.72,
+          metalness: 0.08,
         }),
       );
       floor.rotation.x = -Math.PI / 2;
       floor.position.y = -2.15;
       scene.add(floor);
 
-      const grid = new THREE.GridHelper(20, 40, 0x7a8aa8, 0xb8c4d8);
+      const grid = new THREE.GridHelper(20, 40, 0x3a4658, 0x1e2836);
       grid.position.y = -2.149;
       scene.add(grid);
 
-      const key = new THREE.DirectionalLight(0xfff6ea, 3.2);
+      const key = new THREE.DirectionalLight(0xfff4e8, 2.6);
       key.position.set(4.5, 5.5, 3.5);
       scene.add(key);
-      const rim = new THREE.DirectionalLight(0xffffff, 1.6);
+      const rim = new THREE.DirectionalLight(0xd8ecff, 2.1);
       rim.position.set(-3.5, 3.5, 5);
       scene.add(rim);
-      const fill = new THREE.DirectionalLight(0xb8d4ff, 1.4);
+      const fill = new THREE.DirectionalLight(0x6a90c8, 0.85);
       fill.position.set(-5, 2, -2);
       scene.add(fill);
-      scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-      scene.add(new THREE.HemisphereLight(0xffffff, 0xa8b4c8, 0.85));
+      scene.add(new THREE.AmbientLight(0xb8c8e0, 0.28));
+      scene.add(new THREE.HemisphereLight(0xd8e4f8, 0x1a2030, 0.55));
 
       const pmrem = new THREE.PMREMGenerator(renderer);
-      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.02).texture;
-      scene.environmentIntensity = 1.35;
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      scene.environmentIntensity = 1.55;
       pmrem.dispose();
 
       /** @type {THREE.Object3D | null} */
@@ -442,11 +443,12 @@
       matLiquid.envMapIntensity = 2.35;
 
       let stage = 3;
-      let gravityAmt = 0.78;
-      let freezeHeight = 0.52;
-      let viscosity = 0.78;
-      let sagAmpMul = 1.0;
-      let bulbSoftMin = 0.95;
+      // Honey defaults: high freeze band = drips from lips, not whole-letter puddles
+      let gravityAmt = 0.9;
+      let freezeHeight = 0.68;
+      let viscosity = 0.9;
+      let sagAmpMul = 1.25;
+      let bulbSoftMin = 1.0;
       let selectedLetter = 0;
       /** @type {import("../dist/field/GravityMeltSim.js").LetterMeltOverride[]} */
       let letterOverrides = [];
@@ -461,12 +463,12 @@
           intensity: gravityAmt,
           viscosity,
           freezeHeight,
-          falloffPower: 1.45,
+          falloffPower: 1.55,
           sagAmpMul,
-          neckPinchMul: 1.2,
-          bulbGrowMul: 1.55,
+          neckPinchMul: 1.4,
+          bulbGrowMul: 2.55,
           bulbSoftMin,
-          smoothPasses: 5,
+          smoothPasses: 2,
           oneShot: true,
         };
       }
@@ -523,42 +525,55 @@
       }
 
       function defaultLetterOverrides(n) {
-        // Honey pendants: fatter bulbs on k / descenders; milder on .pro tail
+        // Narrow tip drips from letter lips (concept_art: hanging pendants, identity tops)
         return Array.from({ length: n }, (_, i) => {
           const ch = letterChars[i] || WORDMARK[i] || "?";
           if (ch === ".") {
             return {
               enable: true,
-              sagAmpMul: 0.7,
-              bulbGrowMul: 1.9,
-              freezeHeight: 0.28,
-              viscosity: 0.85,
+              sagAmpMul: 1.35,
+              bulbGrowMul: 2.8,
+              freezeHeight: 0.45,
+              viscosity: 0.92,
+              neckPinchMul: 1.6,
             };
           }
-          if (ch === "k" || ch === "p") {
+          if (ch === "p") {
             return {
               enable: true,
-              sagAmpMul: 1.05,
-              bulbGrowMul: 1.75,
-              viscosity: 0.82,
-              freezeHeight: 0.5,
+              sagAmpMul: 1.4,
+              bulbGrowMul: 3.0,
+              viscosity: 0.9,
+              freezeHeight: 0.55,
+              neckPinchMul: 1.75,
             };
           }
-          if (ch === "l" || ch === "t") {
+          if (ch === "k" || ch === "t" || ch === "l") {
             return {
               enable: true,
-              sagAmpMul: 1.0,
-              bulbGrowMul: 1.65,
-              viscosity: 0.8,
+              sagAmpMul: 1.3,
+              bulbGrowMul: 2.6,
+              viscosity: 0.9,
+              freezeHeight: 0.7,
+              neckPinchMul: 1.65,
             };
           }
-          if (i >= 6) {
-            return { enable: true, sagAmpMul: 0.85, intensity: 0.62, bulbGrowMul: 1.55 };
+          if (ch === "r" || ch === "o") {
+            return {
+              enable: true,
+              sagAmpMul: 1.2,
+              bulbGrowMul: 2.4,
+              freezeHeight: 0.72,
+              neckPinchMul: 1.55,
+            };
           }
-          if (i <= 2) {
-            return { enable: true, sagAmpMul: 1.05 + i * 0.04, bulbGrowMul: 2.1 };
-          }
-          return { enable: true, bulbGrowMul: 2.0 };
+          return {
+            enable: true,
+            sagAmpMul: 1.2,
+            bulbGrowMul: 2.45,
+            freezeHeight: 0.7,
+            neckPinchMul: 1.5,
+          };
         });
       }
 
@@ -775,7 +790,7 @@
         box.setFromObject(letterRoot);
         const center = box.getCenter(new THREE.Vector3());
         letterRoot.position.sub(center);
-        letterRoot.position.y += 1.05;
+        letterRoot.position.y += 1.35;
         const size = box.getSize(new THREE.Vector3());
         wordHalfW = size.x * 0.5;
         wordHalfH = size.y * 0.5;
@@ -789,17 +804,21 @@
           const bb = m.geometry.boundingBox;
           const c = bb.getCenter(new THREE.Vector3());
           const spanX = bb.max.x - bb.min.x;
-          const halfCol = Math.max(spanX * 0.2, 0.03);
           let cols = [c.x];
           // Dual legs: two honey drips — keep columns tight so tips don't merge into a puddle
           if (ch === "k" || ch === "u" || ch === "a" || ch === "n" || ch === "m") {
             const inset = spanX * 0.32;
             cols = [bb.min.x + inset, bb.max.x - inset];
           }
+          // Descenders / thick glyphs: very narrow drip column so stem tip can bulb
+          const narrow = ch === "p" || ch === "l" || ch === "t" || ch === ".";
           letterOverrides[i] = {
             ...letterOverrides[i],
             columnXs: cols,
-            columnHalfW: Math.max(spanX * (cols.length > 1 ? 0.14 : 0.2), 0.028),
+            columnHalfW: Math.max(
+              spanX * (cols.length > 1 ? 0.12 : narrow ? 0.11 : 0.16),
+              narrow ? 0.022 : 0.028,
+            ),
           };
         }
 

@@ -1,0 +1,552 @@
+{
+  "url": "http://localhost:52780/demo/scratch.html",
+  "ranked": [
+    {
+      "id": "E-syrup",
+      "score": 40.59,
+      "meanBulbRatio": 1.659,
+      "bulbsOver13": 8,
+      "params": {
+        "gravity": 0.82,
+        "freeze": 0.5,
+        "visc": 0.96,
+        "sag": 1.45,
+        "bulbSoft": 1,
+        "neckMul": 1.4,
+        "bulbMul": 2.55
+      },
+      "letters": [
+        {
+          "ch": "k",
+          "tipCount": 1484,
+          "tipW": 1.3626,
+          "midW": 0.8704,
+          "bulbRatio": 1.565,
+          "hang": 1.6846
+        },
+        {
+          "ch": "l",
+          "tipCount": 554,
+          "tipW": 0.4914,
+          "midW": 0.33,
+          "bulbRatio": 1.489,
+          "hang": 1.582
+        },
+        {
+          "ch": "a",
+          "tipCount": 1464,
+          "tipW": 1.5683,
+          "midW": 0.9813,
+          "bulbRatio": 1.598,
+          "hang": 1.4234
+        },
+        {
+          "ch": "u",
+          "tipCount": 1204,
+          "tipW": 1.424,
+          "midW": 0.8616,
+          "bulbRatio": 1.653,
+          "hang": 1.355
+        },
+        {
+          "ch": "t",
+          "tipCount": 720,
+          "tipW": 1.0682,
+          "midW": 0.5484,
+          "bulbRatio": 1.948,
+          "hang": 1.7008
+        },
+        {
+          "ch": ".",
+          "tipCount": 290,
+          "tipW": 0.616,
+          "midW": 0.3251,
+          "bulbRatio": 1.894,
+          "hang": 0.5643
+        },
+        {
+          "ch": "p",
+          "tipCount": 5330,
+          "tipW": 0.4394,
+          "midW": 0.9175,
+          "bulbRatio": 0.479,
+          "hang": 1.2227
+        },
+        {
+          "ch": "r",
+          "tipCount": 792,
+          "tipW": 0.8171,
+          "midW": 0.3592,
+          "bulbRatio": 2.275,
+          "hang": 1.2738
+        },
+        {
+          "ch": "o",
+          "tipCount": 970,
+          "tipW": 1.7702,
+          "midW": 0.8733,
+          "bulbRatio": 2.027,
+          "hang": 1.4954
+        }
+      ]
+    },
+    {
+      "id": "F-concept",
+      "score": 40.33,
+      "meanBulbRatio": 1.633,
+      "bulbsOver13": 8,
+      "params": {
+        "gravity": 0.92,
+        "freeze": 0.6,
+        "visc": 0.88,
+        "sag": 1.55,
+        "bulbSoft": 1,
+        "neckMul": 1.7,
+        "bulbMul": 2.5
+      },
+      "letters": [
+        {
+          "ch": "k",
+          "tipCount": 1596,
+          "tipW": 1.3607,
+          "midW": 0.8704,
+          "bulbRatio": 1.563,
+          "hang": 1.6841
+        },
+        {
+          "ch": "l",
+          "tipCount": 584,
+          "tipW": 0.4904,
+          "midW": 0.33,
+          "bulbRatio": 1.486,
+          "hang": 1.5808
+        },
+        {
+          "ch": "a",
+          "tipCount": 1466,
+          "tipW": 1.5112,
+          "midW": 0.9813,
+          "bulbRatio": 1.54,
+          "hang": 1.3988
+        },
+        {
+          "ch": "u",
+          "tipCount": 1236,
+          "tipW": 1.3689,
+          "midW": 0.8657,
+          "bulbRatio": 1.581,
+          "hang": 1.3375
+        },
+        {
+          "ch": "t",
+          "tipCount": 766,
+          "tipW": 1.0657,
+          "midW": 0.5485,
+          "bulbRatio": 1.943,
+          "hang": 1.6998
+        },
+        {
+          "ch": ".",
+          "tipCount": 344,
+          "tipW": 0.6159,
+          "midW": 0.329,
+          "bulbRatio": 1.872,
+          "hang": 0.5638
+        },
+        {
+          "ch": "p",
+          "tipCount": 4572,
+          "tipW": 0.4272,
+          "midW": 0.915,
+          "bulbRatio": 0.467,
+          "hang": 1.2604
+        },
+        {
+          "ch": "r",
+          "tipCount": 836,
+          "tipW": 0.8404,
+          "midW": 0.3606,
+          "bulbRatio": 2.33,
+          "hang": 1.2718
+        },
+        {
+          "ch": "o",
+          "tipCount": 916,
+          "tipW": 1.6921,
+          "midW": 0.8856,
+          "bulbRatio": 1.911,
+          "hang": 1.4711
+        }
+      ]
+    },
+    {
+      "id": "D-thin-neck",
+      "score": 39.8,
+      "meanBulbRatio": 1.58,
+      "bulbsOver13": 8,
+      "params": {
+        "gravity": 0.9,
+        "freeze": 0.6,
+        "visc": 0.78,
+        "sag": 1.5,
+        "bulbSoft": 0.95,
+        "neckMul": 1.85,
+        "bulbMul": 2.3
+      },
+      "letters": [
+        {
+          "ch": "k",
+          "tipCount": 1596,
+          "tipW": 1.3592,
+          "midW": 0.8708,
+          "bulbRatio": 1.561,
+          "hang": 1.6756
+        },
+        {
+          "ch": "l",
+          "tipCount": 582,
+          "tipW": 0.4956,
+          "midW": 0.33,
+          "bulbRatio": 1.502,
+          "hang": 1.5801
+        },
+        {
+          "ch": "a",
+          "tipCount": 1382,
+          "tipW": 1.4439,
+          "midW": 0.9795,
+          "bulbRatio": 1.474,
+          "hang": 1.3697
+        },
+        {
+          "ch": "u",
+          "tipCount": 1162,
+          "tipW": 1.283,
+          "midW": 0.8711,
+          "bulbRatio": 1.473,
+          "hang": 1.3053
+        },
+        {
+          "ch": "t",
+          "tipCount": 766,
+          "tipW": 1.0753,
+          "midW": 0.5485,
+          "bulbRatio": 1.961,
+          "hang": 1.6914
+        },
+        {
+          "ch": ".",
+          "tipCount": 344,
+          "tipW": 0.6224,
+          "midW": 0.333,
+          "bulbRatio": 1.869,
+          "hang": 0.5581
+        },
+        {
+          "ch": "p",
+          "tipCount": 4748,
+          "tipW": 0.429,
+          "midW": 0.915,
+          "bulbRatio": 0.469,
+          "hang": 1.2537
+        },
+        {
+          "ch": "r",
+          "tipCount": 724,
+          "tipW": 0.7743,
+          "midW": 0.361,
+          "bulbRatio": 2.145,
+          "hang": 1.25
+        },
+        {
+          "ch": "o",
+          "tipCount": 910,
+          "tipW": 1.5981,
+          "midW": 0.9029,
+          "bulbRatio": 1.77,
+          "hang": 1.426
+        }
+      ]
+    },
+    {
+      "id": "B-long-hang",
+      "score": 39.74,
+      "meanBulbRatio": 1.574,
+      "bulbsOver13": 8,
+      "params": {
+        "gravity": 0.95,
+        "freeze": 0.62,
+        "visc": 0.9,
+        "sag": 1.7,
+        "bulbSoft": 1,
+        "neckMul": 1.55,
+        "bulbMul": 2.4
+      },
+      "letters": [
+        {
+          "ch": "k",
+          "tipCount": 1638,
+          "tipW": 1.3609,
+          "midW": 0.8704,
+          "bulbRatio": 1.563,
+          "hang": 1.6839
+        },
+        {
+          "ch": "l",
+          "tipCount": 590,
+          "tipW": 0.4587,
+          "midW": 0.33,
+          "bulbRatio": 1.39,
+          "hang": 1.5801
+        },
+        {
+          "ch": "a",
+          "tipCount": 1592,
+          "tipW": 1.5077,
+          "midW": 0.9813,
+          "bulbRatio": 1.536,
+          "hang": 1.4002
+        },
+        {
+          "ch": "u",
+          "tipCount": 1328,
+          "tipW": 1.3374,
+          "midW": 0.868,
+          "bulbRatio": 1.541,
+          "hang": 1.3349
+        },
+        {
+          "ch": "t",
+          "tipCount": 780,
+          "tipW": 0.9974,
+          "midW": 0.5483,
+          "bulbRatio": 1.819,
+          "hang": 1.6914
+        },
+        {
+          "ch": ".",
+          "tipCount": 346,
+          "tipW": 0.6159,
+          "midW": 0.329,
+          "bulbRatio": 1.872,
+          "hang": 0.5636
+        },
+        {
+          "ch": "p",
+          "tipCount": 4330,
+          "tipW": 0.4229,
+          "midW": 0.9136,
+          "bulbRatio": 0.463,
+          "hang": 1.2717
+        },
+        {
+          "ch": "r",
+          "tipCount": 852,
+          "tipW": 0.7965,
+          "midW": 0.3608,
+          "bulbRatio": 2.208,
+          "hang": 1.2697
+        },
+        {
+          "ch": "o",
+          "tipCount": 953,
+          "tipW": 1.5747,
+          "midW": 0.8894,
+          "bulbRatio": 1.77,
+          "hang": 1.4591
+        }
+      ]
+    },
+    {
+      "id": "A-baseline",
+      "score": 39.29,
+      "meanBulbRatio": 1.529,
+      "bulbsOver13": 8,
+      "params": {
+        "gravity": 0.88,
+        "freeze": 0.58,
+        "visc": 0.86,
+        "sag": 1.35,
+        "bulbSoft": 1,
+        "neckMul": 1.45,
+        "bulbMul": 2.15
+      },
+      "letters": [
+        {
+          "ch": "k",
+          "tipCount": 1574,
+          "tipW": 1.362,
+          "midW": 0.8704,
+          "bulbRatio": 1.565,
+          "hang": 1.684
+        },
+        {
+          "ch": "l",
+          "tipCount": 582,
+          "tipW": 0.4635,
+          "midW": 0.3337,
+          "bulbRatio": 1.389,
+          "hang": 1.5102
+        },
+        {
+          "ch": "a",
+          "tipCount": 1392,
+          "tipW": 1.484,
+          "midW": 0.978,
+          "bulbRatio": 1.517,
+          "hang": 1.3559
+        },
+        {
+          "ch": "u",
+          "tipCount": 1212,
+          "tipW": 1.3052,
+          "midW": 0.8767,
+          "bulbRatio": 1.489,
+          "hang": 1.2686
+        },
+        {
+          "ch": "t",
+          "tipCount": 756,
+          "tipW": 1.0028,
+          "midW": 0.5476,
+          "bulbRatio": 1.831,
+          "hang": 1.6295
+        },
+        {
+          "ch": ".",
+          "tipCount": 338,
+          "tipW": 0.6172,
+          "midW": 0.3429,
+          "bulbRatio": 1.8,
+          "hang": 0.5347
+        },
+        {
+          "ch": "p",
+          "tipCount": 4928,
+          "tipW": 0.4312,
+          "midW": 0.9163,
+          "bulbRatio": 0.471,
+          "hang": 1.2462
+        },
+        {
+          "ch": "r",
+          "tipCount": 834,
+          "tipW": 0.7466,
+          "midW": 0.3629,
+          "bulbRatio": 2.057,
+          "hang": 1.1894
+        },
+        {
+          "ch": "o",
+          "tipCount": 916,
+          "tipW": 1.5127,
+          "midW": 0.9209,
+          "bulbRatio": 1.643,
+          "hang": 1.3706
+        }
+      ]
+    },
+    {
+      "id": "C-fat-bulb",
+      "score": 7.63,
+      "meanBulbRatio": 0.763,
+      "bulbsOver13": 0,
+      "params": {
+        "gravity": 0.85,
+        "freeze": 0.55,
+        "visc": 0.92,
+        "sag": 1.25,
+        "bulbSoft": 1,
+        "neckMul": 1.65,
+        "bulbMul": 2.7
+      },
+      "letters": [
+        {
+          "ch": "k",
+          "tipCount": 11486,
+          "tipW": 0.8202,
+          "midW": 0.8237,
+          "bulbRatio": 0.996,
+          "hang": 1.1137
+        },
+        {
+          "ch": "l",
+          "tipCount": 4416,
+          "tipW": 0.2458,
+          "midW": 0.35,
+          "bulbRatio": 0.702,
+          "hang": 1.0703
+        },
+        {
+          "ch": "a",
+          "tipCount": 11390,
+          "tipW": 0.9234,
+          "midW": 0.9346,
+          "bulbRatio": 0.988,
+          "hang": 0.9182
+        },
+        {
+          "ch": "u",
+          "tipCount": 9238,
+          "tipW": 0.7366,
+          "midW": 0.8903,
+          "bulbRatio": 0.827,
+          "hang": 0.8766
+        },
+        {
+          "ch": "t",
+          "tipCount": 7620,
+          "tipW": 0.5194,
+          "midW": 0.5741,
+          "bulbRatio": 0.905,
+          "hang": 1.1317
+        },
+        {
+          "ch": ".",
+          "tipCount": 2426,
+          "tipW": 0.2395,
+          "midW": 0.3674,
+          "bulbRatio": 0.652,
+          "hang": 0.3599
+        },
+        {
+          "ch": "p",
+          "tipCount": 5542,
+          "tipW": 0.3068,
+          "midW": 0.9211,
+          "bulbRatio": 0.333,
+          "hang": 1.1502
+        },
+        {
+          "ch": "r",
+          "tipCount": 4726,
+          "tipW": 0.3071,
+          "midW": 0.3861,
+          "bulbRatio": 0.795,
+          "hang": 0.8559
+        },
+        {
+          "ch": "o",
+          "tipCount": 7594,
+          "tipW": 0.6497,
+          "midW": 0.977,
+          "bulbRatio": 0.665,
+          "hang": 0.9258
+        }
+      ]
+    }
+  ],
+  "best": {
+    "id": "E-syrup",
+    "score": 40.59,
+    "params": {
+      "gravity": 0.82,
+      "freeze": 0.5,
+      "visc": 0.96,
+      "sag": 1.45,
+      "bulbSoft": 1,
+      "neckMul": 1.4,
+      "bulbMul": 2.55
+    }
+  }
+}

@@ -62,18 +62,19 @@ export function meltViscosityMaps(viscosity: number, intensity = 1): MeltViscosi
   const d = Math.max(intensity, 0.02);
   // Oh-proxy: high v ≈ honey (fat slow bulbs, thick necks);
   // low v ≈ watery (sharper thinner drips, smaller tips).
-  // Keep sagAmp moderate so pendants hang mid-air (not floor-pool).
+  // Concept art: long thin necks + plump teardrop tips hanging mid-air.
   return {
-    gravity: mix(3.0, 0.55, v) * d,
-    damping: mix(2.0, 11.5, v),
-    spring: mix(12, 1.4, v),
-    sagAmp: mix(0.18, 0.4, v) * d,
-    // Visible neck even when viscous — still thicker than watery
-    neckPinch: mix(0.85, 0.48, v),
-    // Tip radial swell — honey needs obvious pear bulbs
-    bulbGrow: mix(0.55, 1.55, v),
-    columnSharp: mix(3.4, 1.35, v),
-    settleRate: mix(1.7, 0.32, v) * d,
+    gravity: mix(3.2, 0.62, v) * d,
+    damping: mix(2.0, 12.5, v),
+    spring: mix(12, 1.2, v),
+    // Longer hang so necks read as filaments (still capped in targetDelta)
+    sagAmp: mix(0.22, 0.58, v) * d,
+    // Strong mid-filament pinch — neck must be clearly thinner than bulb
+    neckPinch: mix(0.95, 0.72, v),
+    // Tip radial swell — honey needs obvious pear bulbs (tipW/midW > 1.3)
+    bulbGrow: mix(0.7, 2.05, v),
+    columnSharp: mix(3.6, 1.55, v),
+    settleRate: mix(1.8, 0.38, v) * d,
     freezeKe: mix(0.014, 0.0028, v),
   };
 }
@@ -346,24 +347,24 @@ export class GravityMeltSim {
     halfH: number,
   ): number {
     const t = clamp01(profileT);
-    const base = Math.max(halfW * 0.9, halfH * 0.14);
-    const neckPhase = smoothstep(0.04, 0.7, t);
-    const neckWave = Math.sin(Math.PI * Math.min(neckPhase / 0.55, 1));
-    const bulbPhase = smoothstep(0.48, 1.0, t);
-    const pear = Math.pow(bulbEaseSafe(bulbPhase), 1.05);
+    const base = Math.max(halfW * 0.85, halfH * 0.11);
+    const neckPhase = smoothstep(0.02, 0.62, t);
+    const neckWave = Math.sin(Math.PI * Math.min(neckPhase / 0.48, 1));
+    const bulbPhase = smoothstep(0.42, 1.0, t);
+    const pear = Math.pow(bulbEaseSafe(bulbPhase), 0.92);
     const bulbRound = Math.sin((Math.PI * 0.5) * pear);
-    const tipCap = Math.pow(smoothstep(0.78, 1.0, t), 1.4);
-    // Neck thinner than base; tip bulb can exceed base (honey plump)
-    const neckR = base * (1 - neckPinch * neckWave * 0.92);
+    // Soft tip pole only — do not crush the bulb (concept: fat tip)
+    const tipCap = Math.pow(smoothstep(0.88, 1.0, t), 1.8);
+    // Neck much thinner than base; tip bulb clearly exceeds neck
+    const neckR = base * (1 - neckPinch * neckWave * 1.05);
     const bulbR =
       base *
-      (1 + bulbGrow * (bulbRound * 1.65 + tipCap * 0.6)) *
-      mix(1.05, 1.7, clamp01(bulbGrow / 1.55));
-    // Blend: start at base, dip to neck, swell to bulb
-    const uNeck = smoothstep(0.05, 0.55, t);
-    const uBulb = smoothstep(0.45, 1.0, t);
-    const r = mix(base, neckR, uNeck);
-    return Math.max(base * 0.12, mix(r, Math.max(r, bulbR), uBulb));
+      (1 + bulbGrow * (bulbRound * 2.15 + tipCap * 0.25)) *
+      mix(1.1, 2.0, clamp01(bulbGrow / 2.05));
+    const uNeck = smoothstep(0.04, 0.48, t);
+    const uBulb = smoothstep(0.38, 1.0, t);
+    const r = mix(base, Math.max(neckR, base * 0.08), uNeck);
+    return Math.max(base * 0.1, mix(r, Math.max(r, bulbR), uBulb));
   }
 
   /**
@@ -436,24 +437,24 @@ export class GravityMeltSim {
     const drain = w * (0.05 + 0.95 * Math.pow(Math.max(column, w * 0.08), 0.9));
     const profileT = clamp01(drain);
 
-    // Tip-heavy hang: short pendant (hang mid-air)
-    const tipWeight = Math.pow(profileT, 0.62);
-    const neckElongate = mix(0.5, 1.15, smoothstep(0.15, 0.9, profileT));
+    // Tip-heavy hang: longer filament so neck reads before bulb
+    const tipWeight = Math.pow(profileT, 0.55);
+    const neckElongate = mix(0.55, 1.35, smoothstep(0.12, 0.92, profileT));
     const tipHangExtra =
       maps.bulbGrow *
       bulbMul *
-      0.14 *
-      Math.pow(smoothstep(0.55, 1, profileT), 1.8);
+      0.22 *
+      Math.pow(smoothstep(0.5, 1, profileT), 1.6);
     let sag =
       maps.sagAmp *
       sagMul *
       halfH *
-      (1.1 + tipHangExtra) *
+      (1.25 + tipHangExtra) *
       tipWeight *
       neckElongate *
-      (0.3 + 1.15 * Math.max(column, profileT * 0.3));
-    // Hard cap — short hanging pendant above the floor (not a puddle)
-    const sagCap = halfH * mix(0.32, 0.55, clamp01(maps.bulbGrow / 1.55)) * sagMul;
+      (0.35 + 1.2 * Math.max(column, profileT * 0.35));
+    // Cap — hanging pendant above floor, long enough for clear neck
+    const sagCap = halfH * mix(0.42, 0.78, clamp01(maps.bulbGrow / 2.05)) * sagMul;
     sag = Math.min(sag, sagCap);
 
     const targetR = GravityMeltSim.pearRadius(
@@ -510,30 +511,30 @@ export class GravityMeltSim {
     // Shared tip bulb — south-hemisphere pear (round hang, not flat disk)
     const tipGate = Math.max(column, profileT * 0.9);
     const tipHang = Math.min(
-      sagCap * mix(0.65, 0.95, tipGate),
-      maps.sagAmp * sagMul * halfH * (1.2 + 0.35 * maps.bulbGrow * bulbMul),
+      sagCap * mix(0.75, 1.05, tipGate),
+      maps.sagAmp * sagMul * halfH * (1.35 + 0.45 * maps.bulbGrow * bulbMul),
     );
-    if (bulbSoft > 0.01 && profileT > 0.4 && tipGate > 0.2) {
-      const baseR = Math.max(colW * 1.2, halfH * 0.1);
+    if (bulbSoft > 0.01 && profileT > 0.35 && tipGate > 0.18) {
+      const baseR = Math.max(colW * 1.05, halfH * 0.09);
       const bulbR =
         baseR *
-        (0.85 + 0.55 * maps.bulbGrow * bulbMul) *
-        mix(0.9, 1.25, clamp01(maps.bulbGrow / 1.55));
-      const neckR = baseR * mix(0.7, 0.38, maps.neckPinch);
+        (1.05 + 0.85 * maps.bulbGrow * bulbMul) *
+        mix(1.0, 1.55, clamp01(maps.bulbGrow / 2.05));
+      const neckR = baseR * mix(0.55, 0.28, maps.neckPinch);
       const tipCx = ax;
       const tipCz = s.cz;
       // Sphere center below letter lip; tip pole at south
-      const cy = s.lo - tipHang * 0.35;
-      const tipY = cy - bulbR * 0.92;
+      const cy = s.lo - tipHang * 0.42;
+      const tipY = cy - bulbR * 0.95;
 
       let px0 = bx + dx;
       let py0 = by + dy;
       let pz0 = bz + dz;
 
       // lat: 0 at neck join → 1 at tip pole (south hemisphere pear)
-      const lat = smoothstep(0.42, 1.0, profileT);
+      const lat = smoothstep(0.38, 1.0, profileT);
       const tipSnap =
-        clamp01(bulbSoft) * Math.pow(lat, 1.05) * (0.55 + 0.45 * tipGate);
+        clamp01(bulbSoft) * Math.pow(lat, 0.95) * (0.6 + 0.4 * tipGate);
       if (tipSnap > 0.02) {
         let ox2 = px0 - tipCx;
         let oz2 = pz0 - tipCz;
@@ -544,12 +545,13 @@ export class GravityMeltSim {
           rXZ = Math.hypot(ox2, oz2);
         }
         const inv2 = 1 / Math.max(rXZ, 1e-5);
-        // Pear: widest near lat~0.65, pinches to tip pole
-        const pearWave = Math.sin(Math.PI * Math.min(lat / 0.72, 1));
-        const wantR = mix(neckR, bulbR, pearWave) * (1 - 0.55 * Math.pow(lat, 2.2));
-        const wantY = mix(cy + bulbR * 0.05, tipY, Math.pow(lat, 1.15));
-        const tx = tipCx + ox2 * inv2 * Math.max(wantR, neckR * 0.25);
-        const tz = tipCz + oz2 * inv2 * Math.max(wantR, neckR * 0.25) * 0.95;
+        // Pear: widest near lat~0.72, mild tip pole taper only
+        const pearWave = Math.sin(Math.PI * Math.min(lat / 0.78, 1));
+        const wantR =
+          mix(neckR, bulbR, pearWave) * (1 - 0.28 * Math.pow(lat, 2.8));
+        const wantY = mix(cy + bulbR * 0.08, tipY, Math.pow(lat, 1.1));
+        const tx = tipCx + ox2 * inv2 * Math.max(wantR, neckR * 0.2);
+        const tz = tipCz + oz2 * inv2 * Math.max(wantR, neckR * 0.2) * 0.95;
         dx += (tx - px0) * tipSnap;
         dy += (wantY - py0) * tipSnap;
         dz += (tz - pz0) * tipSnap;
@@ -559,16 +561,16 @@ export class GravityMeltSim {
       }
 
       const dSphere = Math.hypot(px0 - tipCx, py0 - cy, pz0 - tipCz) - bulbR;
-      const stemR = neckR * mix(1.1, 0.75, lat);
+      const stemR = neckR * mix(1.05, 0.65, lat);
       const dStem = Math.hypot(px0 - tipCx, pz0 - tipCz) - stemR;
-      const k = mix(0.14, 0.32, maps.bulbGrow) * halfH;
+      const k = mix(0.12, 0.36, maps.bulbGrow) * halfH;
       const dField = softMin(dStem, dSphere, k);
       const pull =
         clamp01(bulbSoft) *
-        smoothstep(0.45, 0.98, profileT) *
-        (0.35 + 0.65 * tipGate) *
-        0.75;
-      if (pull > 0.01 && Math.abs(dField) < bulbR * 3.5) {
+        smoothstep(0.4, 0.98, profileT) *
+        (0.4 + 0.6 * tipGate) *
+        0.9;
+      if (pull > 0.01 && Math.abs(dField) < bulbR * 3.8) {
         const eps = 1e-3;
         const ddx =
           softMin(
@@ -694,7 +696,7 @@ export class GravityMeltSim {
       }
 
       // Sculpt clear honey pendant silhouettes per drip column
-      if (ease > 0.2) {
+      if (ease > 0.15) {
         const cols = columns.length ? columns : [s.cx];
         for (const ax of cols) {
           sculptHoneyPendant(
@@ -707,7 +709,8 @@ export class GravityMeltSim {
             sagMul,
             neckMul,
             bulbMul,
-            ease * clamp01(bulbSoft + 0.15),
+            // Stronger late-ease snap so tip spheres read as round honey bulbs
+            Math.min(1, ease * 1.15) * clamp01(bulbSoft + 0.25),
           );
         }
       }
@@ -936,10 +939,21 @@ function sculptHoneyPendant(
 ): void {
   if (strength < 0.05) return;
   const halfH = Math.max((s.hi - s.lo) * 0.5, 1e-3);
-  const hang = halfH * mix(0.28, 0.44, clamp01(maps.bulbGrow / 1.55)) * sagMul;
-  const baseR = Math.max(colW * 1.0, halfH * 0.08);
+  // Keep tip above the demo floor (visual clearance)
+  const hang = Math.min(
+    halfH * mix(0.36, 0.7, clamp01(maps.bulbGrow / 2.05)) * sagMul,
+    halfH * 0.95,
+  );
+  const baseR = Math.max(colW * 0.85, halfH * 0.06);
   const n = (s.base.length / 3) | 0;
-  const tipY = s.lo - hang;
+  const lipY = s.lo;
+  const tipY = lipY - hang;
+  const neckR =
+    baseR * mix(0.48, 0.2, clamp01(maps.neckPinch * Math.min(neckMul, 1.9)));
+  const bulbR =
+    baseR *
+    (1.25 + 1.15 * maps.bulbGrow * bulbMul) *
+    mix(1.05, 1.55, clamp01(maps.bulbGrow / 2.05));
 
   for (let vi = 0; vi < n; vi++) {
     const w = GravityMeltSim.yieldWeight(
@@ -948,43 +962,78 @@ function sculptHoneyPendant(
       falloffPower,
       s.downFace[vi]!,
     );
-    if (w < 0.12) continue;
+    if (w < 0.08) continue;
     const i = vi * 3;
     const bx = s.base[i]!;
+    const bz = s.base[i + 2]!;
     const near = Math.abs(bx - ax) / Math.max(colW, 1e-4);
-    if (near > 1.05) continue;
+    if (near > 1.15) continue;
     const column = Math.pow(Math.max(0, 1 - near), maps.columnSharp);
-    if (column < 0.22) continue;
+    if (column < 0.12) continue;
 
-    const t = clamp01(w * (0.1 + 0.9 * column));
-    if (t < 0.32) continue;
+    const t = clamp01(w * (0.04 + 0.96 * column));
+    if (t < 0.18) continue;
 
-    // Classic pendant: thin neck mid-filament → fat tip bulb → slight tip taper
-    const neckWave = Math.sin(Math.PI * smoothstep(0.08, 0.62, t));
-    const bulbWave = Math.pow(smoothstep(0.55, 1.0, t), 1.35);
-    const bulbRound = Math.sin((Math.PI * 0.5) * bulbWave);
-    const tipTaper = 1 - 0.55 * Math.pow(smoothstep(0.82, 1, t), 1.5);
-    const neckR = baseR * (1 - maps.neckPinch * neckMul * neckWave * 0.72);
-    const bulbAdd =
-      baseR * mix(0.35, 0.95, clamp01(maps.bulbGrow / 1.55)) * bulbMul * bulbRound;
-    const R = Math.max(baseR * 0.18, (neckR + bulbAdd) * tipTaper);
+    // Parametric honey pendant along drip profile u∈[0,1]
+    const u = Math.pow(t, 0.72);
+    const neckWave = Math.sin(Math.PI * smoothstep(0.04, 0.5, u));
+    const bulbWave = Math.pow(smoothstep(0.4, 1.0, u), 1.0);
+    const bulbRound = Math.sin(Math.PI * Math.min(bulbWave / 0.85, 1));
+    // Radius: base → thin neck → fat bulb → soft tip pole
+    const rNeck = mix(baseR, neckR, neckWave);
+    const rBulb = mix(rNeck, bulbR, bulbRound);
+    const tipPole = Math.pow(smoothstep(0.88, 1, u), 2.2);
+    const R = Math.max(neckR * 0.35, rBulb * (1 - 0.2 * tipPole));
 
-    let ox = s.pos[i]! - ax;
-    let oz = s.pos[i + 2]! - s.cz;
-    const r0 = Math.hypot(ox, oz);
+    let ox = bx - ax;
+    let oz = bz - s.cz;
+    let r0 = Math.hypot(ox, oz);
     if (r0 < 1e-5) {
-      ox = bx - ax;
-      oz = s.base[i + 2]! - s.cz;
-      if (Math.hypot(ox, oz) < 1e-5) continue;
+      ox = (near < 0.01 ? colW : bx - ax) * 0.4 || colW * 0.35;
+      oz = 0.01;
+      r0 = Math.hypot(ox, oz);
     }
-    const inv = 1 / Math.hypot(ox, oz);
-    const ty = mix(s.lo - hang * 0.1, tipY, Math.pow(t, 0.8));
+    const inv = 1 / r0;
+    // Y: hang along filament; tip heavier
+    const ty = mix(lipY - hang * 0.05, tipY, Math.pow(u, 0.78));
     const tx = ax + ox * inv * R;
-    const tz = s.cz + oz * inv * R * 0.94;
-    const k = strength * smoothstep(0.32, 0.98, t) * (0.5 + 0.5 * column);
+    const tz = s.cz + oz * inv * R * 0.96;
+    const k =
+      strength * smoothstep(0.18, 0.98, t) * (0.55 + 0.45 * column);
+
     s.pos[i] = mix(s.pos[i]!, tx, k);
     s.pos[i + 1] = mix(s.pos[i + 1]!, ty, k);
     s.pos[i + 2] = mix(s.pos[i + 2]!, tz, k);
+
+    // Tip sphere fill — round hanging bulb (concept honey teardrop)
+    if (u > 0.5) {
+      const lat = smoothstep(0.5, 1.0, u);
+      const cy = tipY + bulbR * 0.55;
+      const sphereR = bulbR * mix(0.95, 1.05, maps.bulbGrow / 2.05);
+      let px = s.pos[i]!;
+      let py = s.pos[i + 1]!;
+      let pz = s.pos[i + 2]!;
+      let vx = px - ax;
+      let vy = py - cy;
+      let vz = pz - s.cz;
+      let len = Math.hypot(vx, vy, vz);
+      if (len < 1e-5) {
+        vx = ox;
+        vy = -sphereR * lat;
+        vz = oz;
+        len = Math.hypot(vx, vy, vz);
+      }
+      // Keep southern hemisphere for hanging drop
+      if (vy > sphereR * 0.15) vy = -Math.abs(vy) * 0.25 - sphereR * 0.2 * lat;
+      const invL = 1 / Math.max(len, 1e-5);
+      // Slight pear: wider at mid-bulb, round tip
+      const pear = mix(1.08, 0.92, Math.pow(lat, 1.6));
+      const tr = sphereR * pear;
+      const snap = strength * Math.pow(lat, 0.85) * (0.65 + 0.35 * column);
+      s.pos[i] = mix(px, ax + vx * invL * tr, snap);
+      s.pos[i + 1] = mix(py, cy + vy * invL * tr, snap);
+      s.pos[i + 2] = mix(pz, s.cz + vz * invL * tr * 0.96, snap);
+    }
   }
 }
 
@@ -1031,7 +1080,7 @@ function taubinSmoothSlot(
       az *= inv;
       const i = vi * 3;
       // Preserve tip bulbs: less Laplacian on extreme tip (softMin owns roundness)
-      const tipBoost = mix(1.2, 0.45, Math.pow(w, 1.8));
+      const tipBoost = mix(1.05, 0.22, Math.pow(w, 1.6));
       const blend = factor * w * tipBoost;
       scratch[i] = s.pos[i]! + (ax - s.pos[i]!) * blend;
       scratch[i + 1] = s.pos[i + 1]! + (ay - s.pos[i + 1]!) * blend;
