@@ -559,10 +559,32 @@
               bulbGrowMul: 2.1,
               viscosity: 0.9,
               freezeHeight: 0.72,
-              neckPinchMul: 1.4,
+              // Dual-leg k: stronger pinch → thin continuous necks into underside melt
+              neckPinchMul: ch === "k" ? 1.55 : 1.4,
             };
           }
-          if (ch === "r" || ch === "o") {
+          if (ch === "a" || ch === "u") {
+            // Dual-leg: thin continuous necks melting from letter underside
+            return {
+              enable: true,
+              sagAmpMul: 1.18,
+              bulbGrowMul: 2.05,
+              viscosity: 0.9,
+              freezeHeight: 0.72,
+              neckPinchMul: 1.55,
+            };
+          }
+          if (ch === "o") {
+            // Closed counter: keep freeze high / pinch mild so hole doesn't blob
+            return {
+              enable: true,
+              sagAmpMul: 1.05,
+              bulbGrowMul: 1.85,
+              freezeHeight: 0.78,
+              neckPinchMul: 1.25,
+            };
+          }
+          if (ch === "r") {
             return {
               enable: true,
               sagAmpMul: 1.1,

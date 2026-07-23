@@ -16,11 +16,11 @@
   "sdfSoftBlend": 0.0324,
   "targetHeight": 1.15,
   "bakedDimensions": {
-    "x": 6.229010615348816,
+    "x": 6.242422196865082,
     "y": 0.6484614610671997,
     "z": 1.0831447839736938
   },
-  "vertexCount": 407636,
+  "vertexCount": 468306,
   "mesh": "wordmark-klaut-pro.glb",
   "letters": [
     {
@@ -37,9 +37,9 @@
       "colW": 0.10633358001708984,
       "lipY": -0.22941084206104279,
       "hang": 0.22023440837860106,
-      "neckR": 0.12504829010009766,
-      "bulbR": 0.160061811328125,
-      "lipR": 0.22888303098678586
+      "neckR": 0.1085240517654419,
+      "bulbR": 0.15072784967422487,
+      "lipR": 0.2563489947052002
     },
     {
       "index": 1,
@@ -72,9 +72,9 @@
       "colW": 0.11787497520446777,
       "lipY": -0.2294108271598816,
       "hang": 0.22023439407348633,
-      "neckR": 0.1386209708404541,
-      "bulbR": 0.17743484267578125,
-      "lipR": 0.2537258841276169
+      "neckR": 0.12030319969367981,
+      "bulbR": 0.16708777735233307,
+      "lipR": 0.2841729902229309
     },
     {
       "index": 3,
@@ -90,9 +90,9 @@
       "colW": 0.1068667459487915,
       "lipY": -0.2294108271598816,
       "hang": 0.22023439407348633,
-      "neckR": 0.12567529323577883,
-      "bulbR": 0.1608643753417969,
-      "lipR": 0.2300306706547737
+      "neckR": 0.10906820091533662,
+      "bulbR": 0.15148361238241198,
+      "lipR": 0.2576343511333466
     },
     {
       "index": 4,
@@ -175,9 +175,9 @@
       "colW": 0.14655468463897706,
       "lipY": -0.2294108271598816,
       "hang": 0.22023439407348633,
-      "neckR": 0.17234830913543703,
-      "bulbR": 0.2206058356933594,
-      "lipR": 0.3154589586853981
+      "neckR": 0.15856044440460207,
+      "bulbR": 0.20774126547575,
+      "lipR": 0.2586763461220264
     }
   ],
   "perLetterMeshes": true,
@@ -186,7 +186,8 @@
   "pipeline": [
     "1-font: Arial Black wordmark klaut.pro (per-glyph meshes)",
     "2-mesh: Blender extrude+bevel+subdiv \u2192 GLB",
-    "2b-gn-sdf: Mesh\u2192SDF Grid \u222a pear tips \u2192 Grid to Mesh (soft iso) + lip morph",
+    "2b-gn-sdf: Mesh\u2192SDF Grid \u222a pear tips \u2192 Grid to Mesh (per-glyph iso) + lip morph",
+    "2c-glyph-tune: dual-leg funnel/neck; closed-o reduced iso blend",
     "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
     "4-liquid: GravityMeltSim per-letter overrides",
     "5-sag: frozen viscoplastic neck/bulb (no drip blobs)"

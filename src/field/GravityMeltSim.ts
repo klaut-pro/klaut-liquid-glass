@@ -2071,12 +2071,12 @@ function sealHoneyTipLip(
       }
       const inv = 1 / r0;
       const tRad = clamp01(r0 / Math.max(lipR * 1.15, 1e-4));
-      const funnel = (1 - tRad * tRad) * hang * 0.24;
+      const funnel = (1 - tRad * tRad) * hang * 0.36;
       const wantY = lipY - funnel;
-      const gatherR = mix(r0, mix(lipR, neckR, 1 - tRad), 0.5 * k);
-      s.pos[i] = mix(s.pos[i]!, ax + ox * inv * gatherR, 0.55 * k);
-      s.pos[i + 1] = mix(s.pos[i + 1]!, wantY, 0.7 * k);
-      s.pos[i + 2] = mix(s.pos[i + 2]!, s.cz + oz * inv * gatherR * 0.96, 0.55 * k);
+      const gatherR = mix(r0, mix(lipR, neckR, 1 - tRad), 0.62 * k);
+      s.pos[i] = mix(s.pos[i]!, ax + ox * inv * gatherR, 0.65 * k);
+      s.pos[i + 1] = mix(s.pos[i + 1]!, wantY, 0.82 * k);
+      s.pos[i + 2] = mix(s.pos[i + 2]!, s.cz + oz * inv * gatherR * 0.96, 0.65 * k);
       continue;
     }
 
@@ -2136,43 +2136,28 @@ function softenHoneyLipJoinRuntime(
     const bx = s.base[i]!;
     const near = Math.abs(bx - ax) / Math.max(colW, 1e-4);
 
-    // Letter strand kill + gather shoulder into loft root
-    if (u <= 1e-5 && near < 1.3) {
-      if (s.pos[i + 1]! < lipY - colW * 0.05) {
+    // Letter strand kill + gather shoulder into loft root.
+    // Prior path snapped underside UP onto lipY — recreated the flat shelf vs concept.
+    // Dig concave funnel into thin continuous neck instead (dual-leg a/k/u worst case).
+    if (u <= 1e-5 && near < 1.35) {
+      if (s.pos[i + 1]! <= lipY + colW * 0.45) {
         let ox = s.pos[i]! - ax;
         let oz = s.pos[i + 2]! - s.cz;
         let r0 = Math.hypot(ox, oz) || 1;
         const inv = 1 / r0;
-        const stemR = Math.min(Math.max(r0, colW * 0.5), lipR);
-        s.pos[i] = mix(s.pos[i]!, ax + ox * inv * stemR, 0.9 * k);
-        s.pos[i + 1] = mix(s.pos[i + 1]!, lipY + colW * 0.01, 0.95 * k);
-        s.pos[i + 2] = mix(s.pos[i + 2]!, s.cz + oz * inv * stemR * 0.96, 0.9 * k);
+        const tRad = clamp01(r0 / Math.max(lipR * 1.2, 1e-4));
+        const funnel = (1 - tRad * tRad) * hang * 0.34;
+        const wantY = lipY - funnel;
+        const gatherR = mix(r0, mix(lipR, neckR * 0.92, 1 - tRad), 0.68 * k);
+        s.pos[i] = mix(s.pos[i]!, ax + ox * inv * gatherR, 0.72 * k);
+        s.pos[i + 1] = mix(s.pos[i + 1]!, wantY, 0.88 * k);
+        s.pos[i + 2] = mix(
+          s.pos[i + 2]!,
+          s.cz + oz * inv * gatherR * 0.96,
+          0.72 * k,
+        );
+        collar.add(vi);
         continue;
-      }
-      // Shoulder band: pull toward pear lip so dual-vertex seams don't reopen
-      if (s.pos[i + 1]! <= lipY + colW * 0.55 && near < 1.05) {
-        let ox = s.pos[i]! - ax;
-        let oz = s.pos[i + 2]! - s.cz;
-        let r0 = Math.hypot(ox, oz);
-        if (r0 > 1e-5) {
-          const ang = Math.atan2(oz, ox);
-          const [px, py, pz] = honeyPendantPoint(
-            0.04,
-            ax,
-            lipY + hang * 0.02,
-            s.cz,
-            hang,
-            neckR,
-            bulbR,
-            ang,
-            lipR,
-          );
-          const snap = 0.45 * k;
-          s.pos[i] = mix(s.pos[i]!, px, snap);
-          s.pos[i + 1] = mix(s.pos[i + 1]!, py, snap * 0.7);
-          s.pos[i + 2] = mix(s.pos[i + 2]!, pz, snap);
-          collar.add(vi);
-        }
       }
       continue;
     }
@@ -2337,18 +2322,18 @@ function sculptHoneyPendant(
           let rL = Math.hypot(oxL, ozL);
           const tRad = clamp01(rL / Math.max(lipR * 1.15, 1e-4));
           // Quadratic funnel: center sinks into neck; rim stays on glyph
-          const funnel = (1 - tRad * tRad) * hang * 0.28;
+          const funnel = (1 - tRad * tRad) * hang * 0.4;
           const wantY = lipY - funnel;
-          const wJoin = 0.82 * strength * Math.max(column, down * 0.85);
+          const wJoin = 0.88 * strength * Math.max(column, down * 0.85);
           s.pos[i + 1] = mix(py, wantY, wJoin);
           if (rL > 1e-5) {
             const inv = 1 / rL;
-            const gatherR = mix(rL, mix(lipR, neckR, 1 - tRad), 0.55 * wJoin);
-            s.pos[i] = mix(s.pos[i]!, ax + oxL * inv * gatherR, 0.55 * wJoin);
+            const gatherR = mix(rL, mix(lipR, neckR * 0.9, 1 - tRad), 0.62 * wJoin);
+            s.pos[i] = mix(s.pos[i]!, ax + oxL * inv * gatherR, 0.62 * wJoin);
             s.pos[i + 2] = mix(
               s.pos[i + 2]!,
               s.cz + ozL * inv * gatherR * 0.96,
-              0.55 * wJoin,
+              0.62 * wJoin,
             );
           }
         }

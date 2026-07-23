@@ -256,6 +256,12 @@ voxel remesh. Fallback: Exact/Float mesh boolean + remesh. Manifest /
 `columns` so runtime synthesizes `tipU` and skips dual-lattice loft
 (`softBooleanBake`). Still **dripBlobs: 0**.
 
+**Per-glyph bake tune (post-d41daee):** `glyph_bake_tune(ch)` — dual-leg
+`a`/`k`/`u` get deeper funnel dig, stronger lip morph, thinner necks, finer
+post-SDF remesh; closed `o` gets **reduced iso blend** so the counter stays
+open. Runtime `softenHoneyLipJoinRuntime` digs underside→neck funnel (no
+snap-UP shelf).
+
 **Freeze-height cheat sheet:**
 
 | freezeHeight | Affected band | Look |

@@ -2,11 +2,11 @@
   "letters": [
     {
       "ch": "k",
-      "tipCount": 10497,
-      "tipW": 0.2942,
-      "midW": 0.7501,
-      "bulbRatio": 0.392,
-      "hang": 1.2364
+      "tipCount": 13458,
+      "tipW": 0.2927,
+      "midW": 0.74,
+      "bulbRatio": 0.395,
+      "hang": 1.23
     },
     {
       "ch": "l",
@@ -18,19 +18,19 @@
     },
     {
       "ch": "a",
-      "tipCount": 8605,
+      "tipCount": 12468,
       "tipW": 0.2997,
-      "midW": 0.857,
-      "bulbRatio": 0.35,
-      "hang": 0.9725
+      "midW": 0.8748,
+      "bulbRatio": 0.343,
+      "hang": 1.0095
     },
     {
       "ch": "u",
-      "tipCount": 7423,
-      "tipW": 0.2655,
-      "midW": 0.8124,
+      "tipCount": 9472,
+      "tipW": 0.262,
+      "midW": 0.8011,
       "bulbRatio": 0.327,
-      "hang": 0.923
+      "hang": 0.9185
     },
     {
       "ch": "t",
@@ -66,11 +66,11 @@
     },
     {
       "ch": "o",
-      "tipCount": 6619,
-      "tipW": 0.3727,
-      "midW": 0.9283,
-      "bulbRatio": 0.401,
-      "hang": 1.0162
+      "tipCount": 6346,
+      "tipW": 0.3763,
+      "midW": 0.9425,
+      "bulbRatio": 0.399,
+      "hang": 1.0188
     }
   ],
   "meanBulbRatio": 0.468,
@@ -89,7 +89,7 @@
     "lipSoftened": 0,
     "loftShared": 0,
     "loftVerts": 0,
-    "tipCount": 91965,
+    "tipCount": 105754,
     "bakedSoftLetters": 9,
     "tipWeldFlag": false,
     "tipLoftFlag": false,
