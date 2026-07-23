@@ -246,13 +246,15 @@ crease). Hard-projected by `sculptHoneyPendant` / `honeyPendantPoint`. Jagged
 lip strands snapped at weld + seal. Still **no attached drip sphere meshes**
 (`dripBlobs: 0`). Dark plate defaults.
 
-**Bake soft-boolean (2026-07 next):** `scripts/bake-scratch-mesh.py` unions pear
-tip solids into each letter bottom (Blender Exact/Float boolean), then voxel
-remeshes (`TIP_REMESH_VOXEL`) so the glyph body densifies into the filament —
-SDF-style soft join that kills the hard shelf at letter→neck. Manifest /
-`fonts.json` flag `softBooleanTips` + per-letter `lipY`/`hang`/`columns` so
-runtime synthesizes `tipU` and skips dual-lattice loft. Fallback: 1-pass
-budgeted `subdivideLetterLipBand` + runtime loft when bake flag absent.
+**Bake soft-boolean (2026-07):** `scripts/bake-scratch-mesh.py` prefers
+**Geometry Nodes SDF soft-union** on Blender 4.2 portable: Mesh→SDF Grid for
+letter + pear tip → SDF Grid Boolean UNION → Grid to Mesh with a negative iso
+threshold (soft fillet). Quilez softMin via Math on OpenVDB grid sockets is a
+no-op/empty in 4.2, so softness is iso-dilate + post Quilez lip morph + light
+voxel remesh. Fallback: Exact/Float mesh boolean + remesh. Manifest /
+`fonts.json` flag `softBooleanTips` + per-letter `sdfUnion` / `lipY`/`hang`/
+`columns` so runtime synthesizes `tipU` and skips dual-lattice loft
+(`softBooleanBake`). Still **dripBlobs: 0**.
 
 **Freeze-height cheat sheet:**
 

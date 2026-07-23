@@ -4,8 +4,9 @@ Bake geometric display wordmark mesh(es) for the scratch 3D pipeline.
 
 - One mesh object per glyph (per-letter GravityMeltSim slots)
 - Higher bevel + subdivision for round frozen pendants
-- Bake-time SDF soft-boolean: pear drip tips unioned into letter bottoms,
-  then voxel remesh so glyph densifies into filament (seamless letter→neck→bulb)
+- Bake-time Geometry Nodes SDF soft-union: pear drip tips ∪ letter bottoms
+  (Mesh→SDF Grid → SDF Boolean UNION → Grid to Mesh + soft iso threshold),
+  then light voxel remesh + Quilez lip morph so glyph melts into filament
 - Font selectable via --font / --font-path
 
 Run:
@@ -55,10 +56,18 @@ SUBDIV_LEVELS = 2
 REMESH_VOXEL = 0.009
 # Soft-boolean pear tips into letter bottoms (concept seamless drip).
 SOFT_BOOLEAN_TIPS = True
+# Prefer Geometry Nodes Mesh→SDF → SDF Boolean UNION → Grid to Mesh (4.2 portable).
+# Soft fillet = negative iso threshold (Math softMin on OpenVDB grids yields empty mesh).
+USE_GN_SDF_UNION = True
+SDF_BAND_WIDTH = 5
+# Soft blend radius in mesh units (~3–4 voxels) — fattens iso so underside melts into neck.
+SDF_SOFT_BLEND = REMESH_VOXEL * 3.6
 TIP_RINGS = 16
 TIP_SEGS = 18
-# Alias kept for manifest; tip join uses REMESH_VOXEL after boolean.
+# Alias kept for manifest; tip join uses REMESH_VOXEL after boolean fallback.
 TIP_REMESH_VOXEL = REMESH_VOXEL
+# After GN SDF, light remesh slightly finer to kill stair-step shelf at lip.
+TIP_POST_SDF_VOXEL = REMESH_VOXEL * 0.85
 TARGET_HEIGHT = 1.15
 LETTER_GAP = 0.04  # extra tracking between separate letter objects
 
@@ -215,8 +224,8 @@ def make_pear_tip_mesh(
     # Closed pear-of-revolution solid buried deep into letter lip (Y-up).
     rings = max(10, min(28, rings))
     segs = max(10, min(32, segs))
-    # Deep bury so voxel remesh carves a concave fillet (kills hard shelf)
-    bury = hang * 0.28
+    # Deep bury so SDF union / voxel remesh carves a concave fillet (kills hard shelf)
+    bury = hang * 0.38
     lip_y_b = lip_y + bury
 
     mesh = bpy.data.meshes.new(name)
@@ -324,12 +333,12 @@ def dig_funnel_pits(
         if best_d > lip_r:
             continue
         t = 1.0 - (best_d / max(lip_r, 1e-4)) ** 2
-        sink = hang * 0.38 * t
+        sink = hang * 0.48 * t
         v.co.y = y - sink
         if best_d > 1e-6:
-            gather = 0.55 * t
+            gather = 0.68 * t
             s = 1.0 + (neck_r / best_d - 1.0) * gather
-            s = max(0.28, min(1.0, s))
+            s = max(0.22, min(1.0, s))
             v.co.x = cx + (x - cx) * s
             v.co.z = cz + (z - cz) * s * 0.96
         touched += 1
@@ -340,13 +349,167 @@ def dig_funnel_pits(
     return touched
 
 
-def volume_soft_union(letter_obj, tip_obj, voxel: float) -> bool:
+def _gn_ensure_geo_sockets(ng) -> None:
+    """Blender 4.x Geometry NodeTree needs interface Geometry in/out."""
+    if not hasattr(ng, "interface"):
+        return
+    has_in = any(getattr(i, "in_out", "") == "INPUT" and i.socket_type == "NodeSocketGeometry" for i in ng.interface.items_tree)
+    has_out = any(getattr(i, "in_out", "") == "OUTPUT" and i.socket_type == "NodeSocketGeometry" for i in ng.interface.items_tree)
+    if not has_in:
+        ng.interface.new_socket(name="Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
+    if not has_out:
+        ng.interface.new_socket(name="Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
+
+
+def build_gn_sdf_soft_union_tree(tip_obj, voxel: float, soft_blend: float):
     """
-    Blender 4.2 portable: Mesh→Volume modifiers cannot be stacked on a Volume
-    object the way 3.x docs suggest. Keep hook for a future Geometry-Nodes SDF
-    soft-union; always fall through to Exact/Float boolean + voxel remesh.
+    Mesh → SDF Grid (letter + tip) → SDF Grid Boolean UNION → Grid to Mesh.
+
+    Soft fillet: Grid to Mesh threshold = -soft_blend (dilate iso into the
+    concave letter→neck crease). Quilez softMin via ShaderNodeMath on OpenVDB
+    grid sockets produces empty meshes in 4.2 — do not use that path.
     """
-    return False
+    ng = bpy.data.node_groups.new(f"SDFSoftUnion_{tip_obj.name}", "GeometryNodeTree")
+    _gn_ensure_geo_sockets(ng)
+    nodes, links = ng.nodes, ng.links
+    nin = nodes.new("NodeGroupInput")
+    nout = nodes.new("NodeGroupOutput")
+
+    tip_info = nodes.new("GeometryNodeObjectInfo")
+    tip_info.inputs[0].default_value = tip_obj
+    tip_info.transform_space = "RELATIVE"
+
+    vs = max(float(voxel), 1e-4)
+    band = max(3, int(SDF_BAND_WIDTH))
+    m2a = nodes.new("GeometryNodeMeshToSDFGrid")
+    m2a.inputs[1].default_value = vs
+    m2a.inputs[2].default_value = band
+    m2b = nodes.new("GeometryNodeMeshToSDFGrid")
+    m2b.inputs[1].default_value = vs
+    m2b.inputs[2].default_value = band
+
+    booln = nodes.new("GeometryNodeSDFGridBoolean")
+    booln.operation = "UNION"
+    # 4.2 UNION: Grid 1 disabled; Grid 2 is multi-input — feed both SDFs there.
+    multi = booln.inputs[1]
+
+    g2m = nodes.new("GeometryNodeGridToMesh")
+    # Negative threshold fattens the surface → soft melt at overlapping join.
+    g2m.inputs[1].default_value = -max(float(soft_blend), 0.0)
+    g2m.inputs[2].default_value = 0.0
+
+    links.new(nin.outputs[0], m2a.inputs[0])
+    links.new(tip_info.outputs["Geometry"], m2b.inputs[0])
+    links.new(m2a.outputs[0], multi)
+    links.new(m2b.outputs[0], multi)
+    links.new(booln.outputs[0], g2m.inputs[0])
+    links.new(g2m.outputs[0], nout.inputs[0])
+    return ng
+
+
+def volume_soft_union(letter_obj, tip_obj, voxel: float, soft_blend: float | None = None) -> bool:
+    """
+    Bake-time Geometry Nodes SDF soft-union (Blender 4.2 portable).
+
+    Mesh→Volume modifier stacking is unavailable on 4.2 Volume objects; GN
+    Mesh→SDF Grid + SDF Boolean UNION + Grid to Mesh is the working path.
+    Returns True when the letter mesh was replaced by the SDF union result.
+    On failure, restores the pre-modifier mesh so Exact/Float boolean can run.
+    """
+    if not USE_GN_SDF_UNION:
+        return False
+    blend = SDF_SOFT_BLEND if soft_blend is None else float(soft_blend)
+    vs = max(float(voxel), 1e-4)
+
+    bpy.ops.object.select_all(action="DESELECT")
+    letter_obj.select_set(True)
+    bpy.context.view_layer.objects.active = letter_obj
+    try:
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    except Exception:
+        pass
+
+    verts_before = len(letter_obj.data.vertices)
+    snap = letter_obj.data.copy()
+    snap.name = f"{letter_obj.name}_pre_gn_sdf"
+    snap_alive = True
+    ng = None
+    mod = None
+
+    def _drop_mesh(me) -> None:
+        if me is not None and me.users == 0:
+            try:
+                bpy.data.meshes.remove(me)
+            except ReferenceError:
+                pass
+
+    def _drop_ng(tree) -> None:
+        if tree is None:
+            return
+        try:
+            bpy.data.node_groups.remove(tree)
+        except (ReferenceError, Exception):
+            pass
+
+    try:
+        # Closed glyphs can yield empty Grid→Mesh at aggressive negative iso —
+        # try full soft blend, then reduced, then hard iso (threshold 0).
+        for attempt_blend in (blend, blend * 0.45, 0.0):
+            old = letter_obj.data
+            letter_obj.data = snap.copy()
+            letter_obj.data.name = f"{letter_obj.name}_gn_try"
+            _drop_mesh(old)
+
+            ng = build_gn_sdf_soft_union_tree(tip_obj, vs, attempt_blend)
+            mod = letter_obj.modifiers.new(name="GN_SDF_SoftUnion", type="NODES")
+            mod.node_group = ng
+            bpy.context.view_layer.update()
+            bpy.ops.object.modifier_apply(modifier=mod.name)
+            mod = None
+            _drop_ng(ng)
+            ng = None
+
+            verts_after = len(letter_obj.data.vertices)
+            min_ok = max(500, int(verts_before * 0.2))
+            if verts_after >= min_ok:
+                bpy.ops.object.shade_smooth()
+                for poly in letter_obj.data.polygons:
+                    poly.use_smooth = True
+                print(
+                    f"  GN SDF soft-union ok on {letter_obj.name}: "
+                    f"verts {verts_before}->{verts_after} voxel={vs:.4f} "
+                    f"blend={attempt_blend:.4f}"
+                )
+                _drop_mesh(snap)
+                snap_alive = False
+                return True
+            print(
+                f"  GN SDF soft-union sparse on {letter_obj.name}: "
+                f"{verts_before}->{verts_after} (blend={attempt_blend:.4f})"
+            )
+
+        old = letter_obj.data
+        letter_obj.data = snap
+        snap_alive = False  # now owned by letter_obj
+        _drop_mesh(old)
+        return False
+    except Exception as exc:
+        print(f"  GN SDF soft-union failed on {letter_obj.name}: {exc}")
+        if mod is not None and mod.name in letter_obj.modifiers:
+            try:
+                letter_obj.modifiers.remove(mod)
+            except Exception:
+                pass
+        if snap_alive:
+            old = letter_obj.data
+            letter_obj.data = snap
+            snap_alive = False
+            _drop_mesh(old)
+        return False
+    finally:
+        _drop_ng(ng)
+        if snap_alive:
+            _drop_mesh(snap)
 
 
 def soft_boolean_lip_morph(
@@ -372,13 +535,14 @@ def soft_boolean_lip_morph(
     bm.from_mesh(mesh_obj.data)
     bm.verts.ensure_lookup_table()
 
-    blend_k = max(col_w * 0.55, hang * 0.08)
-    band = hang * 0.55
+    # Widen morph band into upper neck so shelf melts past the letter lip
+    blend_k = max(col_w * 0.7, hang * 0.12)
+    band = hang * 0.65
     touched = 0
     for v in bm.verts:
         x, y, z = v.co.x, v.co.y, v.co.z
-        # Only morph the letter→filament collar (from shoulder into upper neck)
-        if y > lip_y + hang * 0.22 or y < lip_y - hang * 0.55:
+        # Collar from shoulder into upper neck
+        if y > lip_y + hang * 0.28 or y < lip_y - hang * 0.65:
             continue
         best_ci = 0
         best_d = 1e9
@@ -388,10 +552,10 @@ def soft_boolean_lip_morph(
                 best_d = d
                 best_ci = ci
         cx = cols[best_ci]
-        if best_d > lip_r * 1.35:
+        if best_d > lip_r * 1.45:
             continue
         # Parametric u along pendant (0 at lip, 1 at tip)
-        u = _clamp01((lip_y + hang * 0.05 - y) / max(hang, 1e-4))
+        u = _clamp01((lip_y + hang * 0.08 - y) / max(hang, 1e-4))
         pear_r = honey_pendant_radius(u, neck_r, bulb_r, lip_r)
         # Soft-boolean: radial softMin of current radius vs pear (negative SDF style)
         r = math.hypot(x - cx, z - cz)
@@ -401,17 +565,16 @@ def soft_boolean_lip_morph(
         h = _clamp01(0.5 + 0.5 * (pear_r - r) / max(blend_k, 1e-4))
         blend_r = r * (1.0 - h) + pear_r * h - blend_k * h * (1.0 - h)
         # Weight stronger near lip, fade toward tip (tip already pear from boolean)
-        w_y = _smoothstep(lip_y - hang * 0.45, lip_y + hang * 0.18, y)
-        w = (1.0 - abs(w_y - 0.55) * 1.2) * _clamp01(1.0 - best_d / max(lip_r * 1.35, 1e-4))
-        w = _clamp01(w) * 0.85
-        if w < 0.05:
+        w_y = _smoothstep(lip_y - hang * 0.55, lip_y + hang * 0.22, y)
+        w = (1.0 - abs(w_y - 0.5) * 1.15) * _clamp01(1.0 - best_d / max(lip_r * 1.45, 1e-4))
+        w = _clamp01(w) * 0.95
+        if w < 0.04:
             continue
-        # Target Y on pear profile
-        want_y = honey_pendant_y(u, lip_y + hang * 0.04, hang)
-        # Near original lip, pull DOWN into funnel (kill flat shelf)
-        if y >= lip_y - hang * 0.02:
-            want_y = min(want_y, lip_y - hang * 0.04 * (1.0 - u))
-        ny = y + (want_y - y) * w * 0.65
+        # Target Y on pear profile — pull letter shelf DOWN into funnel
+        want_y = honey_pendant_y(u, lip_y + hang * 0.06, hang)
+        if y >= lip_y - hang * 0.06:
+            want_y = min(want_y, lip_y - hang * 0.12 * (1.0 - u * 0.4))
+        ny = y + (want_y - y) * w * 0.88
         if r > 1e-6:
             s = blend_r / r
             nx = cx + (x - cx) * (1.0 + (s - 1.0) * w)
@@ -502,22 +665,28 @@ def soft_boolean_letter_tips(mesh_obj, ch: str) -> dict:
         tip_union = bpy.context.view_layer.objects.active
 
     united = 0
+    used_volume = False
     tip_mesh = tip_union.data
-    used_volume = volume_soft_union(mesh_obj, tip_union, TIP_REMESH_VOXEL)
+    used_volume = volume_soft_union(
+        mesh_obj,
+        tip_union,
+        TIP_REMESH_VOXEL,
+        soft_blend=max(SDF_SOFT_BLEND, col_w * 0.35),
+    )
     if used_volume:
         united = len(cols)
-        print(f"  volume SDF soft-union ok on {mesh_obj.name}")
     elif boolean_union(mesh_obj, tip_union):
         united = len(cols)
     bpy.data.objects.remove(tip_union, do_unlink=True)
     if tip_mesh and tip_mesh.users == 0:
         bpy.data.meshes.remove(tip_mesh)
 
-    # Voxel remesh = discrete SDF rebuild — soft fillet through the join
-    if not used_volume:
+    # Voxel remesh after Exact/Float boolean. GN SDF Grid→Mesh already densifies.
+    if united > 0 and not used_volume:
         remesh_dense(mesh_obj, voxel=TIP_REMESH_VOXEL)
-    else:
-        remesh_dense(mesh_obj, voxel=TIP_REMESH_VOXEL)
+    elif united > 0 and used_volume:
+        # Finer remesh after SDF to kill residual stair-steps at the lip shelf
+        remesh_dense(mesh_obj, voxel=max(TIP_POST_SDF_VOXEL, 0.007))
 
     verts_after = len(mesh_obj.data.vertices)
     min_keep = max(8000, int(verts_before * 0.35))
@@ -532,6 +701,7 @@ def soft_boolean_letter_tips(mesh_obj, ch: str) -> dict:
             bpy.data.meshes.remove(old)
         remesh_dense(mesh_obj, voxel=REMESH_VOXEL)
         united = 0
+        used_volume = False
     else:
         if snap_mesh.users == 0:
             bpy.data.meshes.remove(snap_mesh)
@@ -556,8 +726,8 @@ def soft_boolean_letter_tips(mesh_obj, ch: str) -> dict:
     bpy.context.view_layer.objects.active = mesh_obj
     try:
         sm = mesh_obj.modifiers.new(name="TipSmooth", type="SMOOTH")
-        sm.factor = 0.35
-        sm.iterations = 4
+        sm.factor = 0.42 if used_volume else 0.35
+        sm.iterations = 6 if used_volume else 4
         bpy.ops.object.modifier_apply(modifier=sm.name)
     except Exception as exc:
         print(f"  tip smooth skipped: {exc}")
@@ -572,6 +742,7 @@ def soft_boolean_letter_tips(mesh_obj, ch: str) -> dict:
     return {
         "tips": united,
         "softBoolean": united > 0,
+        "sdfUnion": bool(used_volume),
         "columns": [float(c) for c in cols],
         "colW": float(col_w),
         "lipY": float(lip_y),
@@ -670,7 +841,7 @@ def build_wordmark(font_path: Path) -> tuple[list, list[dict]]:
         tip_meta.append(meta)
         print(
             f"  soft-boolean {m.name} ch={ch!r} tips={meta.get('tips', 0)} "
-            f"verts={len(m.data.vertices)}"
+            f"sdf={meta.get('sdfUnion', False)} verts={len(m.data.vertices)}"
         )
 
     return mesh_objs, tip_meta
@@ -707,6 +878,7 @@ def bake_one(font_id: str, label: str, font_path: Path, primary: bool) -> dict:
             "char": ch,
             "meshName": mesh_objs[i].name,
             "softBoolean": bool(tm.get("softBoolean")),
+            "sdfUnion": bool(tm.get("sdfUnion")),
             "tips": int(tm.get("tips") or 0),
             "columns": tm.get("columns") or [],
             "colW": tm.get("colW"),
@@ -847,6 +1019,8 @@ def main(argv: list[str] | None = None) -> None:
         "remeshVoxel": REMESH_VOXEL,
         "tipRemeshVoxel": TIP_REMESH_VOXEL,
         "softBooleanTips": SOFT_BOOLEAN_TIPS,
+        "gnSdfUnion": USE_GN_SDF_UNION,
+        "sdfSoftBlend": SDF_SOFT_BLEND,
         "targetHeight": TARGET_HEIGHT,
         "bakedDimensions": primary_entry["bakedDimensions"],
         "vertexCount": primary_entry.get("vertexCount"),
@@ -857,8 +1031,8 @@ def main(argv: list[str] | None = None) -> None:
         "fontsCatalog": "fonts.json",
         "pipeline": [
             f"1-font: {primary_entry['label']} wordmark {TEXT} (per-glyph meshes)",
-            "2-mesh: Blender extrude+bevel+subdiv+remesh → GLB",
-            "2b-soft-boolean: pear tips ∪ letter bottoms + voxel remesh (SDF join)",
+            "2-mesh: Blender extrude+bevel+subdiv → GLB",
+            "2b-gn-sdf: Mesh→SDF Grid ∪ pear tips → Grid to Mesh (soft iso) + lip morph",
             "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
             "4-liquid: GravityMeltSim per-letter overrides",
             "5-sag: frozen viscoplastic neck/bulb (no drip blobs)",

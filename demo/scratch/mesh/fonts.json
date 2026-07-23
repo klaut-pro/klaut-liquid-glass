@@ -14,6 +14,7 @@
           "char": "k",
           "meshName": "letter_0_k",
           "softBoolean": true,
+          "sdfUnion": true,
           "tips": 2,
           "columns": [
             -4.946070442199707,
@@ -31,6 +32,7 @@
           "char": "l",
           "meshName": "letter_1_l",
           "softBoolean": true,
+          "sdfUnion": true,
           "tips": 1,
           "columns": [
             -3.7484230995178223
@@ -47,6 +49,7 @@
           "char": "a",
           "meshName": "letter_2_a",
           "softBoolean": true,
+          "sdfUnion": true,
           "tips": 2,
           "columns": [
             -2.815941505432129,
@@ -64,6 +67,7 @@
           "char": "u",
           "meshName": "letter_3_u",
           "softBoolean": true,
+          "sdfUnion": true,
           "tips": 2,
           "columns": [
             -1.2905780506134032,
@@ -81,6 +85,7 @@
           "char": "t",
           "meshName": "letter_4_t",
           "softBoolean": true,
+          "sdfUnion": true,
           "tips": 1,
           "columns": [
             0.135649174451828
@@ -97,6 +102,7 @@
           "char": ".",
           "meshName": "letter_5_dot",
           "softBoolean": true,
+          "sdfUnion": true,
           "tips": 1,
           "columns": [
             1.0154312551021576
@@ -113,6 +119,7 @@
           "char": "p",
           "meshName": "letter_6_p",
           "softBoolean": true,
+          "sdfUnion": true,
           "tips": 1,
           "columns": [
             2.095134735107422
@@ -129,6 +136,7 @@
           "char": "r",
           "meshName": "letter_7_r",
           "softBoolean": true,
+          "sdfUnion": true,
           "tips": 1,
           "columns": [
             3.398566722869873
@@ -145,6 +153,7 @@
           "char": "o",
           "meshName": "letter_8_o",
           "softBoolean": true,
+          "sdfUnion": true,
           "tips": 1,
           "columns": [
             4.7411110401153564

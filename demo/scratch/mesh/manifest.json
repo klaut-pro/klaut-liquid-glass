@@ -12,13 +12,15 @@
   "remeshVoxel": 0.009,
   "tipRemeshVoxel": 0.009,
   "softBooleanTips": true,
+  "gnSdfUnion": true,
+  "sdfSoftBlend": 0.0324,
   "targetHeight": 1.15,
   "bakedDimensions": {
-    "x": 6.852664623260498,
-    "y": 0.7133278250694275,
-    "z": 1.148447036743164
+    "x": 6.229010615348816,
+    "y": 0.6484614610671997,
+    "z": 1.0831447839736938
   },
-  "vertexCount": 363744,
+  "vertexCount": 407636,
   "mesh": "wordmark-klaut-pro.glb",
   "letters": [
     {
@@ -26,6 +28,7 @@
       "char": "k",
       "meshName": "letter_0_k",
       "softBoolean": true,
+      "sdfUnion": true,
       "tips": 2,
       "columns": [
         -4.946070442199707,
@@ -43,6 +46,7 @@
       "char": "l",
       "meshName": "letter_1_l",
       "softBoolean": true,
+      "sdfUnion": true,
       "tips": 1,
       "columns": [
         -3.7484230995178223
@@ -59,6 +63,7 @@
       "char": "a",
       "meshName": "letter_2_a",
       "softBoolean": true,
+      "sdfUnion": true,
       "tips": 2,
       "columns": [
         -2.815941505432129,
@@ -76,6 +81,7 @@
       "char": "u",
       "meshName": "letter_3_u",
       "softBoolean": true,
+      "sdfUnion": true,
       "tips": 2,
       "columns": [
         -1.2905780506134032,
@@ -93,6 +99,7 @@
       "char": "t",
       "meshName": "letter_4_t",
       "softBoolean": true,
+      "sdfUnion": true,
       "tips": 1,
       "columns": [
         0.135649174451828
@@ -109,6 +116,7 @@
       "char": ".",
       "meshName": "letter_5_dot",
       "softBoolean": true,
+      "sdfUnion": true,
       "tips": 1,
       "columns": [
         1.0154312551021576
@@ -125,6 +133,7 @@
       "char": "p",
       "meshName": "letter_6_p",
       "softBoolean": true,
+      "sdfUnion": true,
       "tips": 1,
       "columns": [
         2.095134735107422
@@ -141,6 +150,7 @@
       "char": "r",
       "meshName": "letter_7_r",
       "softBoolean": true,
+      "sdfUnion": true,
       "tips": 1,
       "columns": [
         3.398566722869873
@@ -157,6 +167,7 @@
       "char": "o",
       "meshName": "letter_8_o",
       "softBoolean": true,
+      "sdfUnion": true,
       "tips": 1,
       "columns": [
         4.7411110401153564
@@ -174,8 +185,8 @@
   "fontsCatalog": "fonts.json",
   "pipeline": [
     "1-font: Arial Black wordmark klaut.pro (per-glyph meshes)",
-    "2-mesh: Blender extrude+bevel+subdiv+remesh \u2192 GLB",
-    "2b-soft-boolean: pear tips \u222a letter bottoms + voxel remesh (SDF join)",
+    "2-mesh: Blender extrude+bevel+subdiv \u2192 GLB",
+    "2b-gn-sdf: Mesh\u2192SDF Grid \u222a pear tips \u2192 Grid to Mesh (soft iso) + lip morph",
     "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
     "4-liquid: GravityMeltSim per-letter overrides",
     "5-sag: frozen viscoplastic neck/bulb (no drip blobs)"
