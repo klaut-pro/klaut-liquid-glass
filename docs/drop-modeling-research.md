@@ -256,10 +256,11 @@ voxel remesh. Fallback: Exact/Float mesh boolean + remesh. Manifest /
 `columns` so runtime synthesizes `tipU` and skips dual-lattice loft
 (`softBooleanBake`). Still **dripBlobs: 0**.
 
-**Per-glyph bake tune (post-d41daee / 43cb894+ / pour-v2):** `glyph_bake_tune(ch)` —
-dual-leg `a`/`k`/`u` get **poured** pear (long lip→thin filament before modest tip
-swell), deeper funnel dig, stronger lip morph, leaner necks; closed `o` gets
-**thinner extrude/bevel** + near-hard iso + high freeze + thin transmission so the
+**Per-glyph bake tune (post-d41daee / 43cb894+ / pour-v3):** `glyph_bake_tune(ch)` —
+dual-leg `a`/`u` get **poured** pear (long lip→thin filament before modest tip
+swell); **`k`** uses wider column inset + sequential tip unions + leaner lips so
+dual tips stay split (not one bead); closed `o` gets **lighter face (Arial Bold)**
++ thinner extrude/bevel + near-hard iso + high freeze + thin transmission so the
 aperture reads on dark bg. Runtime digs underside→filament funnel (no snap-UP
 shelf).
 

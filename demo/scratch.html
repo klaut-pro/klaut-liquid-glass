@@ -491,17 +491,18 @@
           stage <= 2 ? matSolid : stage === 3 ? matGlass : matLiquid;
         for (let i = 0; i < letterMeshes.length; i++) {
           const ch = letterChars[i] || "";
-          // Closed o: thinner transmission so counter reads open, not thick blob
+          // Closed o: thinner transmission + lower IOR so counter reads open on dark bg
           if (stage >= 3 && ch === "o") {
             const m = mat.clone();
-            m.thickness = stage === 3 ? 0.12 : 0.14;
-            m.transmission = stage === 3 ? 0.995 : 0.99;
-            m.attenuationDistance = 6.5;
-            m.attenuationColor = new THREE.Color(0xeef4ff);
-            m.envMapIntensity = stage === 3 ? 1.15 : 1.22;
-            m.roughness = 0.035;
-            m.opacity = 0.88;
-            m.ior = 1.22;
+            m.thickness = stage === 3 ? 0.06 : 0.08;
+            m.transmission = stage === 3 ? 0.998 : 0.995;
+            m.attenuationDistance = 9.5;
+            m.attenuationColor = new THREE.Color(0xf4f8ff);
+            m.envMapIntensity = stage === 3 ? 1.05 : 1.1;
+            m.roughness = 0.028;
+            m.opacity = 0.78;
+            m.ior = 1.12;
+            m.metalness = 0.02;
             letterMeshes[i].material = m;
           } else {
             letterMeshes[i].material = mat;
@@ -570,12 +571,13 @@
           if (ch === "k" || ch === "t" || ch === "l") {
             return {
               enable: true,
-              sagAmpMul: ch === "k" ? 1.55 : 1.2,
-              bulbGrowMul: ch === "k" ? 1.18 : 2.1,
-              viscosity: 0.9,
-              freezeHeight: ch === "k" ? 0.7 : 0.72,
-              // Dual-leg k: long pour → thin filament → modest tip
-              neckPinchMul: ch === "k" ? 2.2 : 1.4,
+              // k: match a/u poured filament — thin neck, lean tip (not bead-first)
+              // Higher freeze keeps bake dual tips from draining into one bead at settle
+              sagAmpMul: ch === "k" ? 1.35 : 1.2,
+              bulbGrowMul: ch === "k" ? 0.85 : 2.1,
+              viscosity: ch === "k" ? 0.88 : 0.9,
+              freezeHeight: ch === "k" ? 0.82 : 0.72,
+              neckPinchMul: ch === "k" ? 2.35 : 1.4,
             };
           }
           if (ch === "a" || ch === "u") {
@@ -583,21 +585,21 @@
             return {
               enable: true,
               sagAmpMul: 1.62,
-              bulbGrowMul: 1.12,
+              bulbGrowMul: 1.05,
               viscosity: 0.86,
               freezeHeight: 0.68,
-              neckPinchMul: 2.3,
+              neckPinchMul: 2.4,
             };
           }
           if (ch === "o") {
-            // Closed counter: near-full freeze + thin glass; bake uses thinner extrude
+            // Closed counter: freeze solid + thin glass; bake uses lighter face + thin extrude
             return {
               enable: true,
-              sagAmpMul: 0.7,
-              bulbGrowMul: 1.05,
-              freezeHeight: 0.93,
-              neckPinchMul: 1.0,
-              viscosity: 0.96,
+              sagAmpMul: 0.2,
+              bulbGrowMul: 0.7,
+              freezeHeight: 0.99,
+              neckPinchMul: 0.7,
+              viscosity: 0.98,
             };
           }
           if (ch === "r") {
@@ -985,8 +987,14 @@
               : [c.x];
           // Dual legs: two honey drips — keep columns tight so tips don't merge into a puddle
           if (!(Array.isArray(lm?.columns) && lm.columns.length)) {
-            if (ch === "k" || ch === "u" || ch === "a" || ch === "n" || ch === "m") {
-              const inset = spanX * 0.36;
+            if (ch === "k") {
+              // Stem-only dual split (concept parallel columns) — not full glyph width
+              const stemMax = bb.min.x + spanX * 0.55;
+              const stemSpan = Math.max(stemMax - bb.min.x, 1e-4);
+              const inset = stemSpan * 0.22;
+              cols = [bb.min.x + inset, stemMax - inset];
+            } else if (ch === "u" || ch === "a" || ch === "n" || ch === "m") {
+              const inset = spanX * 0.34;
               cols = [bb.min.x + inset, bb.max.x - inset];
             }
           }
@@ -996,7 +1004,14 @@
             typeof lm?.colW === "number" && lm.colW > 0
               ? lm.colW
               : Math.max(
-                  spanX * (cols.length > 1 ? 0.12 : narrow ? 0.1 : 0.15),
+                  spanX *
+                    (ch === "k"
+                      ? 0.07
+                      : cols.length > 1
+                        ? 0.092
+                        : narrow
+                          ? 0.1
+                          : 0.15),
                   narrow ? 0.02 : 0.026,
                 );
           letterOverrides[i] = {

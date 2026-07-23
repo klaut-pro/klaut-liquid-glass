@@ -16,11 +16,11 @@
   "sdfSoftBlend": 0.0324,
   "targetHeight": 1.15,
   "bakedDimensions": {
-    "x": 6.246293160915375,
-    "y": 0.8361563682556152,
-    "z": 1.0831503868103027
+    "x": 6.021696600914002,
+    "y": 0.8162423372268677,
+    "z": 1.0831010341644287
   },
-  "vertexCount": 442632,
+  "vertexCount": 433480,
   "mesh": "wordmark-klaut-pro.glb",
   "letters": [
     {
@@ -31,15 +31,19 @@
       "sdfUnion": true,
       "tips": 2,
       "columns": [
-        -4.8873605537414555,
-        -4.639248867034912
+        -4.935730402469635,
+        -4.662807400226593
       ],
-      "colW": 0.08861131668090821,
+      "colW": 0.05360987544059753,
       "lipY": -0.22941084206104279,
-      "hang": 0.3193398921489715,
-      "neckR": 0.054187592376709,
-      "bulbR": 0.08038818649291994,
-      "lipR": 0.20599472788810733
+      "hang": 0.3303516125679016,
+      "neckR": 0.023957181136894226,
+      "bulbR": 0.03191663934355974,
+      "lipR": 0.08077667982012031,
+      "poured": true,
+      "closedCounter": false,
+      "extrudeMul": 1.0,
+      "isoBlendMul": 0.72
     },
     {
       "index": 1,
@@ -49,14 +53,18 @@
       "sdfUnion": true,
       "tips": 1,
       "columns": [
-        -3.7251577377319336
+        -3.561746597290039
       ],
       "colW": 0.03504281044006348,
       "lipY": -0.2294108271598816,
       "hang": 0.22023439407348633,
       "neckR": 0.04121034507751466,
       "bulbR": 0.05274924169921876,
-      "lipR": 0.07542964947223663
+      "lipR": 0.07542964947223663,
+      "poured": false,
+      "closedCounter": false,
+      "extrudeMul": 1.0,
+      "isoBlendMul": 1.0
     },
     {
       "index": 2,
@@ -66,15 +74,19 @@
       "sdfUnion": true,
       "tips": 2,
       "columns": [
-        -2.753384485244751,
-        -2.478342876434326
+        -2.609619016647339,
+        -2.29528582572937
       ],
-      "colW": 0.09822914600372315,
+      "colW": 0.09037079238891602,
       "lipY": -0.2294108271598816,
       "hang": 0.3193398714065552,
-      "neckR": 0.06006908736419679,
-      "bulbR": 0.08911348125457766,
-      "lipR": 0.22835329571485521
+      "neckR": 0.055263546961669935,
+      "bulbR": 0.08198438285522462,
+      "lipR": 0.13201994018554697,
+      "poured": true,
+      "closedCounter": false,
+      "extrudeMul": 1.0,
+      "isoBlendMul": 1.08
     },
     {
       "index": 3,
@@ -84,15 +96,19 @@
       "sdfUnion": true,
       "tips": 2,
       "columns": [
-        -1.2316906785964967,
-        -0.9823349380493164
+        -1.0860905331373214,
+        -0.801112534403801
       ],
-      "colW": 0.08905562162399293,
+      "colW": 0.08193117463588714,
       "lipY": -0.2294108271598816,
       "hang": 0.3193398714065552,
-      "neckR": 0.05445929373550416,
-      "bulbR": 0.08079125993728639,
-      "lipR": 0.20702760358929634
+      "neckR": 0.05010255191333772,
+      "bulbR": 0.07432796162967682,
+      "lipR": 0.11969075946807856,
+      "poured": true,
+      "closedCounter": false,
+      "extrudeMul": 1.0,
+      "isoBlendMul": 1.08
     },
     {
       "index": 4,
@@ -102,14 +118,18 @@
       "sdfUnion": true,
       "tips": 1,
       "columns": [
-        0.15891426801681519
+        0.32232558727264404
       ],
       "colW": 0.06539024114608764,
       "lipY": -0.2294108271598816,
       "hang": 0.22023439407348633,
       "neckR": 0.08202551849365236,
       "bulbR": 0.10499266367187503,
-      "lipR": 0.15013599367141722
+      "lipR": 0.15013599367141722,
+      "poured": false,
+      "closedCounter": false,
+      "extrudeMul": 1.0,
+      "isoBlendMul": 1.0
     },
     {
       "index": 5,
@@ -119,14 +139,18 @@
       "sdfUnion": true,
       "tips": 1,
       "columns": [
-        1.0386963784694672
+        1.2021077275276184
       ],
-      "colW": 0.036855846643447876,
+      "colW": 0.03685585260391235,
       "lipY": -0.2294108122587204,
       "hang": 0.25235189348459247,
-      "neckR": 0.04721233955025673,
-      "bulbR": 0.06519799271225929,
-      "lipR": 0.08318364587426186
+      "neckR": 0.04721234718561173,
+      "bulbR": 0.06519800325632095,
+      "lipR": 0.08318365932703017,
+      "poured": false,
+      "closedCounter": false,
+      "extrudeMul": 1.0,
+      "isoBlendMul": 1.0
     },
     {
       "index": 6,
@@ -136,14 +160,18 @@
       "sdfUnion": true,
       "tips": 1,
       "columns": [
-        2.1183996200561523
+        2.2818110585212708
       ],
-      "colW": 0.09241595268249513,
+      "colW": 0.09241594076156617,
       "lipY": -0.22941084206104279,
       "hang": 0.2523519262671471,
-      "neckR": 0.11838483538627625,
-      "bulbR": 0.16348382029533387,
-      "lipR": 0.2085828052043915
+      "neckR": 0.11838482011556627,
+      "bulbR": 0.16348379920721057,
+      "lipR": 0.20858277829885485,
+      "poured": false,
+      "closedCounter": false,
+      "extrudeMul": 1.0,
+      "isoBlendMul": 1.0
     },
     {
       "index": 7,
@@ -153,31 +181,39 @@
       "sdfUnion": true,
       "tips": 1,
       "columns": [
-        3.4218324422836304
+        3.5852434635162354
       ],
-      "colW": 0.10064996480941772,
+      "colW": 0.10064992904663085,
       "lipY": -0.2294108271598816,
       "hang": 0.22023439407348633,
-      "neckR": 0.12625531585693361,
-      "bulbR": 0.16160680429687502,
-      "lipR": 0.2310923192024231
+      "neckR": 0.12625527099609377,
+      "bulbR": 0.161606746875,
+      "lipR": 0.23109223709106444,
+      "poured": false,
+      "closedCounter": false,
+      "extrudeMul": 1.0,
+      "isoBlendMul": 1.0
     },
     {
       "index": 8,
       "char": "o",
       "meshName": "letter_8_o",
-      "softBoolean": true,
-      "sdfUnion": true,
-      "tips": 1,
+      "softBoolean": false,
+      "sdfUnion": false,
+      "tips": 0,
       "columns": [
-        4.73661208152771
+        4.705011606216431
       ],
-      "colW": 0.14092490673065186,
-      "lipY": -0.12054497003555298,
-      "hang": 0.08332068328857421,
-      "neckR": 0.1027511679954529,
-      "bulbR": 0.13583751759767534,
-      "lipR": 0.14560361363410948
+      "colW": 0.10138185024261474,
+      "lipY": -0.06423503905534744,
+      "hang": 0.0,
+      "neckR": 0.05069092512130737,
+      "bulbR": 0.055760017633438116,
+      "lipR": 0.06082911014556884,
+      "poured": false,
+      "closedCounter": true,
+      "extrudeMul": 0.28,
+      "isoBlendMul": 0.06
     }
   ],
   "perLetterMeshes": true,
@@ -187,7 +223,7 @@
     "1-font: Arial Black wordmark klaut.pro (per-glyph meshes)",
     "2-mesh: Blender extrude+bevel+subdiv \u2192 GLB",
     "2b-gn-sdf: Mesh\u2192SDF Grid \u222a pear tips \u2192 Grid to Mesh (per-glyph iso) + lip morph",
-    "2c-glyph-tune: dual-leg poured filament; closed-o thin extrude+iso",
+    "2c-glyph-tune: k dual-tip split + seq union; closed-o light face+thin extrude",
     "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
     "4-liquid: GravityMeltSim per-letter overrides",
     "5-sag: frozen viscoplastic neck/bulb (no drip blobs)"
