@@ -237,10 +237,11 @@ One-shot settle → freeze (static sculpture)
 
 **Honey morphology (2026-07):** tip **remesh** — continuous pear-of-revolution
 lattices (thick lip → taper neck → squashed teardrop bulb) appended per drip
-column (`buildHoneyTipCapsuleBuffers`), hard-projected by `sculptHoneyPendant` /
-`honeyPendantPoint`. Letter verts only short lip gather when lattice present
-(off-column strand kill). Still **no attached drip sphere meshes** (`dripBlobs: 0`).
-Dark plate defaults.
+column (`buildHoneyTipCapsuleBuffers`), then **topologically welded** into the
+letter mesh (`weldHoneyTipIntoLetter`: tip ring-0 shares letter lip verts +
+gap-fill collar to ring-1). Hard-projected by `sculptHoneyPendant` /
+`honeyPendantPoint`. Jagged lip strands snapped back at weld + sculpt. Still
+**no attached drip sphere meshes** (`dripBlobs: 0`). Dark plate defaults.
 
 **Freeze-height cheat sheet:**
 

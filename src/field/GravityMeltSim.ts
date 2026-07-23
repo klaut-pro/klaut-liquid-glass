@@ -11,6 +11,8 @@
  * Roundness (geometry-level):
  * - Local tip remesh: continuous pear-of-revolution lattice (thick lip → taper
  *   neck → squashed teardrop bulb) — not UV-spheres on thin sticks
+ * - Topological weld: tip ring-0 shares letter lip verts + bridge to ring-1
+ *   so letter→filament→bulb is one indexed surface (no floating bulbs)
  * - Absolute pear / teardrop sculpt; tip-seed hard-project onto same profile
  * - Letter lip gather + off-column strand kill for seamless letter→neck join
  * - No attached drip sphere meshes (`dripBlobs: 0`)
@@ -48,25 +50,25 @@ export function honeyPendantRadius(
   lipR?: number,
 ): number {
   const t = clamp01(u);
-  const neck = Math.max(neckR, bulbR * 0.62); // hard floor vs bulb — thick honey neck
-  const bulb = Math.max(bulbR, neck * 1.35);
+  const neck = Math.max(neckR, bulbR * 0.72); // thick honey neck — never wire
+  const bulb = Math.max(bulbR, neck * 1.28);
   // Lip ≈ stem — avoid vase-flare that reads as detached cup
-  const lip = Math.max(Math.min(lipR ?? neck * 1.28, neck * 1.45), neck * 1.08);
+  const lip = Math.max(Math.min(lipR ?? neck * 1.2, neck * 1.35), neck * 1.05);
 
-  // 0→0.32: lip → neck (gentle taper, stays thick)
-  if (t < 0.32) {
-    const s = Math.pow(smoothstep(0, 0.32, t), 0.9);
+  // 0→0.38: lip → neck (long thick stem join into letter)
+  if (t < 0.38) {
+    const s = Math.pow(smoothstep(0, 0.38, t), 0.85);
     return mix(lip, neck, s);
   }
-  // 0.32→0.76: neck → pear swell (peak ~0.70 — lower half fatter)
-  if (t < 0.76) {
-    const s = Math.pow(smoothstep(0.32, 0.7, t), 0.88);
+  // 0.38→0.78: neck → pear swell (peak ~0.72 — lower half fatter)
+  if (t < 0.78) {
+    const s = Math.pow(smoothstep(0.38, 0.72, t), 0.88);
     return mix(neck, bulb, s);
   }
-  // 0.76→1: soft tip taper with plump floor (teardrop, not spike)
-  const tip = Math.pow(smoothstep(0.76, 1, t), 1.3);
-  const tipR = mix(bulb, bulb * 0.4, tip);
-  const tipFloor = bulb * mix(0.48, 0.34, tip);
+  // 0.78→1: soft tip taper with plump floor (teardrop, not spike)
+  const tip = Math.pow(smoothstep(0.78, 1, t), 1.3);
+  const tipR = mix(bulb, bulb * 0.42, tip);
+  const tipFloor = bulb * mix(0.5, 0.36, tip);
   return Math.max(tipFloor, tipR);
 }
 
@@ -117,6 +119,30 @@ export type HoneyTipCapsuleBuffers = {
   tipU: Float32Array;
   indices: Uint32Array;
   vertCount: number;
+  rings: number;
+  segs: number;
+};
+
+export type WeldHoneyTipOpts = {
+  columnXs: number[];
+  colW: number;
+  lipY: number;
+  cz: number;
+  /** Vertex count before tip lattice was appended. */
+  letterVertCount: number;
+  rings: number;
+  segs: number;
+  hang: number;
+};
+
+export type WeldHoneyTipResult = {
+  indices: Uint32Array;
+  /** Tip ring-0 verts pinned to lip circle. */
+  welded: number;
+  /** Collar triangles tip ring-0 ↔ letter lip. */
+  bridges: number;
+  /** Hanging letter strand verts snapped back to lip. */
+  strandsKilled: number;
 };
 
 /**
@@ -165,8 +191,9 @@ export function buildHoneyTipCapsuleBuffers(
     let cursor = 0;
 
     for (let r = 0; r < rings; r++) {
-      // First ring near lip (u≈0.02) — tipU must stay >0 so hard-project runs
-      const u = mix(0.02, 0.985, r / Math.max(rings - 1, 1));
+      // Bias samples toward lip so weld collar has denser neck topology
+      const rN = r / Math.max(rings - 1, 1);
+      const u = mix(0.015, 0.985, Math.pow(rN, 0.72));
       const R = honeyPendantRadius(u, neckR, bulbR, lipR) * 0.42; // rest seed compact
       const y = lipY - seedHang * Math.pow(u, 0.9);
       // Approximate surface normal from profile slope
@@ -236,6 +263,170 @@ export function buildHoneyTipCapsuleBuffers(
     tipU,
     indices: Uint32Array.from(indices),
     vertCount,
+    rings,
+    segs,
+  };
+}
+
+/**
+ * Topologically weld appended tip lattices into the letter mesh.
+ *
+ * Keeps tip ring-0 as its own verts (avoids fan-collapse when many tip
+ * samples map onto few letter lip verts — that previously made the neck
+ * read as jagged strands + a floating bulb).
+ *
+ * 1. Kill hanging letter lip strands (snap back onto lip disk).
+ * 2. Pin tip ring-0 onto a stem-matched lip circle at lipY.
+ * 3. Add collar triangles: each tip ring-0 sample ↔ 2 nearest letter lip verts.
+ * 4. Attract letter lip verts onto the tip ring-0 circle (soft seal).
+ *
+ * Mutates `positions` / `tipU` in place; returns a new index buffer.
+ */
+export function weldHoneyTipIntoLetter(
+  positions: Float32Array,
+  tipU: Float32Array,
+  indexArr: Uint32Array,
+  opts: WeldHoneyTipOpts,
+): WeldHoneyTipResult {
+  const cols = opts.columnXs.length ? opts.columnXs : [0];
+  const rings = Math.max(2, opts.rings);
+  const segs = Math.max(3, opts.segs);
+  const letterN = Math.max(0, opts.letterVertCount);
+  const colW = Math.max(opts.colW, 1e-4);
+  const lipY = opts.lipY;
+  const cz = opts.cz;
+  const hang = Math.max(opts.hang, colW * 2);
+  const vertsPerCol = rings * segs + 1;
+
+  let welded = 0;
+  let strandsKilled = 0;
+  const bridgeTris: number[] = [];
+
+  for (let ci = 0; ci < cols.length; ci++) {
+    const ax = cols[ci]!;
+    const base = letterN + ci * vertsPerCol;
+    if (base + vertsPerCol > ((positions.length / 3) | 0)) continue;
+
+    type LipVert = { vi: number; ang: number; r: number; y: number };
+    const lipVerts: LipVert[] = [];
+
+    for (let vi = 0; vi < letterN; vi++) {
+      const i = vi * 3;
+      const x = positions[i]!;
+      const y = positions[i + 1]!;
+      const z = positions[i + 2]!;
+      const dx = x - ax;
+      const dz = z - cz;
+      const r = Math.hypot(dx, dz);
+      if (r > colW * 2.1) continue;
+      if (y > lipY + colW * 0.65) continue;
+
+      // Kill jagged strands hanging below the lip — snap onto lip disk
+      if (y < lipY - colW * 0.04) {
+        const ang = Math.atan2(dz, dx || 1e-8);
+        const stemR = Math.min(Math.max(r, colW * 0.45), colW * 1.05);
+        positions[i] = ax + Math.cos(ang) * stemR;
+        positions[i + 1] = lipY + hang * 0.008;
+        positions[i + 2] = cz + Math.sin(ang) * stemR * 0.96;
+        tipU[vi] = 0;
+        strandsKilled++;
+      }
+
+      const y2 = positions[i + 1]!;
+      const dx2 = positions[i]! - ax;
+      const dz2 = positions[i + 2]! - cz;
+      const r2 = Math.hypot(dx2, dz2);
+      if (y2 > lipY + colW * 0.5) continue;
+      if (r2 > colW * 1.85) continue;
+      lipVerts.push({
+        vi,
+        ang: Math.atan2(dz2, dx2 || 1e-8),
+        r: r2,
+        y: y2,
+      });
+    }
+
+    // Stem-matched lip radius from letter samples (fallback colW)
+    let lipR = colW * 0.95;
+    if (lipVerts.length) {
+      let sumR = 0;
+      for (const lv of lipVerts) sumR += lv.r;
+      lipR = Math.max(colW * 0.7, Math.min(colW * 1.25, sumR / lipVerts.length));
+    }
+
+    // Pin tip ring-0 onto lip circle — stays as unique verts (no index collapse)
+    for (let s = 0; s < segs; s++) {
+      const tipVi = base + s;
+      const i = tipVi * 3;
+      const ang = (s / segs) * Math.PI * 2;
+      positions[i] = ax + Math.cos(ang) * lipR;
+      // Flush with letter lip — collar + letter morph seal the join
+      positions[i + 1] = lipY;
+      positions[i + 2] = cz + Math.sin(ang) * lipR * 0.96;
+      tipU[tipVi] = 0.02;
+      welded++;
+    }
+
+    // Soft-seal: pull letter lip verts onto tip ring-0 circle (keep tipU=0 —
+    // letter must not become tip-seeds or they compete as jagged spikes)
+    for (const lv of lipVerts) {
+      const i = lv.vi * 3;
+      const ang = lv.ang;
+      const tx = ax + Math.cos(ang) * lipR;
+      const ty = lipY + hang * 0.006;
+      const tz = cz + Math.sin(ang) * lipR * 0.96;
+      positions[i] = mix(positions[i]!, tx, 0.72);
+      positions[i + 1] = mix(positions[i + 1]!, ty, 0.78);
+      positions[i + 2] = mix(positions[i + 2]!, tz, 0.72);
+      tipU[lv.vi] = 0;
+    }
+
+    if (!lipVerts.length) continue;
+
+    // Collar triangles: tip ring-0 ↔ nearest letter lip verts (sealed join)
+    for (let s = 0; s < segs; s++) {
+      const tipA = base + s;
+      const tipB = base + ((s + 1) % segs);
+      const angA = (s / segs) * Math.PI * 2;
+      const angB = (((s + 1) % segs) / segs) * Math.PI * 2;
+
+      const nearest = (ang: number): number => {
+        let bestVi = lipVerts[0]!.vi;
+        let bestD = Infinity;
+        for (const lv of lipVerts) {
+          let dAng = Math.abs(lv.ang - ang);
+          if (dAng > Math.PI) dAng = Math.PI * 2 - dAng;
+          const score = dAng + Math.abs(lv.y - lipY) / Math.max(colW, 1e-4) * 0.15;
+          if (score < bestD) {
+            bestD = score;
+            bestVi = lv.vi;
+          }
+        }
+        return bestVi;
+      };
+
+      const la = nearest(angA);
+      const lb = nearest(angB);
+      // Letter above (+Y), tip below (−Y): la→lb→tipB→tipA for outward normals
+      if (la === lb) {
+        bridgeTris.push(la, tipB, tipA);
+      } else {
+        bridgeTris.push(la, lb, tipB, la, tipB, tipA);
+      }
+    }
+  }
+
+  const out = new Uint32Array(indexArr.length + bridgeTris.length);
+  out.set(indexArr);
+  for (let i = 0; i < bridgeTris.length; i++) {
+    out[indexArr.length + i] = bridgeTris[i]!;
+  }
+
+  return {
+    indices: out,
+    welded,
+    bridges: (bridgeTris.length / 3) | 0,
+    strandsKilled,
   };
 }
 
@@ -449,26 +640,43 @@ export class GravityMeltSim {
     }>,
   ): void {
     this.slots = meshes.map(({ pos, base, normal, tipU: tipUIn }) => {
+      const n = (base.length / 3) | 0;
+      const tipU = new Float32Array(n);
+      if (tipUIn && tipUIn.length >= n) tipU.set(tipUIn.subarray(0, n));
+
+      // Letter-only bounds — tip lattice seeds must not pull lo down or lipY
+      // (and the whole pear) floats below the glyph.
       let lo = Infinity;
       let hi = -Infinity;
       let minX = Infinity;
       let maxX = -Infinity;
       let minZ = Infinity;
       let maxZ = -Infinity;
-      for (let i = 0; i < base.length; i += 3) {
-        lo = Math.min(lo, base[i + 1]!);
-        hi = Math.max(hi, base[i + 1]!);
+      let hasTipLattice = false;
+      for (let vi = 0; vi < n; vi++) {
+        const i = vi * 3;
+        const y = base[i + 1]!;
         minX = Math.min(minX, base[i]!);
         maxX = Math.max(maxX, base[i]!);
         minZ = Math.min(minZ, base[i + 2]!);
         maxZ = Math.max(maxZ, base[i + 2]!);
+        if (tipU[vi]! > 1e-5) {
+          hasTipLattice = true;
+          continue;
+        }
+        lo = Math.min(lo, y);
+        hi = Math.max(hi, y);
+      }
+      if (!(lo < Infinity)) {
+        // Degenerate: all tip seeds — fall back to full buffer
+        for (let i = 1; i < base.length; i += 3) {
+          lo = Math.min(lo, base[i]!);
+          hi = Math.max(hi, base[i]!);
+        }
       }
       const span = Math.max(hi - lo, 1e-4);
-      const n = (base.length / 3) | 0;
       const hNorm = new Float32Array(n);
       const downFace = new Float32Array(n);
-      const tipU = new Float32Array(n);
-      if (tipUIn && tipUIn.length >= n) tipU.set(tipUIn.subarray(0, n));
       for (let vi = 0; vi < n; vi++) {
         const i = vi * 3;
         // Tip-seed verts: treat as fully yielded bottom lip (ignore rest Y inside seed)
@@ -483,13 +691,6 @@ export class GravityMeltSim {
       const halfW = Math.max((maxX - minX) * 0.5, 0.2);
       // Denser graph radius so tip-lattice rings smooth with letter lip
       const neighbors = buildProximityGraph(base, halfW * 0.28);
-      let hasTipLattice = false;
-      for (let ti = 0; ti < n; ti++) {
-        if (tipU[ti]! > 1e-5) {
-          hasTipLattice = true;
-          break;
-        }
-      }
       return {
         pos,
         base,
@@ -770,34 +971,32 @@ export class GravityMeltSim {
     }
     let dy = -sag;
 
-    // With tip lattice: letter mesh only forms a short lip melt.
-    // Remeshed pear capsule owns the hanging teardrop (avoids flared letter spikes).
+    // With tip lattice: letter mesh stays put — pear capsule owns hang.
+    // Any letter lip sag here becomes the jagged strands under the glyph.
     const hasTipLattice = s.hasTipLattice;
     if (hasTipLattice) {
-      // Kill jagged off-column lip strands — snap back to rest (no hang)
-      if (column < 0.38) {
-        // Mild upward tuck for stray bottom verts that look like strands
+      if (s.tipU[vi]! > 1e-5) return [0, 0, 0];
+      // Off-column: mild upward tuck only
+      if (column < 0.45) {
         const tuck =
-          s.hNorm[vi]! < 0.22 ? halfH * 0.02 * (1 - column) * w : 0;
+          s.hNorm[vi]! < 0.2 ? halfH * 0.025 * (1 - column) * w : 0;
         return [0, tuck, 0];
       }
-      // Strong radial gather into column — thick seamless lip blend
+      // On-column letter lip: gather radially, zero sag (collar + tip lattice join)
       let gdx = 0;
       let gdz = 0;
       if (restR > 1e-6) {
-        const gather = 0.72 * column * Math.max(tipWeight, 0.35);
+        const gather = 0.55 * column;
         const lipBlendR = mix(
           restR,
-          Math.max(colW * 1.05, Math.min(restR, colW * 1.35)),
+          Math.max(colW * 0.95, Math.min(restR, colW * 1.2)),
           gather,
         );
         const invR = 1 / restR;
         gdx = ax + ox * invR * lipBlendR - bx;
         gdz = s.cz + oz * invR * lipBlendR * 0.95 - bz;
       }
-      // Very short lip sag only — lattice owns hang
-      const lipSag = -halfH * mix(0.01, 0.07, tipWeight * column) * sagMul;
-      return [gdx, lipSag, gdz];
+      return [gdx, 0, gdz];
     }
 
     const tipGate = Math.max(column, profileT * 0.9);
@@ -1006,6 +1205,8 @@ export class GravityMeltSim {
             Math.min(1, ease * 1.35) * clamp01(bulbSoft + 0.35),
             plump,
           );
+          // Re-seal letter lip ↔ tip ring-0 after hard-project (kills air gap)
+          sealHoneyTipLip(s, ax, colW, Math.min(1, ease * 1.2));
         }
       }
 
@@ -1217,6 +1418,60 @@ function buildProximityGraph(base: Float32Array, radius: number): Int32Array[] {
 }
 
 /**
+ * After pear sculpt: pull tip lip-root verts (tipU≲0.1) and letter lip verts
+ * onto one shared circle at letter lo — closes the air gap / floating-bulb look.
+ */
+function sealHoneyTipLip(
+  s: MeshSlot,
+  ax: number,
+  colW: number,
+  strength: number,
+): void {
+  if (strength < 0.05 || !s.hasTipLattice) return;
+  const n = (s.base.length / 3) | 0;
+  const lipY = s.lo;
+  const R = Math.max(colW * 0.92, s.halfW * 0.08);
+  const k = clamp01(strength);
+
+  for (let vi = 0; vi < n; vi++) {
+    const u = s.tipU[vi]!;
+    const i = vi * 3;
+    const bx = s.base[i]!;
+    const near = Math.abs(bx - ax) / Math.max(colW, 1e-4);
+    const isLipRoot = u > 1e-5 && u <= 0.028;
+    const isLetterLip =
+      u <= 1e-5 &&
+      near < 1.35 &&
+      s.base[i + 1]! <= lipY + colW * 0.55;
+
+    if (!isLipRoot && !isLetterLip) continue;
+    // Kill letter strands that still hang below the sealed lip
+    if (!isLipRoot && s.pos[i + 1]! < lipY - colW * 0.08) {
+      s.pos[i + 1] = mix(s.pos[i + 1]!, lipY + colW * 0.01, 0.95 * k);
+      continue;
+    }
+
+    let ox = s.pos[i]! - ax;
+    let oz = s.pos[i + 2]! - s.cz;
+    let r0 = Math.hypot(ox, oz);
+    if (r0 < 1e-5) {
+      ox = Math.cos((vi * 2.399) % (Math.PI * 2));
+      oz = Math.sin((vi * 2.399) % (Math.PI * 2));
+      r0 = 1;
+    }
+    const inv = 1 / r0;
+    const wantU = isLipRoot ? u : 0.04;
+    // Keep lip roots thick and flush with letter bottom
+    const wantR = mix(R * 1.05, R * 0.88, clamp01((wantU - 0.02) / 0.1));
+    const wantY = lipY - (isLipRoot ? wantU * colW * 0.35 : -colW * 0.01);
+    const snap = isLipRoot ? 0.9 * k : 0.7 * k;
+    s.pos[i] = mix(s.pos[i]!, ax + ox * inv * wantR, snap);
+    s.pos[i + 1] = mix(s.pos[i + 1]!, wantY, snap);
+    s.pos[i + 2] = mix(s.pos[i + 2]!, s.cz + oz * inv * wantR * 0.96, snap);
+  }
+}
+
+/**
  * Post-sculpt: remap yielded column verts onto a parametric honey pendant
  * (thick lip → taper neck → pear bulb). Tip-seed lattice verts (tipU>0) are
  * hard-projected so rings stay pear-shaped — no UV-sphere snap.
@@ -1244,15 +1499,15 @@ function sculptHoneyPendant(
   // Absolute radii from column width — pear needs vertical room vs width
   const baseR = Math.max(colW * 1.2, halfH * 0.1);
   const n = (s.base.length / 3) | 0;
-  // Bury join into letter lip so pendant emerges continuously
-  const lipY = s.lo + hang * 0.03;
+  // Letter lip (s.lo is letter-only after bind) — pendant emerges from glyph
+  const lipY = s.lo;
   // Thick neck (concept: seamless stem blend, not wire / gap)
   let neckR = Math.min(
     baseR * mix(0.95, 0.75, clamp01(maps.neckPinch * Math.min(neckMul, 1.3))),
     hang * 0.34,
   );
   neckR = Math.max(neckR, baseR * 0.65, colW * 0.75);
-  const lipR = Math.max(neckR * 1.2, baseR * 0.95, colW * 0.95);
+  const lipR = Math.max(neckR * 1.15, baseR * 0.95, colW * 0.92);
   let bulbR =
     baseR *
     (0.9 + 0.38 * maps.bulbGrow * Math.min(bulbMul, 2.0)) *
@@ -1271,33 +1526,89 @@ function sculptHoneyPendant(
       falloffPower,
       s.downFace[vi]!,
     );
-    if (!isSeed && w < 0.12) continue;
+    if (!isSeed && w < 0.08 && s.downFace[vi]! < 0.35) continue;
     const i = vi * 3;
     const bx = s.base[i]!;
     const bz = s.base[i + 2]!;
-    const near = Math.abs(bx - ax) / Math.max(colW, 1e-4);
+    // Wider column for letter lip morph so bottom-cap faces don't leave a flat seam
+    const colScale = s.hasTipLattice && !isSeed ? 1.75 : 1;
+    const near = Math.abs(bx - ax) / Math.max(colW * colScale, 1e-4);
     // Kill jagged lip strands: letter verts outside drip column stay put
-    if (!isSeed && near > 0.85) continue;
+    if (!isSeed && near > 1.05 && s.downFace[vi]! < 0.45) continue;
     const column = isSeed
       ? 1
-      : Math.pow(Math.max(0, 1 - near), maps.columnSharp);
-    if (!isSeed && column < 0.28) continue;
+      : Math.pow(Math.max(0, 1 - Math.min(near, 1)), maps.columnSharp * 0.85);
+    if (!isSeed && column < 0.18 && s.downFace[vi]! < 0.5) continue;
 
-    // Non-seed letter verts: only blend into buried lip — never form hanging spikes
+    // Letter verts: morph bottom band into upper neck (u≲0.42) so the glyph
+    // itself becomes the drip root — kills flat-cut + stuck-on-tube look.
+    // Tip lattice densifies mid-neck → bulb; letter must not hang past u~0.42.
     if (!isSeed) {
       const by = s.base[i + 1]!;
-      // Tuck stray bottom spikes back toward letter rest Y
+      const py = s.pos[i + 1]!;
+      if (s.hasTipLattice) {
+        const down = s.downFace[vi]!;
+        // Off-column high verts: kill hanging spikes only
+        if (column < 0.22 && down < 0.4) {
+          if (py < lipY - halfH * 0.01) {
+            s.pos[i + 1] = mix(py, Math.max(by, lipY + halfH * 0.005), 0.95 * strength);
+          }
+          continue;
+        }
+        // Above the lip melt band (unless strongly downward-facing bottom cap)
+        if (by > lipY + halfH * 0.28 && down < 0.55) {
+          if (py < lipY - halfH * 0.01) {
+            s.pos[i + 1] = mix(py, Math.max(by, lipY + halfH * 0.005), 0.9 * strength);
+          }
+          continue;
+        }
+        // On-column / bottom-cap → upper pendant root (deeper morph for down faces)
+        const depth = clamp01(
+          (lipY + halfH * 0.22 - by) / Math.max(halfH * 0.28, 1e-4),
+        );
+        const tLetter = mix(
+          0.02,
+          down > 0.5 ? 0.42 : 0.34,
+          Math.pow(Math.max(depth, down * 0.55) * Math.max(column, 0.35), 0.8),
+        );
+        let oxL = bx - ax;
+        let ozL = bz - s.cz;
+        let rL = Math.hypot(oxL, ozL);
+        if (rL < 1e-5) {
+          oxL = colW * 0.4;
+          ozL = 0.01;
+          rL = Math.hypot(oxL, ozL);
+        }
+        const angL = Math.atan2(ozL, oxL);
+        const [txL, tyL, tzL] = honeyPendantPoint(
+          tLetter,
+          ax,
+          lipY,
+          s.cz,
+          hang,
+          neckR,
+          bulbR,
+          angL,
+          lipR,
+        );
+        const kL =
+          strength *
+          (0.65 + 0.35 * Math.max(column, down)) *
+          smoothstep(0.03, 0.3, tLetter);
+        s.pos[i] = mix(s.pos[i]!, txL, kL);
+        s.pos[i + 1] = mix(s.pos[i + 1]!, tyL, kL);
+        s.pos[i + 2] = mix(s.pos[i + 2]!, tzL, kL);
+        continue;
+      }
       if (by < s.lo + halfH * 0.04 && column < 0.55) {
         s.pos[i + 1] = mix(s.pos[i + 1]!, by + halfH * 0.015, 0.85 * strength);
         continue;
       }
     }
 
-    // Tip-seed: parametric u is authored on the lattice; letter lip blends into thick root
-    const t = isSeed
-      ? seedU
-      : clamp01(0.02 + 0.18 * w * column);
-    if (!isSeed && t < 0.025) continue;
+    // Tip-seed lattice: full pear hard-project
+    if (!isSeed) continue;
+    const t = seedU;
 
     let ox = bx - ax;
     let oz = bz - s.cz;

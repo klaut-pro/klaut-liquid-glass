@@ -294,7 +294,7 @@
       <p class="hint">
         Drag to orbit · scroll to zoom · click a glyph mesh to select<br />
         Stage 5: <code>GravityMeltSim</code> — master + per-letter overrides<br />
-        Round pear pendants: tip remesh + thick lip neck + teardrop sculpt<br />
+        Round pear pendants: tip weld + remesh · thick lip neck · teardrop sculpt<br />
         Mesh: <code id="meshHint">demo/scratch/mesh/wordmark-klaut-pro.glb</code>
       </p>
     </aside>
@@ -312,7 +312,7 @@
       import { OrbitControls } from "three/addons/controls/OrbitControls.js";
       import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-      import { GravityMeltSim, buildHoneyTipCapsuleBuffers } from "../dist/field/GravityMeltSim.js";
+      import { GravityMeltSim, buildHoneyTipCapsuleBuffers, weldHoneyTipIntoLetter } from "../dist/field/GravityMeltSim.js";
 
       const WORDMARK = "klaut.pro";
       const MESH_DIR = "./scratch/mesh/";
@@ -677,7 +677,7 @@
         const statusEl = document.getElementById("meltStatus");
         const enabled = letterOverrides.filter((o) => o.enable !== false).length;
         statusEl.textContent = st.frozen
-          ? `frozen · ${enabled}/${st.slotCount} letters · tipRemesh · softMin · dripBlobs 0`
+          ? `frozen · ${enabled}/${st.slotCount} letters · tipWeld · tipRemesh · softMin · dripBlobs 0`
           : `settling ${(st.settle * 100).toFixed(0)}% · ${enabled}/${st.slotCount} letters`;
 
         if (window.__scratch) {
@@ -706,6 +706,7 @@
             dripBlobs: 0,
             pearRadius: true,
             tipRemesh: true,
+            tipWeld: true,
           };
         }
       }
@@ -753,8 +754,8 @@
       }
 
       /**
-       * Local tip remesh: append pear-of-revolution lattices under drip columns
-       * so melt bottoms have continuous lip→neck→teardrop topology (not UV-spheres).
+       * Local tip remesh + topological weld: pear lattices under drip columns,
+       * ring-0 shared with letter lip verts so letter→filament→bulb is one surface.
        * Returns tipU Float32Array aligned with the densified position buffer.
        */
       function densifyLetterTipGeometry(geometry, columnXs, colW, ch) {
@@ -764,12 +765,14 @@
         const spanX = Math.max(bb.max.x - bb.min.x, 1e-4);
         const spike = ch === "p" || ch === "." || ch === "g" || ch === "y" || ch === "j";
         const plump = spike ? 1.18 : ch === "r" || ch === "t" ? 1.08 : 1.0;
+        const cols = columnXs.length ? columnXs : [(bb.min.x + bb.max.x) * 0.5];
+        const hang = spanY * (spike ? 0.52 : 0.44);
         const tip = buildHoneyTipCapsuleBuffers({
-          columnXs: columnXs.length ? columnXs : [(bb.min.x + bb.max.x) * 0.5],
+          columnXs: cols,
           lipY: bb.min.y,
           cz: (bb.min.z + bb.max.z) * 0.5,
           colW: Math.max(colW, spanX * 0.08),
-          hang: spanY * (spike ? 0.52 : 0.44),
+          hang,
           neckR: colW * (spike ? 0.82 : 0.88),
           lipR: colW * (spike ? 1.05 : 1.1),
           bulbR: colW * (spike ? 1.32 : 1.22),
@@ -802,20 +805,38 @@
         // Merge indices so tip capsules render
         const tipIdx = new Uint32Array(tip.indices.length);
         for (let i = 0; i < tip.indices.length; i++) tipIdx[i] = tip.indices[i] + oldCount;
+        let merged;
         if (geometry.index) {
           const oldIdx = geometry.index.array;
-          const merged = new Uint32Array(oldIdx.length + tipIdx.length);
+          merged = new Uint32Array(oldIdx.length + tipIdx.length);
           for (let i = 0; i < oldIdx.length; i++) merged[i] = oldIdx[i];
           merged.set(tipIdx, oldIdx.length);
-          geometry.setIndex(new THREE.BufferAttribute(merged, 1));
         } else {
           // Non-indexed letter mesh: build identity indices + tip
-          const id = new Uint32Array(oldCount + tipIdx.length);
-          for (let i = 0; i < oldCount; i++) id[i] = i;
-          id.set(tipIdx, oldCount);
-          geometry.setIndex(new THREE.BufferAttribute(id, 1));
+          merged = new Uint32Array(oldCount + tipIdx.length);
+          for (let i = 0; i < oldCount; i++) merged[i] = i;
+          merged.set(tipIdx, oldCount);
         }
+
+        // Topological weld: share ring-0 with letter lip + collar to ring-1
+        const weld = weldHoneyTipIntoLetter(newPos, tipU, merged, {
+          columnXs: cols,
+          colW: Math.max(colW, spanX * 0.08),
+          lipY: bb.min.y,
+          cz: (bb.min.z + bb.max.z) * 0.5,
+          letterVertCount: oldCount,
+          rings: tip.rings,
+          segs: tip.segs,
+          hang,
+        });
+        geometry.setIndex(new THREE.BufferAttribute(weld.indices, 1));
+        geometry.attributes.position.needsUpdate = true;
         geometry.computeVertexNormals();
+        geometry.userData.tipWeld = {
+          welded: weld.welded,
+          bridges: weld.bridges,
+          strandsKilled: weld.strandsKilled,
+        };
         return tipU;
       }
 
@@ -948,6 +969,7 @@
             dripBlobs: 0,
             pearRadius: true,
             tipRemesh: true,
+            tipWeld: true,
           },
         };
         window.__scratchLetterMeshes = letterMeshes;

@@ -146,7 +146,32 @@ async function main() {
   await page.screenshot({ path: closeup, fullPage: false });
 
   const metrics = await measure(page);
+  metrics.tipWeld = await page.evaluate(() => {
+    const meshes = window.__scratchLetterMeshes || [];
+    let welded = 0,
+      bridges = 0,
+      strandsKilled = 0;
+    for (const m of meshes) {
+      const w = m.geometry?.userData?.tipWeld;
+      if (!w) continue;
+      welded += w.welded || 0;
+      bridges += w.bridges || 0;
+      strandsKilled += w.strandsKilled || 0;
+    }
+    return {
+      welded,
+      bridges,
+      strandsKilled,
+      tipWeldFlag: !!window.__scratch?.roundness?.tipWeld,
+    };
+  });
   await writeFile(join(outDir, "scratch-honey-final.json"), JSON.stringify(metrics, null, 2));
+
+  // Keep before/after pair for weld evidence
+  try {
+    await copyFile(full, join(outDir, "scratch-honey-after-weld.png"));
+    await copyFile(closeup, join(outDir, "scratch-honey-after-weld-closeup.png"));
+  } catch (_) {}
 
   // Side-by-side evidence: copy a concept ref next to final
   try {
