@@ -1,0 +1,100 @@
+{
+  "url": "http://localhost:52780/demo/scratch.html",
+  "chroma": {
+    "samples": 48180,
+    "cyan": 666,
+    "magenta": 533,
+    "gold": 867,
+    "bright": 7294,
+    "cyanPct": 0.0138,
+    "magentaPct": 0.0111,
+    "goldPct": 0.018,
+    "metalness": 0.82,
+    "fringe": 1.45,
+    "fontId": "ibm-plex-sans-bold",
+    "fontLabel": "IBM Plex Sans Bold",
+    "fonts": [
+      {
+        "id": "ibm-plex-sans-bold",
+        "label": "IBM Plex Sans Bold"
+      },
+      {
+        "id": "ibm-plex-sans-semibold",
+        "label": "IBM Plex Sans SemiBold"
+      },
+      {
+        "id": "ibm-plex-serif-bold",
+        "label": "IBM Plex Serif Bold"
+      },
+      {
+        "id": "arial-black",
+        "label": "Arial Black"
+      }
+    ],
+    "softBooleanBake": true,
+    "mesh": "./scratch/mesh/wordmark-klaut-pro.glb"
+  },
+  "shots": [
+    {
+      "view": "front",
+      "cam": [
+        0,
+        0.5499999999999998,
+        11.5
+      ],
+      "target": [
+        0,
+        0.9,
+        0
+      ],
+      "path": "demo/frames/scratch-drip-bottom-front.png"
+    },
+    {
+      "view": "side",
+      "cam": [
+        12.5,
+        1.3499999999999994,
+        7.654042494670958e-16
+      ],
+      "target": [
+        0,
+        1.2,
+        0
+      ],
+      "path": "demo/frames/scratch-drip-bottom-side.png"
+    },
+    {
+      "view": "threeQuarter",
+      "cam": [
+        6.5,
+        1.600000000000001,
+        7.499999999999999
+      ],
+      "target": [
+        0,
+        1,
+        0
+      ],
+      "path": "demo/frames/scratch-drip-bottom-3q.png"
+    },
+    {
+      "view": "close",
+      "cam": [
+        1.2,
+        0.8000000000000005,
+        4.2
+      ],
+      "target": [
+        0.2,
+        0.7,
+        0
+      ],
+      "path": "demo/frames/scratch-chrome-diffraction-close.png"
+    }
+  ],
+  "probe": {
+    "ready": true,
+    "stage": "stage 3",
+    "gravity": 0
+  }
+}

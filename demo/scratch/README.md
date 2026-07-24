@@ -12,8 +12,10 @@ Clean staged path — **not** the old `chromeSansP` / `scriptProP` SDF atlas QA 
 
 | Choice | Why |
 |--------|-----|
-| **Arial Black** | Heavy geometric display sans; plump bevel reads under glass |
-| **Concept drips** | Honey teardrops on **k / t / . / p / r / o** hanging from letter **undersides** (world −Z after orient → glTF −Y), soft-unioned lip→neck→bulb — not front-face blobs |
+| **IBM Plex Sans Bold** (primary) | klaut.pro brand headline face (`demo/scratch/fonts/`) |
+| **IBM Plex Sans SemiBold / Serif Bold** | Brand alternates in the scratch font dropdown |
+| **Arial Black** | Heavy geometric display sans (system); plump bevel reads under glass |
+| **Concept drips** | Honey teardrops on **k / t / . / p / r / o** hanging from letter **undersides** (world −Z after orient → glTF −Y), soft-unioned lip→neck→bulb — not front-face blobs. Columns sample bottom-mass verts (not AABB guesses) so every drip letter matches the continuous **k** hang. |
 | **Chrome material** | Principled metallic + transmission exported in GLB; Three `honeyChrome` Physical + fringe for live look |
 
 Glyph: **`klaut.pro`** (per-letter meshes, OrbitControls).
@@ -66,12 +68,13 @@ Runtime **does not** need GravityMeltSim for the honey look (gravity defaults to
 | Piece | What shipped |
 |-------|----------------|
 | Softbox PMREM | Authored 3-rect softbox + charcoal void (`createSoftboxEnvironment`); RoomEnvironment fallback only |
-| Physical retune | Denser body, tiny metalness, clearcoat, sparse `iridescence`, dark-plate lights/exposure |
-| Glance gate | Softbox+retune alone still read milky → **FAIL** → fringe ON |
-| Fringe | `onBeforeCompile` Fresnel edge fire (gold↔lime↔cyan), Fringe slider, quiet on closed `o` |
+| Physical retune | **Molten chrome**: metalness ~0.62, thin transmission, clearcoat, wide `iridescence` band on #07090e |
+| Diffraction fringe | `onBeforeCompile` spectral film (cyan↔magenta↔gold) + oilFire face ribbons — rails from `src/shade/shaders.ts` thinFilm/oilFire |
+| Glance gate | Softbox+retune alone still read milky → fringe ON (slider default 1.28) |
 | Preset | `honeyChrome` (default knobs in `demo/scratch.html`) |
+| Brand fonts | IBM Plex Sans Bold (primary) / SemiBold / Serif Bold in `demo/scratch/fonts/` + scratch dropdown |
 
-Frames: `demo/frames/scratch-look-after.png` (pre-fringe FAIL), `demo/frames/scratch-look-after-fringe.png` (fringe ON).
+Frames: `demo/frames/scratch-look-after.png` (pre-fringe FAIL), `demo/frames/scratch-look-after-fringe.png`, `demo/frames/scratch-drip-bottom-*.png`.
 
 ## Demo
 

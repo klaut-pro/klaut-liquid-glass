@@ -8,17 +8,20 @@ plump beveled glyphs + honey drip pendants soft-unioned into letter *undersides*
 (world -Z after orient / glTF -Y) — continuous bottom lip → neck → teardrop,
 never blobs stuck on the front face.
 
-Does NOT fight GravityMeltSim topology at runtime — drips live in the GLB.
+Brand fonts (IBM Plex) live in demo/scratch/fonts/; system Arial Black remains
+available. Drip columns sample real bottom mass (not AABB guesses) so every
+intended letter matches the continuous k stem hang.
 
 Run:
   "%LOCALAPPDATA%\\Programs\\blender-portable\\blender-4.2.16-windows-x64\\blender.exe" ^
     --background --python scripts/bake-concept-wordmark.py
 
 Or: npm run bake:concept
-     npm run bake:scratch   (defaults to concept path)
+     npm run bake:scratch
 
 Outputs:
   demo/scratch/mesh/wordmark-klaut-pro.glb   (primary)
+  demo/scratch/mesh/wordmark-klaut-pro-*.glb (other fonts)
   demo/scratch/mesh/manifest.json
   demo/scratch/mesh/fonts.json
 """
@@ -43,8 +46,41 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "demo" / "scratch" / "mesh"
+FONT_DIR = ROOT / "demo" / "scratch" / "fonts"
 TEXT = "klaut.pro"
-FONT_PATH = Path(r"C:\Windows\Fonts\ariblk.ttf")
+
+# Brand + display faces for scratch font picker / bake
+FONT_CATALOG: list[dict] = [
+    {
+        "id": "ibm-plex-sans-bold",
+        "label": "IBM Plex Sans Bold",
+        "path": FONT_DIR / "IBMPlexSans-Bold.otf",
+        "brand": True,
+        "primary": True,
+    },
+    {
+        "id": "ibm-plex-sans-semibold",
+        "label": "IBM Plex Sans SemiBold",
+        "path": FONT_DIR / "IBMPlexSans-SemiBold.otf",
+        "brand": True,
+        "primary": False,
+    },
+    {
+        "id": "ibm-plex-serif-bold",
+        "label": "IBM Plex Serif Bold",
+        "path": FONT_DIR / "IBMPlexSerif-Bold.otf",
+        "brand": True,
+        "primary": False,
+    },
+    {
+        "id": "arial-black",
+        "label": "Arial Black",
+        "path": Path(r"C:\Windows\Fonts\ariblk.ttf"),
+        "brand": False,
+        "primary": False,
+    },
+]
+
 CLOSED_COUNTER_FONT = Path(r"C:\Windows\Fonts\segoeuib.ttf")
 
 # Plump concept letterforms (rounded chrome blocks)
@@ -55,15 +91,17 @@ RESOLUTION_U = 20
 SUBDIV_LEVELS = 1
 # Coarser voxels — keep GLB under ~12MB so scratch loads without freezing orbit.
 REMESH_VOXEL = 0.016
-POST_UNION_VOXEL = 0.014
+POST_UNION_VOXEL = 0.012
 TARGET_HEIGHT = 1.15
 LETTER_GAP = 0.045
-TIP_RINGS = 14
-TIP_SEGS = 16
+TIP_RINGS = 16
+TIP_SEGS = 18
 USE_GN_SDF = True
 SDF_BAND = 4
-# Softer iso so underside lip melts into neck (continuous glyph→pendant)
-SDF_SOFT = REMESH_VOXEL * 3.4
+# Softer than before but below neck floor so thin necks survive remesh
+SDF_SOFT = REMESH_VOXEL * 2.05
+# Hard floor: neck must outlive SDF soft-iso + voxel remesh (k survived because thicker)
+NECK_FLOOR = max(REMESH_VOXEL * 4.25, SDF_SOFT * 1.45, 0.048)
 
 # Concept 1c6PD drip map: which letters get a honey teardrop, and where.
 # Values: "left" | "center" | "right" | "dual" | None
@@ -80,6 +118,13 @@ CONCEPT_DRIPS: dict[str, str | None] = {
 }
 
 
+def _argv_after_double_dash() -> list[str]:
+    if "--" in sys.argv:
+        i = sys.argv.index("--")
+        return sys.argv[i + 1 :]
+    return []
+
+
 def _clamp01(v: float) -> float:
     return 0.0 if v < 0.0 else 1.0 if v > 1.0 else v
 
@@ -92,27 +137,28 @@ def _smoothstep(e0: float, e1: float, x: float) -> float:
 def concept_pendant_radius(u: float, neck_r: float, bulb_r: float, lip_r: float) -> float:
     """Concept honey bead: lip → thin neck → fat spherical teardrop (1c6PD)."""
     t = _clamp01(u)
-    neck = max(neck_r, bulb_r * 0.38)
-    bulb = max(bulb_r, neck * 1.55)
-    lip = max(min(lip_r, neck * 1.45), neck * 1.08)
-    if t < 0.32:
-        s = _smoothstep(0.0, 0.32, t) ** 0.9
+    neck = max(neck_r, bulb_r * 0.42, NECK_FLOOR)
+    bulb = max(bulb_r, neck * 1.65)
+    lip = max(min(lip_r, neck * 1.55), neck * 1.18)
+    if t < 0.28:
+        s = _smoothstep(0.0, 0.28, t) ** 0.85
         return lip + (neck - lip) * s
-    if t < 0.78:
-        s = _smoothstep(0.32, 0.72, t) ** 0.82
+    if t < 0.72:
+        s = _smoothstep(0.28, 0.70, t) ** 0.8
         return neck + (bulb - neck) * s
-    tip = _smoothstep(0.78, 1.0, t) ** 1.25
-    return max(bulb * 0.42, bulb + (bulb * 0.4 - bulb) * tip)
+    tip = _smoothstep(0.72, 1.0, t) ** 1.2
+    return max(bulb * 0.45, bulb + (bulb * 0.38 - bulb) * tip)
 
 
 def concept_pendant_hang(u: float, lip: float, hang: float) -> float:
     """Axis position along hang direction: lip → tip (lip decreases by hang)."""
     t = _clamp01(u)
-    if t <= 0.28:
-        nu = t / 0.28
-        return lip - hang * 0.28 * (nu ** 0.95)
-    bu = (t - 0.28) / 0.72
-    return lip - hang * (0.28 + 0.72 * (bu ** 0.7))
+    # Longer continuous filament before bulb (matches k readability)
+    if t <= 0.34:
+        nu = t / 0.34
+        return lip - hang * 0.34 * (nu ** 0.92)
+    bu = (t - 0.34) / 0.66
+    return lip - hang * (0.34 + 0.66 * (bu ** 0.72))
 
 
 def clear_scene() -> None:
@@ -134,7 +180,6 @@ def make_chrome_glass_material(name: str = "ConceptChromeGlass"):
     out.location = (400, 0)
     bsdf = nodes.new("ShaderNodeBsdfPrincipled")
     bsdf.location = (0, 0)
-    # Iridescent chrome-glass hybrid (GLTF maps metallic/roughness/transmission)
     bsdf.inputs["Base Color"].default_value = (0.92, 0.95, 0.98, 1.0)
     bsdf.inputs["Metallic"].default_value = 0.72
     bsdf.inputs["Roughness"].default_value = 0.06
@@ -150,7 +195,6 @@ def make_chrome_glass_material(name: str = "ConceptChromeGlass"):
     elif "Clearcoat" in bsdf.inputs:
         bsdf.inputs["Clearcoat"].default_value = 1.0
         bsdf.inputs["Clearcoat Roughness"].default_value = 0.03
-    # Subtle cyan→gold facing tint via Layer Weight (preview; Three overrides look)
     lw = nodes.new("ShaderNodeLayerWeight")
     lw.location = (-400, 120)
     lw.inputs["Blend"].default_value = 0.45
@@ -224,23 +268,119 @@ def remesh(mesh_obj, voxel: float) -> None:
         poly.use_smooth = True
 
 
-def drip_columns(ch: str, bb_min_x: float, bb_max_x: float) -> list[float]:
+def _world_verts(mesh_obj) -> list[Vector]:
+    mw = mesh_obj.matrix_world
+    return [mw @ v.co for v in mesh_obj.data.vertices]
+
+
+def bottom_mass_x(mesh_obj, mode: str, ch: str) -> float:
+    """
+    Pick drip column X from actual underside mass (histogram of bottom verts).
+    AABB fractions miss stems on t/p/r and leave floating bulbs.
+    """
+    verts = _world_verts(mesh_obj)
+    if not verts:
+        return 0.0
+    xs = [v.x for v in verts]
+    zs = [v.z for v in verts]
+    min_x, max_x = min(xs), max(xs)
+    min_z, max_z = min(zs), max(zs)
+    span_x = max(max_x - min_x, 1e-4)
+    span_z = max(max_z - min_z, 1e-4)
+    band = min_z + span_z * (0.28 if ch == "." else 0.20)
+    bottom = [v for v in verts if v.z <= band]
+    if len(bottom) < 8:
+        bottom = sorted(verts, key=lambda v: v.z)[: max(24, len(verts) // 5)]
+
+    if mode == "left":
+        # k / p: left stem only
+        x_hi = min_x + span_x * (0.48 if ch == "k" else 0.42)
+        pool = [v for v in bottom if v.x <= x_hi]
+    elif mode == "right":
+        x_lo = max_x - span_x * 0.42
+        pool = [v for v in bottom if v.x >= x_lo]
+    else:
+        # center: middle 55% (t / r / o / .)
+        lo = min_x + span_x * 0.22
+        hi = max_x - span_x * 0.22
+        pool = [v for v in bottom if lo <= v.x <= hi]
+        if ch == "t":
+            # Prefer stem under crossbar — densest mid third
+            lo2 = min_x + span_x * 0.32
+            hi2 = max_x - span_x * 0.32
+            mid = [v for v in bottom if lo2 <= v.x <= hi2]
+            if len(mid) >= 6:
+                pool = mid
+
+    if not pool:
+        pool = bottom
+
+    # Histogram: densest bin = solid lip under the stem/ring
+    n_bins = 14 if ch != "." else 8
+    best_i, best_n = 0, -1
+    for i in range(n_bins):
+        a = min_x + span_x * (i / n_bins)
+        b = min_x + span_x * ((i + 1) / n_bins)
+        n = sum(1 for v in pool if a <= v.x < b or (i == n_bins - 1 and v.x <= b))
+        if n > best_n:
+            best_n, best_i = n, i
+    cx = min_x + span_x * ((best_i + 0.5) / n_bins)
+    # Clamp to the mode window so we don't snap across the glyph
+    if mode == "left":
+        cx = min(cx, min_x + span_x * (0.48 if ch == "k" else 0.42))
+        cx = max(cx, min_x + span_x * 0.08)
+    elif mode == "right":
+        cx = max(cx, max_x - span_x * 0.42)
+        cx = min(cx, max_x - span_x * 0.08)
+    else:
+        cx = max(min_x + span_x * 0.18, min(cx, max_x - span_x * 0.18))
+    return float(cx)
+
+
+def sample_lip_at_column(mesh_obj, cx: float, probe_r: float) -> tuple[float, float, float]:
+    """
+    Sample true underside lip at drip column: (lip_z, cy, local_half_width).
+    Uses bottom-band verts near cx so pear buries into solid, not empty AABB.
+    """
+    verts = _world_verts(mesh_obj)
+    if not verts:
+        return 0.0, 0.0, probe_r
+    zs = [v.z for v in verts]
+    ys = [v.y for v in verts]
+    min_z, max_z = min(zs), max(zs)
+    span_z = max(max_z - min_z, 1e-4)
+    band = min_z + span_z * 0.22
+
+    def near(r: float) -> list[Vector]:
+        return [v for v in verts if abs(v.x - cx) <= r and v.z <= band]
+
+    hit = near(probe_r)
+    if len(hit) < 6:
+        hit = near(probe_r * 1.85)
+    if len(hit) < 4:
+        # Fall back: lowest verts near column (ignore band)
+        cand = [v for v in verts if abs(v.x - cx) <= probe_r * 2.4]
+        hit = sorted(cand, key=lambda v: v.z)[: max(10, len(cand) // 6)]
+    if not hit:
+        return float(min_z), float(sum(ys) / len(ys)), float(probe_r)
+
+    # Lip = low percentile (true underside), not AABB min of whole glyph
+    hit_z = sorted(v.z for v in hit)
+    lip_z = hit_z[max(0, int(len(hit_z) * 0.12))]
+    cy = sum(v.y for v in hit) / len(hit)
+    local_xs = [v.x for v in hit]
+    local_w = max((max(local_xs) - min(local_xs)) * 0.5, probe_r * 0.65)
+    return float(lip_z), float(cy), float(local_w)
+
+
+def drip_columns(mesh_obj, ch: str, bb_min_x: float, bb_max_x: float) -> list[float]:
     mode = CONCEPT_DRIPS.get(ch)
     if mode is None:
         return []
-    span = max(bb_max_x - bb_min_x, 1e-4)
-    cx = (bb_min_x + bb_max_x) * 0.5
-    if mode == "left":
-        if ch == "k":
-            # Left stem only (concept: drip from k stem, not full width)
-            stem_max = bb_min_x + span * 0.48
-            return [(bb_min_x + stem_max) * 0.5]
-        return [bb_min_x + span * 0.28]
-    if mode == "right":
-        return [bb_max_x - span * 0.28]
     if mode == "dual":
+        span = max(bb_max_x - bb_min_x, 1e-4)
         return [bb_min_x + span * 0.32, bb_max_x - span * 0.32]
-    return [cx]
+    return [bottom_mass_x(mesh_obj, mode, ch)]
 
 
 def make_pear_tip(name, cx, cy, lip_z, hang, neck_r, bulb_r, lip_r):
@@ -253,8 +393,8 @@ def make_pear_tip(name, cx, cy, lip_z, hang, neck_r, bulb_r, lip_r):
     export_yup maps Blender Z → glTF Y, so hang becomes below in Three.
     """
     rings, segs = TIP_RINGS, TIP_SEGS
-    # Bury deep into the underside so SDF/boolean soft-unions continuous lip→neck
-    bury = hang * 0.62
+    # Deep bury into solid underside so SDF/boolean soft-unions continuous lip→neck
+    bury = hang * 0.72
     lip_z_b = lip_z + bury
     mesh = bpy.data.meshes.new(name)
     obj = bpy.data.objects.new(name, mesh)
@@ -304,6 +444,39 @@ def make_pear_tip(name, cx, cy, lip_z, hang, neck_r, bulb_r, lip_r):
     bm.free()
     mesh.update()
     return obj
+
+
+def dig_funnel_at_lip(mesh_obj, cx: float, cy: float, lip_z: float, lip_r: float, hang: float) -> int:
+    """Pull underside verts down into a concave funnel so union starts continuous."""
+    bm = bmesh.new()
+    bm.from_mesh(mesh_obj.data)
+    bm.verts.ensure_lookup_table()
+    mw = mesh_obj.matrix_world
+    imw = mw.inverted()
+    touched = 0
+    sink = hang * 0.22
+    for v in bm.verts:
+        w = mw @ v.co
+        dx, dy = w.x - cx, w.y - cy
+        r = math.hypot(dx, dy)
+        if r > lip_r * 1.35:
+            continue
+        if w.z > lip_z + hang * 0.18:
+            continue
+        # Weight: center of column, near underside
+        wr = _clamp01(1.0 - r / max(lip_r, 1e-4))
+        wz = _clamp01(1.0 - abs(w.z - lip_z) / max(hang * 0.25, 1e-4))
+        wgt = (wr ** 1.1) * (wz ** 0.85)
+        if wgt < 0.05:
+            continue
+        nw = Vector((w.x, w.y, w.z - sink * wgt))
+        v.co = imw @ nw
+        touched += 1
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh_obj.data)
+    bm.free()
+    mesh_obj.data.update()
+    return touched
 
 
 def boolean_union(letter_obj, tip_obj) -> bool:
@@ -415,9 +588,9 @@ def attach_concept_drips(mesh_obj, ch: str) -> dict:
     """
     Soft-union honey pendants onto letter *bottom lips* (min Z), not front face.
 
-    After layout_and_orient (+90° X): height→Z, thickness→Y. Prior bake hung
-    along -Y from min_Y which is a vertical face — blobs on the front. Correct
-    lip is min_Z; hang is -Z; column sits at mid-thickness (mean Y).
+    After layout_and_orient (+90° X): height→Z, thickness→Y. Lip is sampled from
+    bottom-mass verts at the drip column (not whole-glyph AABB), hang is -Z,
+    column sits at mid-thickness of the sampled lip.
     """
     bpy.context.view_layer.update()
     bb = [mesh_obj.matrix_world @ Vector(c) for c in mesh_obj.bound_box]
@@ -427,13 +600,10 @@ def attach_concept_drips(mesh_obj, ch: str) -> dict:
     min_x, max_x = min(xs), max(xs)
     min_y, max_y = min(ys), max(ys)
     min_z, max_z = min(zs), max(zs)
-    # Height after orient is Z; thickness is Y (do not hang along thickness/Y)
     span_z = max(max_z - min_z, 1e-4)
     span_x = max(max_x - min_x, 1e-4)
-    cy = (min_y + max_y) * 0.5
-    lip_z = min_z
-    cols = drip_columns(ch, min_x, max_x)
     closed = ch in "oOe0"
+    cols = drip_columns(mesh_obj, ch, min_x, max_x)
 
     if not cols:
         return {
@@ -442,8 +612,7 @@ def attach_concept_drips(mesh_obj, ch: str) -> dict:
             "sdfUnion": False,
             "columns": [],
             "colW": span_x * 0.12,
-            # lipY = Blender lip Z; export_yup → glTF/Three Y (below baseline)
-            "lipY": float(lip_z),
+            "lipY": float(min_z),
             "hang": 0.0,
             "neckR": 0.02,
             "bulbR": 0.03,
@@ -451,21 +620,40 @@ def attach_concept_drips(mesh_obj, ch: str) -> dict:
             "closedCounter": closed,
             "conceptDrip": CONCEPT_DRIPS.get(ch),
             "dripAxis": "negZ",
+            "lipSampled": False,
         }
 
     spike = ch in "p.gyj"
-    # Closed o: short drip under the ring — Exact boolean only (SDF fills aperture)
-    hang = span_z * (0.48 if closed else 0.72 if spike else 0.58 if ch == "k" else 0.62)
-    col_w = max(span_x * (0.08 if closed else 0.11 if spike else 0.14), 0.024)
-    neck_r = col_w * (0.48 if closed else 0.62)
-    bulb_r = col_w * (0.95 if closed else 1.2)  # honey bead (concept)
-    # Wide lip seat on the underside so the glyph body reads as flowing into the pendant
-    lip_r = col_w * (1.35 if closed else 1.7)
-    lip_r = min(lip_r, span_x * (0.28 if closed else 0.42))
-    lip_r = max(lip_r, neck_r * 1.25)
+    # Match k hang readability on all drip letters; closed o shorter
+    hang = span_z * (0.52 if closed else 0.68 if spike else 0.62 if ch == "t" else 0.60)
+    probe = max(span_x * 0.14, 0.04)
+
+    # Sample real underside at each column (k quality for all)
+    sampled = [sample_lip_at_column(mesh_obj, cx, probe) for cx in cols]
+    lip_z = min(s[0] for s in sampled)
+    cy = sum(s[1] for s in sampled) / len(sampled)
+    local_w = max(s[2] for s in sampled)
+
+    col_w = max(
+        local_w * (0.95 if closed else 1.15),
+        span_x * (0.10 if closed else 0.13 if spike else 0.15),
+        NECK_FLOOR * 1.35,
+    )
+    neck_r = max(col_w * (0.62 if closed else 0.78), NECK_FLOOR)
+    bulb_r = max(col_w * (1.05 if closed else 1.35), neck_r * 1.7)
+    lip_r = max(col_w * (1.55 if closed else 1.95), neck_r * 1.35)
+    lip_r = min(lip_r, span_x * (0.32 if closed else 0.48))
+    lip_r = max(lip_r, neck_r * 1.28)
 
     if not closed:
-        remesh(mesh_obj, REMESH_VOXEL * 1.15)
+        remesh(mesh_obj, REMESH_VOXEL * 1.05)
+        # Re-sample after remesh (topology moved)
+        sampled = [sample_lip_at_column(mesh_obj, cx, probe) for cx in cols]
+        lip_z = min(s[0] for s in sampled)
+        cy = sum(s[1] for s in sampled) / len(sampled)
+        for cx in cols:
+            dig_funnel_at_lip(mesh_obj, cx, cy, lip_z, lip_r, hang)
+
     tip_objs = []
     for ti, cx in enumerate(cols):
         tip_objs.append(
@@ -483,13 +671,22 @@ def attach_concept_drips(mesh_obj, ch: str) -> dict:
 
     united = 0
     used_sdf = False
+    # Soft iso scaled to neck so thin letters don't dissolve the filament
+    soft = min(SDF_SOFT, neck_r * 0.55)
     for tip in tip_objs:
         tip_mesh = tip.data
+        # Prefer Exact boolean first for continuous join, then SDF soften via remesh
         # Closed counters: Exact/Float only — GN soft iso plugs the aperture
-        if not closed and gn_sdf_union(mesh_obj, tip, REMESH_VOXEL, SDF_SOFT):
-            united += 1
-            used_sdf = True
-        elif boolean_union(mesh_obj, tip):
+        ok = False
+        if closed:
+            ok = boolean_union(mesh_obj, tip)
+        else:
+            if gn_sdf_union(mesh_obj, tip, REMESH_VOXEL * 0.92, soft):
+                ok = True
+                used_sdf = True
+            elif boolean_union(mesh_obj, tip):
+                ok = True
+        if ok:
             united += 1
         bpy.data.objects.remove(tip, do_unlink=True)
         if tip_mesh.users == 0:
@@ -502,8 +699,8 @@ def attach_concept_drips(mesh_obj, ch: str) -> dict:
         bpy.context.view_layer.objects.active = mesh_obj
         try:
             sm = mesh_obj.modifiers.new(name="ConceptSmooth", type="SMOOTH")
-            sm.factor = 0.4
-            sm.iterations = 6
+            sm.factor = 0.32
+            sm.iterations = 5
             bpy.ops.object.modifier_apply(modifier=sm.name)
         except Exception as exc:
             print(f"  smooth skipped: {exc}")
@@ -520,8 +717,8 @@ def attach_concept_drips(mesh_obj, ch: str) -> dict:
 
     print(
         f"  concept drip {ch!r}: tips={united} sdf={used_sdf} closed={closed} "
-        f"axis=-Z lipZ={lip_z:.3f} hang={hang:.3f} bulb={bulb_r:.3f} "
-        f"verts={len(mesh_obj.data.vertices)}"
+        f"axis=-Z lipZ={lip_z:.3f} hang={hang:.3f} neck={neck_r:.3f} bulb={bulb_r:.3f} "
+        f"cols={[round(c, 3) for c in cols]} verts={len(mesh_obj.data.vertices)}"
     )
     return {
         "tips": united,
@@ -537,6 +734,7 @@ def attach_concept_drips(mesh_obj, ch: str) -> dict:
         "closedCounter": closed,
         "conceptDrip": CONCEPT_DRIPS.get(ch),
         "dripAxis": "negZ",
+        "lipSampled": True,
     }
 
 
@@ -616,12 +814,13 @@ def export_glb(out_name: str) -> Path:
     return glb
 
 
-def main() -> None:
-    if not FONT_PATH.exists():
-        raise FileNotFoundError(FONT_PATH)
+def bake_one_font(font_entry: dict) -> dict:
+    font_path = Path(font_entry["path"])
+    if not font_path.exists():
+        raise FileNotFoundError(font_path)
 
     clear_scene()
-    font = bpy.data.fonts.load(str(FONT_PATH))
+    font = bpy.data.fonts.load(str(font_path))
     closed_font = None
     if CLOSED_COUNTER_FONT.exists():
         closed_font = bpy.data.fonts.load(str(CLOSED_COUNTER_FONT))
@@ -639,7 +838,6 @@ def main() -> None:
     for i, m in enumerate(mesh_objs):
         ch = TEXT[i]
         meta = attach_concept_drips(m, ch)
-        # Even density on letters without drip remesh (keeps GLB lean / orbit smooth)
         if not meta.get("softBoolean") and not meta.get("closedCounter"):
             remesh(m, REMESH_VOXEL * 1.35)
             meta["remeshed"] = True
@@ -648,10 +846,12 @@ def main() -> None:
         meta["meshName"] = m.name
         tip_meta.append(meta)
 
-    mat = make_chrome_glass_material()
+    mat = make_chrome_glass_material(f"ConceptChrome_{font_entry['id']}")
     assign_materials(mesh_objs, mat)
 
-    glb = export_glb("wordmark-klaut-pro.glb")
+    fid = font_entry["id"]
+    out_name = "wordmark-klaut-pro.glb" if font_entry.get("primary") else f"wordmark-klaut-pro-{fid}.glb"
+    glb = export_glb(out_name)
     dims = {
         "x": sum(m.dimensions.x for m in mesh_objs) + 0.02 * (len(mesh_objs) - 1),
         "y": max(m.dimensions.y for m in mesh_objs),
@@ -676,16 +876,18 @@ def main() -> None:
                 "lipR": tm.get("lipR"),
                 "closedCounter": bool(tm.get("closedCounter")),
                 "conceptDrip": tm.get("conceptDrip"),
+                "lipSampled": bool(tm.get("lipSampled")),
             }
         )
 
-    entry = {
-        "id": "arial-black",
-        "label": "Arial Black",
-        "fontPath": str(FONT_PATH).replace("\\", "/"),
+    return {
+        "id": fid,
+        "label": font_entry["label"],
+        "fontPath": str(font_path).replace("\\", "/"),
+        "brand": bool(font_entry.get("brand")),
         "text": TEXT,
-        "mesh": "wordmark-klaut-pro.glb",
-        "primary": True,
+        "mesh": out_name,
+        "primary": bool(font_entry.get("primary")),
         "conceptBake": True,
         "softBooleanTips": True,
         "letters": letters,
@@ -694,43 +896,97 @@ def main() -> None:
         "bytes": glb.stat().st_size,
     }
 
+
+def resolve_fonts_to_bake(argv: list[str]) -> list[dict]:
+    available = [f for f in FONT_CATALOG if Path(f["path"]).exists()]
+    if not available:
+        raise SystemExit("No fonts found — vendor IBM Plex into demo/scratch/fonts/")
+
+    font_arg = None
+    all_flag = False
+    for a in argv:
+        if a in ("--all", "--fonts=all"):
+            all_flag = True
+        elif a.startswith("--font="):
+            font_arg = a.split("=", 1)[1].strip()
+        elif a.startswith("--font-id="):
+            font_arg = a.split("=", 1)[1].strip()
+
+    if all_flag or font_arg is None:
+        # Default: bake every available catalog face (brand + Arial Black)
+        return available
+
+    match = next(
+        (
+            f
+            for f in available
+            if f["id"] == font_arg or f["label"].lower() == font_arg.lower()
+        ),
+        None,
+    )
+    if not match:
+        raise SystemExit(
+            f"Unknown font '{font_arg}'. Available: {[f['id'] for f in available]}"
+        )
+    return [match]
+
+
+def main() -> None:
+    argv = _argv_after_double_dash()
+    to_bake = resolve_fonts_to_bake(argv)
+    # Ensure one primary among selected
+    if not any(f.get("primary") for f in to_bake):
+        to_bake[0] = {**to_bake[0], "primary": True}
+
+    entries = []
+    for fe in to_bake:
+        print(f"=== baking {fe['id']} ({fe['label']}) ===")
+        entries.append(bake_one_font(fe))
+
+    primary = next((e for e in entries if e.get("primary")), entries[0])
+    # If primary mesh isn't wordmark-klaut-pro.glb, copy naming via re-export already handled
+
     catalog = {
         "text": TEXT,
-        "defaultId": "arial-black",
+        "defaultId": primary["id"],
         "conceptBake": True,
         "blenderMcp": False,
+        "brandFonts": [e["id"] for e in entries if e.get("brand")],
         "fonts": [
             {
-                "id": entry["id"],
-                "label": entry["label"],
-                "mesh": entry["mesh"],
-                "fontPath": entry["fontPath"],
-                "primary": True,
+                "id": e["id"],
+                "label": e["label"],
+                "mesh": e["mesh"],
+                "fontPath": e["fontPath"],
+                "brand": bool(e.get("brand")),
+                "primary": bool(e.get("primary")),
                 "conceptBake": True,
                 "softBooleanTips": True,
-                "letters": letters,
+                "letters": e["letters"],
             }
+            for e in entries
         ],
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "fonts.json").write_text(json.dumps(catalog, indent=2) + "\n", encoding="utf-8")
 
     manifest = {
-        "font": "Arial Black",
-        "fontPath": entry["fontPath"],
-        "fontId": "arial-black",
+        "font": primary["label"],
+        "fontPath": primary["fontPath"],
+        "fontId": primary["id"],
+        "brand": bool(primary.get("brand")),
         "text": TEXT,
-        "mesh": "wordmark-klaut-pro.glb",
+        "mesh": primary["mesh"],
         "conceptBake": True,
         "blenderMcp": False,
         "blenderMcpNote": "No Blender MCP server in Cursor; bake via portable Blender 4.2 bpy.",
         "softBooleanTips": True,
         "gnSdfUnion": USE_GN_SDF,
         "targetHeight": TARGET_HEIGHT,
-        "bakedDimensions": dims,
-        "vertexCount": entry["vertexCount"],
-        "bytes": entry["bytes"],
-        "letters": letters,
+        "bakedDimensions": primary["bakedDimensions"],
+        "vertexCount": primary["vertexCount"],
+        "bytes": primary["bytes"],
+        "letters": primary["letters"],
         "perLetterMeshes": True,
         "fontsCatalog": "fonts.json",
         "conceptRefs": [
@@ -739,9 +995,10 @@ def main() -> None:
         ],
         "pipeline": [
             "0-mcp: Blender MCP unavailable — use portable bpy bake",
-            "1-font: Arial Black klaut.pro (per-glyph meshes, plump bevel)",
+            f"1-font: {primary['label']} klaut.pro (per-glyph meshes, plump bevel)",
             "2-concept-drip: honey teardrops from letter bottoms (-Z / export Y) on k/t/./p/r/o",
-            "2b-union: GN SDF soft-union underside→neck→bulb (fallback Exact/Float) + remesh/smooth",
+            "2a-lip: bottom-mass column + lip sample (not AABB) so every drip letter matches k",
+            "2b-union: GN SDF soft-union underside→neck→bulb (neck floor vs remesh) + funnel dig",
             "3-material: Principled chrome/glass (metallic+transmission) exported in GLB",
             "4-scratch: Three honeyChrome Physical + OrbitControls; GravityMeltSim optional (stage 5)",
         ],
@@ -755,9 +1012,11 @@ def main() -> None:
     print(
         json.dumps(
             {
-                "wrote": str(glb),
-                "bytes": entry["bytes"],
-                "verts": entry["vertexCount"],
+                "wrote": [e["mesh"] for e in entries],
+                "bytes": {e["id"]: e["bytes"] for e in entries},
+                "verts": {e["id"]: e["vertexCount"] for e in entries},
+                "defaultId": primary["id"],
+                "brandFonts": catalog["brandFonts"],
                 "conceptBake": True,
                 "blenderMcp": False,
             },

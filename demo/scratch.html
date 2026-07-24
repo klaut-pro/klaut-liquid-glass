@@ -212,8 +212,8 @@
     <aside class="hud">
       <h1>Scratch pipeline <span class="badge" id="stageBadge">stage 1</span></h1>
       <p class="sub" id="subLine">
-        Font: <strong id="fontLabel">Arial Black</strong> · wordmark <strong>klaut.pro</strong><br />
-        Concept bake: honey drips in mesh · chrome glass look · OrbitControls
+        Font: <strong id="fontLabel">IBM Plex Sans Bold</strong> · wordmark <strong>klaut.pro</strong><br />
+        Concept bake: honey drips · molten chrome + diffraction fringe · OrbitControls
       </p>
       <div class="stages" id="stageButtons">
         <button type="button" data-stage="1">1 Font</button>
@@ -259,13 +259,13 @@
         </label>
         <label class="row">
           IOR
-          <input id="ior" type="range" min="1.05" max="1.55" step="0.01" value="1.42" />
+          <input id="ior" type="range" min="1.05" max="1.55" step="0.01" value="1.50" />
           <span id="iorVal">1.42</span>
         </label>
         <label class="row">
           Fringe
-          <input id="fringe" type="range" min="0" max="1.5" step="0.01" value="1.05" />
-          <span id="fringeVal">1.05</span>
+          <input id="fringe" type="range" min="0" max="2" step="0.01" value="1.45" />
+          <span id="fringeVal">1.45</span>
         </label>
       </div>
 
@@ -349,8 +349,8 @@
       renderer.setSize(innerWidth, innerHeight, false);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      // Dark plate #07090e — keep exposure modest so softbox/env don't milk the body
-      renderer.toneMappingExposure = 1.08;
+      // Dark plate #07090e — slight lift so chrome specular + fringe read without milking body
+      renderer.toneMappingExposure = 1.18;
 
       const scene = new THREE.Scene();
       // Dark charcoal plate — concept art contrast so glass rims / droplets read
@@ -373,16 +373,15 @@
       // Keep canvas as the event target (not the full-page HUD).
       controls.domElement.style.touchAction = "none";
 
-      // Lit card behind the wordmark so transmission has something brighter than void
-      // to refract — without this, MeshPhysical glass on #07090e reads black-on-black.
+      // Lit card — cooler/darker so chrome env + fringe colors aren't drowned in blue milk
       const backplate = new THREE.Mesh(
         new THREE.PlaneGeometry(32, 14),
         new THREE.MeshStandardMaterial({
-          color: 0x3a4a62,
-          roughness: 0.88,
-          metalness: 0.04,
-          emissive: 0x243044,
-          emissiveIntensity: 0.55,
+          color: 0x1a2230,
+          roughness: 0.82,
+          metalness: 0.12,
+          emissive: 0x0e1520,
+          emissiveIntensity: 0.35,
         }),
       );
       backplate.position.set(0, 0.6, -3.6);
@@ -404,18 +403,21 @@
       grid.position.y = -2.149;
       scene.add(grid);
 
-      // Key warm / rim cool — gold↔cyan rails without cream flood on #07090e
-      const key = new THREE.DirectionalLight(0xfff0dc, 2.35);
+      // Key warm / rim cool — gold↔cyan rails for molten chrome on #07090e
+      const key = new THREE.DirectionalLight(0xfff0dc, 2.55);
       key.position.set(4.5, 5.5, 3.5);
       scene.add(key);
-      const rim = new THREE.DirectionalLight(0xc8e4f0, 1.75);
+      const rim = new THREE.DirectionalLight(0xb8e8ff, 2.05);
       rim.position.set(-3.5, 3.5, 5);
       scene.add(rim);
-      const fill = new THREE.DirectionalLight(0x5a7898, 0.55);
+      const kick = new THREE.DirectionalLight(0xff66aa, 0.55);
+      kick.position.set(2.2, 1.2, -4.5);
+      scene.add(kick);
+      const fill = new THREE.DirectionalLight(0x5a7898, 0.48);
       fill.position.set(-5, 2, -2);
       scene.add(fill);
-      scene.add(new THREE.AmbientLight(0x8a98a8, 0.16));
-      scene.add(new THREE.HemisphereLight(0xc0ccd8, 0x0c1018, 0.32));
+      scene.add(new THREE.AmbientLight(0x8a98a8, 0.14));
+      scene.add(new THREE.HemisphereLight(0xc0ccd8, 0x0c1018, 0.28));
 
       async function createSoftboxEnvironment() {
         const pmrem = new THREE.PMREMGenerator(renderer);
@@ -425,15 +427,20 @@
           softboxStudio.background = new THREE.Color(0x030406);
           const softboxGeometry = new THREE.PlaneGeometry(1, 1);
           const softboxes = [
-            { position: [4.5, 5.5, 2.5], scale: [4.2, 2.1], intensity: 7.5 },
-            { position: [-5.2, 2.2, 3.6], scale: [2.8, 4.8], intensity: 5.5 },
-            { position: [0, -3.8, 2.8], scale: [5.8, 1.3], intensity: 3.2 },
+            // Warm key — gold chrome highlight
+            { position: [4.5, 5.5, 2.5], scale: [4.2, 2.1], intensity: 8.2, color: 0xffe8c8 },
+            // Cool rim — cyan diffraction rail
+            { position: [-5.2, 2.2, 3.6], scale: [2.8, 4.8], intensity: 6.4, color: 0xb8f0ff },
+            // Magenta kick — oil-slick underside
+            { position: [1.2, -2.8, 3.2], scale: [4.2, 1.6], intensity: 4.8, color: 0xff66aa },
+            // Soft fill — silver body
+            { position: [0, -3.8, 2.8], scale: [5.8, 1.3], intensity: 2.6, color: 0xf0f4ff },
           ];
-          for (const { position, scale, intensity } of softboxes) {
+          for (const { position, scale, intensity, color } of softboxes) {
             const panel = new THREE.Mesh(
               softboxGeometry,
               new THREE.MeshBasicMaterial({
-                color: 0xffffff,
+                color,
                 toneMapped: false,
                 side: THREE.DoubleSide,
               }),
@@ -460,8 +467,8 @@
       }
 
       scene.environment = await createSoftboxEnvironment();
-      // Softbox stays; lower intensity so env lobes read as chrome highlights, not cream wash
-      scene.environmentIntensity = 1.35;
+      // Softbox lobes → chrome specular peaks (colored gold/cyan/magenta rails)
+      scene.environmentIntensity = 1.72;
 
       /** @type {THREE.Object3D | null} */
       let letterRoot = null;
@@ -474,28 +481,28 @@
       let wordHalfW = 2.5;
       let wordHalfH = 0.95;
       let currentGlb = DEFAULT_GLB;
-      let currentFontId = "arial-black";
-      let currentFontLabel = "Arial Black";
-      /** @type {{ id: string, label: string, mesh: string, primary?: boolean, letters?: {char:string}[] }[]} */
+      let currentFontId = "ibm-plex-sans-bold";
+      let currentFontLabel = "IBM Plex Sans Bold";
+      /** @type {{ id: string, label: string, mesh: string, primary?: boolean, brand?: boolean, letters?: {char:string}[] }[]} */
       let fontCatalog = [];
 
       const meltSim = new GravityMeltSim();
 
-      /** Default look preset after softbox + Physical retune + gated fringe. */
+      /** Molten chrome + spectral diffraction on dark plate (concept oil-slick). */
       const LOOK_PRESET = {
         id: "honeyChrome",
-        exposure: 1.08,
-        environmentIntensity: 1.35,
-        fringeAmt: 1.05,
+        exposure: 1.18,
+        environmentIntensity: 1.72,
+        fringeAmt: 1.45,
         glass: {
-          metalness: 0.04,
-          roughness: 0.028,
-          // Dense enough to read on #07090e even before env/backplate warm up.
-          transmission: 0.42,
-          thickness: 1.55,
-          ior: 1.42,
-          iridescence: 0.28,
-          iridescenceThicknessRange: [180, 420],
+          metalness: 0.82,
+          roughness: 0.014,
+          // Near-opaque chrome body — transmission is a thin coat only
+          transmission: 0.06,
+          thickness: 0.85,
+          ior: 1.52,
+          iridescence: 0.95,
+          iridescenceThicknessRange: [80, 780],
         },
       };
 
@@ -506,9 +513,9 @@
       });
 
       /**
-       * Fresnel-masked edge fire (gold↔lime↔cyan) via onBeforeCompile.
-       * Gated behind Fringe slider — glance gate failed without it.
-       * Rails from src/shade/shaders.ts edgeFire (pink0 / no purple bloom).
+       * Spectral diffraction fringe (thinFilm + oilFire rails from shaders.ts).
+       * Concept oil-slick: cyan ↔ magenta ↔ gold on Fresnel edges + grazing faces.
+       * Gated by Fringe slider — keeps orbit/load cheap (single onBeforeCompile).
        */
       function installEdgeFringe(mat, defaultAmt) {
         const uFringeAmt = { value: defaultAmt };
@@ -520,62 +527,79 @@
           shader.fragmentShader = shader.fragmentShader.replace(
             "#include <opaque_fragment>",
             `{
-              vec3 _viewDir = normalize(vViewPosition);
-              float _ndv = clamp(dot(normalize(normal), _viewDir), 0.0, 1.0);
-              float _edge = pow(1.0 - _ndv, 2.85);
-              float _t = fract(_ndv * 3.7 + normal.y * 1.35 + normal.x * 0.55);
-              vec3 _cyan = vec3(0.2, 1.35, 1.4);
-              vec3 _lime = vec3(0.55, 1.4, 0.35);
-              vec3 _gold = vec3(1.35, 1.1, 0.35);
-              vec3 _silver = vec3(0.95, 1.0, 1.08);
-              float _u = smoothstep(0.0, 1.0, _t);
-              vec3 _fire = mix(_cyan, _lime, smoothstep(0.1, 0.55, _u));
-              _fire = mix(_fire, _gold, smoothstep(0.5, 0.95, _u));
-              _fire = mix(_fire, _silver, 0.28);
-              // Edge only — no face wash (gain tuned so silhouettes read on #07090e)
-              outgoingLight += _fire * _edge * uFringeAmt * 0.95;
+              vec3 _N = normalize(normal);
+              vec3 _V = normalize(vViewPosition);
+              float _ndv = clamp(dot(_N, _V), 0.0, 1.0);
+              float _edge = pow(1.0 - _ndv, 2.35);
+              float _graze = pow(1.0 - _ndv, 1.45);
+              // thinFilm-style phase (view + normal) — oil-slick ribbons
+              float _phase = 18.0 * (1.0 - _ndv * 0.55) + _N.y * 7.0 + _N.x * 4.2;
+              float _w = 0.5 + 0.5 * cos(_phase);
+              float _w2 = 0.5 + 0.5 * cos(_phase * 1.37 + 1.15);
+              float _w3 = 0.5 + 0.5 * cos(_phase * 0.71 + 2.4);
+              vec3 _cyan = vec3(0.18, 1.45, 1.55);
+              vec3 _magenta = vec3(1.45, 0.28, 1.05);
+              vec3 _gold = vec3(1.55, 1.18, 0.28);
+              vec3 _lime = vec3(0.48, 1.38, 0.32);
+              vec3 _silver = vec3(0.92, 0.98, 1.08);
+              // Spectral mix: cyan → magenta → gold (concept diffraction)
+              vec3 _film = mix(_cyan, _magenta, smoothstep(0.0, 0.55, _w));
+              _film = mix(_film, _gold, smoothstep(0.35, 0.95, _w2));
+              _film = mix(_film, _lime, _w3 * 0.22);
+              _film = mix(_film, _silver, 0.18);
+              // oilFire ribbon: sparse gold-led face tint under fringe
+              vec3 _oil = mix(_gold, _lime, smoothstep(0.2, 0.8, _w) * 0.4);
+              _oil = mix(vec3(0.22, 0.24, 0.28), _oil, 0.88);
+              float _face = smoothstep(0.15, 0.72, _graze) * (0.22 + 0.55 * _w2);
+              outgoingLight += _film * _edge * uFringeAmt * 2.35;
+              outgoingLight += _oil * _face * uFringeAmt * 0.85;
+              // Specular lift — molten chrome peak, not milky water
+              outgoingLight += _silver * pow(max(_ndv, 0.0), 28.0) * uFringeAmt * 0.55;
+              // Extra spectral sparkle on clearcoat-facing bits
+              outgoingLight += _magenta * pow(_edge, 1.4) * uFringeAmt * 0.35 * _w2;
             }
             #include <opaque_fragment>`,
           );
         };
-        mat.customProgramCacheKey = () => "honeyEdgeFringe_v2";
+        mat.customProgramCacheKey = () => "honeyChromeDiffraction_v5";
         mat.needsUpdate = true;
       }
 
-      // Denser molten glass/chrome on #07090e — not milky water; sparse oil iridescence
+      // Molten chrome on #07090e — metal-led body + thin glass coat + oil iridescence
       const matGlass = new THREE.MeshPhysicalMaterial({
-        color: 0xf2f6f0,
-        metalness: 0.04,
-        roughness: 0.028,
-        transmission: 0.42,
-        thickness: 1.55,
-        ior: 1.42,
-        specularIntensity: 1,
-        envMapIntensity: 2.05,
+        color: 0xc8d2dc,
+        metalness: 0.82,
+        roughness: 0.014,
+        transmission: 0.06,
+        thickness: 0.85,
+        ior: 1.52,
+        specularIntensity: 1.35,
+        specularColor: new THREE.Color(0xb8e0ff),
+        envMapIntensity: 3.35,
         clearcoat: 1,
-        clearcoatRoughness: 0.02,
-        attenuationColor: new THREE.Color(0xd8e4bc),
-        attenuationDistance: 0.85,
-        iridescence: 0.28,
-        iridescenceIOR: 1.35,
-        iridescenceThicknessRange: [180, 420],
+        clearcoatRoughness: 0.01,
+        attenuationColor: new THREE.Color(0x9aacbc),
+        attenuationDistance: 1.6,
+        iridescence: 0.95,
+        iridescenceIOR: 1.55,
+        iridescenceThicknessRange: [80, 780],
         transparent: true,
         opacity: 1,
         side: THREE.DoubleSide,
       });
-      installEdgeFringe(matGlass, 1.05);
+      installEdgeFringe(matGlass, LOOK_PRESET.fringeAmt);
 
       const matLiquid = matGlass.clone();
-      matLiquid.roughness = 0.045;
-      matLiquid.thickness = 1.7;
-      matLiquid.transmission = 0.38;
-      matLiquid.attenuationColor = new THREE.Color(0xc8d8a0);
-      matLiquid.attenuationDistance = 0.7;
-      matLiquid.envMapIntensity = 2.2;
-      matLiquid.iridescence = 0.34;
-      matLiquid.iridescenceThicknessRange = [200, 480];
-      // clone can share userData — reinstall so liquid has its own fringe uniform
-      installEdgeFringe(matLiquid, 1.15);
+      matLiquid.metalness = 0.78;
+      matLiquid.roughness = 0.022;
+      matLiquid.thickness = 1.0;
+      matLiquid.transmission = 0.05;
+      matLiquid.attenuationColor = new THREE.Color(0x98a888);
+      matLiquid.attenuationDistance = 1.2;
+      matLiquid.envMapIntensity = 3.5;
+      matLiquid.iridescence = 1.0;
+      matLiquid.iridescenceThicknessRange = [90, 820];
+      installEdgeFringe(matLiquid, LOOK_PRESET.fringeAmt * 1.08);
 
       let stage = 3;
       // Concept bake owns the honey look — GravityMeltSim off until stage 5
@@ -631,19 +655,18 @@
           // readable rim on #07090e (near-1.0 transmission was deleting the glyph).
           if (stage >= 3 && ch === "o") {
             const m = mat.clone();
-            m.thickness = stage === 3 ? 0.35 : 0.4;
-            m.transmission = stage === 3 ? 0.62 : 0.58;
-            m.attenuationDistance = 1.8;
-            m.attenuationColor = new THREE.Color(0xe8f0e4);
-            m.envMapIntensity = stage === 3 ? 1.45 : 1.55;
-            m.roughness = 0.025;
-            m.opacity = 0.96;
-            m.ior = 1.18;
-            m.metalness = 0.02;
-            // Kill bowl oil in the counter — keep carve-out optically quiet
-            m.iridescence = 0.08;
-            // Quiet fringe so counter stays open (own uniform, not shared)
-            installEdgeFringe(m, Math.min(0.22, fringeAmt * 0.22));
+            m.thickness = stage === 3 ? 0.42 : 0.48;
+            m.transmission = stage === 3 ? 0.38 : 0.34;
+            m.attenuationDistance = 1.6;
+            m.attenuationColor = new THREE.Color(0xd0dce8);
+            m.envMapIntensity = stage === 3 ? 2.1 : 2.25;
+            m.roughness = 0.02;
+            m.opacity = 0.97;
+            m.ior = 1.28;
+            m.metalness = 0.42;
+            // Quiet oil in the counter — keep carve-out open
+            m.iridescence = 0.22;
+            installEdgeFringe(m, Math.min(0.35, fringeAmt * 0.28));
             letterMeshes[i].material = m;
           } else {
             letterMeshes[i].material = mat;
@@ -1312,6 +1335,17 @@
           fontId: currentFontId,
           fontLabel: currentFontLabel,
           fonts: fontCatalog.map((f) => f.id),
+          fringe: fringeAmt,
+          lookPreset: LOOK_PRESET.id,
+          materials: {
+            glass: {
+              metalness: matGlass.metalness,
+              roughness: matGlass.roughness,
+              transmission: matGlass.transmission,
+              iridescence: matGlass.iridescence,
+              envMapIntensity: matGlass.envMapIntensity,
+            },
+          },
           vertCounts,
           vertTotal,
           graphWarm: { done: 0, total: letterMeshes.length },
@@ -1447,7 +1481,7 @@
         fringeAmt = Number(fringeEl.value);
         document.getElementById("fringeVal").textContent = fringeAmt.toFixed(2);
         if (matGlass.userData.uFringeAmt) matGlass.userData.uFringeAmt.value = fringeAmt;
-        if (matLiquid.userData.uFringeAmt) matLiquid.userData.uFringeAmt.value = fringeAmt * (1.15 / 1.05);
+        if (matLiquid.userData.uFringeAmt) matLiquid.userData.uFringeAmt.value = fringeAmt * 1.08;
         applyMaterial();
       });
 

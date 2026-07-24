@@ -1,7 +1,8 @@
 {
-  "font": "Arial Black",
-  "fontPath": "C:/Windows/Fonts/ariblk.ttf",
-  "fontId": "arial-black",
+  "font": "IBM Plex Sans Bold",
+  "fontPath": "C:/Users/Julian/Documents/Programming/klaut-liquid-glass/demo/scratch/fonts/IBMPlexSans-Bold.otf",
+  "fontId": "ibm-plex-sans-bold",
+  "brand": true,
   "text": "klaut.pro",
   "mesh": "wordmark-klaut-pro.glb",
   "conceptBake": true,
@@ -11,12 +12,12 @@
   "gnSdfUnion": true,
   "targetHeight": 1.15,
   "bakedDimensions": {
-    "x": 6.083030734062195,
-    "y": 0.5622278451919556,
-    "z": 1.849478006362915
+    "x": 5.7089145517349245,
+    "y": 0.5697705149650574,
+    "z": 1.8256690502166748
   },
-  "vertexCount": 109146,
-  "bytes": 4160928,
+  "vertexCount": 145955,
+  "bytes": 5489848,
   "letters": [
     {
       "index": 0,
@@ -26,16 +27,17 @@
       "sdfUnion": true,
       "tips": 1,
       "columns": [
-        -4.999589633941651
+        -4.317539367675781
       ],
-      "colW": 0.12729530334472658,
-      "lipY": -0.5563236474990845,
-      "hang": 0.645335431098938,
-      "neckR": 0.07892308807373048,
-      "bulbR": 0.1527543640136719,
-      "lipR": 0.21640201568603518,
+      "colW": 0.11469061374664306,
+      "lipY": -0.49535810947418213,
+      "hang": 0.6797950744628906,
+      "neckR": 0.0894586787223816,
+      "bulbR": 0.15483232855796814,
+      "lipR": 0.22364669680595398,
       "closedCounter": false,
-      "conceptDrip": "left"
+      "conceptDrip": "left",
+      "lipSampled": true
     },
     {
       "index": 1,
@@ -45,14 +47,15 @@
       "sdfUnion": false,
       "tips": 0,
       "columns": [],
-      "colW": 0.0446550178527832,
-      "lipY": -0.5330252647399902,
+      "colW": 0.05042996406555176,
+      "lipY": -0.5747079253196716,
       "hang": 0.0,
       "neckR": 0.02,
       "bulbR": 0.03,
       "lipR": 0.035,
       "closedCounter": false,
-      "conceptDrip": null
+      "conceptDrip": null,
+      "lipSampled": false
     },
     {
       "index": 2,
@@ -62,14 +65,15 @@
       "sdfUnion": false,
       "tips": 0,
       "columns": [],
-      "colW": 0.11923776626586914,
-      "lipY": -0.4540954530239105,
+      "colW": 0.10100326538085937,
+      "lipY": -0.45525383949279785,
       "hang": 0.0,
       "neckR": 0.02,
       "bulbR": 0.03,
       "lipR": 0.035,
       "closedCounter": false,
-      "conceptDrip": null
+      "conceptDrip": null,
+      "lipSampled": false
     },
     {
       "index": 3,
@@ -79,14 +83,15 @@
       "sdfUnion": false,
       "tips": 0,
       "columns": [],
-      "colW": 0.10812377214431762,
-      "lipY": -0.4349331259727478,
+      "colW": 0.09286688089370727,
+      "lipY": -0.4356677830219269,
       "hang": 0.0,
       "neckR": 0.02,
       "bulbR": 0.03,
       "lipR": 0.035,
       "closedCounter": false,
-      "conceptDrip": null
+      "conceptDrip": null,
+      "lipSampled": false
     },
     {
       "index": 4,
@@ -96,16 +101,17 @@
       "sdfUnion": true,
       "tips": 1,
       "columns": [
-        0.3395998477935791
+        0.45174325466156007
       ],
-      "colW": 0.0936625075340271,
-      "lipY": -0.563743531703949,
-      "hang": 0.6990419793128967,
-      "neckR": 0.058070754671096805,
-      "bulbR": 0.11239500904083252,
-      "lipR": 0.15922626280784608,
+      "colW": 0.0918,
+      "lipY": -0.5334858894348145,
+      "hang": 0.6656646275520325,
+      "neckR": 0.071604,
+      "bulbR": 0.12393000000000001,
+      "lipR": 0.17901,
       "closedCounter": false,
-      "conceptDrip": "center"
+      "conceptDrip": "center",
+      "lipSampled": true
     },
     {
       "index": 5,
@@ -115,16 +121,17 @@
       "sdfUnion": true,
       "tips": 1,
       "columns": [
-        1.265591025352478
+        1.2267969143390656
       ],
-      "colW": 0.042881758213043214,
-      "lipY": -0.18606264889240265,
-      "hang": 0.2679302144050598,
-      "neckR": 0.026586690092086793,
-      "bulbR": 0.05145810985565186,
-      "lipR": 0.07289898896217346,
+      "colW": 0.0918,
+      "lipY": -0.17025360465049744,
+      "hang": 0.25572048187255864,
+      "neckR": 0.071604,
+      "bulbR": 0.12393000000000001,
+      "lipR": 0.17783692359924316,
       "closedCounter": false,
-      "conceptDrip": "center"
+      "conceptDrip": "center",
+      "lipSampled": true
     },
     {
       "index": 6,
@@ -134,16 +141,17 @@
       "sdfUnion": true,
       "tips": 1,
       "columns": [
-        2.1835426902770996
+        2.064193720817566
       ],
-      "colW": 0.10272093534469605,
-      "lipY": -0.574999988079071,
-      "hang": 0.8279999828338622,
-      "neckR": 0.06368697991371156,
-      "bulbR": 0.12326512241363526,
-      "lipR": 0.17462559008598327,
+      "colW": 0.1274096816778183,
+      "lipY": -0.5274133682250977,
+      "hang": 0.7820000648498536,
+      "neckR": 0.09937955170869828,
+      "bulbR": 0.1720030702650547,
+      "lipR": 0.24844887927174567,
       "closedCounter": false,
-      "conceptDrip": "left"
+      "conceptDrip": "left",
+      "lipSampled": true
     },
     {
       "index": 7,
@@ -153,16 +161,17 @@
       "sdfUnion": true,
       "tips": 1,
       "columns": [
-        3.7297658920288086
+        3.461579041481018
       ],
-      "colW": 0.09540338516235353,
-      "lipY": -0.43793466687202454,
-      "hang": 0.5430389869213105,
-      "neckR": 0.05915009880065918,
-      "bulbR": 0.11448406219482422,
-      "lipR": 0.162185754776001,
+      "colW": 0.0918,
+      "lipY": -0.3107999861240387,
+      "hang": 0.5083809971809387,
+      "neckR": 0.071604,
+      "bulbR": 0.12393000000000001,
+      "lipR": 0.17901,
       "closedCounter": false,
-      "conceptDrip": "center"
+      "conceptDrip": "center",
+      "lipSampled": true
     },
     {
       "index": 8,
@@ -172,16 +181,17 @@
       "sdfUnion": false,
       "tips": 1,
       "columns": [
-        4.879223823547363
+        4.561023483276367
       ],
-      "colW": 0.05417381286621094,
-      "lipY": -0.3288085162639618,
-      "hang": 0.3156561756134033,
-      "neckR": 0.026003430175781248,
-      "bulbR": 0.05146512222290039,
-      "lipR": 0.07313464736938477,
+      "colW": 0.0918,
+      "lipY": -0.29930180311203003,
+      "hang": 0.34654849529266357,
+      "neckR": 0.068,
+      "bulbR": 0.11560000000000001,
+      "lipR": 0.14229000000000003,
       "closedCounter": true,
-      "conceptDrip": "center"
+      "conceptDrip": "center",
+      "lipSampled": true
     }
   ],
   "perLetterMeshes": true,
@@ -192,9 +202,10 @@
   ],
   "pipeline": [
     "0-mcp: Blender MCP unavailable \u2014 use portable bpy bake",
-    "1-font: Arial Black klaut.pro (per-glyph meshes, plump bevel)",
+    "1-font: IBM Plex Sans Bold klaut.pro (per-glyph meshes, plump bevel)",
     "2-concept-drip: honey teardrops from letter bottoms (-Z / export Y) on k/t/./p/r/o",
-    "2b-union: GN SDF soft-union underside\u2192neck\u2192bulb (fallback Exact/Float) + remesh/smooth",
+    "2a-lip: bottom-mass column + lip sample (not AABB) so every drip letter matches k",
+    "2b-union: GN SDF soft-union underside\u2192neck\u2192bulb (neck floor vs remesh) + funnel dig",
     "3-material: Principled chrome/glass (metallic+transmission) exported in GLB",
     "4-scratch: Three honeyChrome Physical + OrbitControls; GravityMeltSim optional (stage 5)"
   ],

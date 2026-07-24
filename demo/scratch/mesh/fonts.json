@@ -1,14 +1,20 @@
 {
   "text": "klaut.pro",
-  "defaultId": "arial-black",
+  "defaultId": "ibm-plex-sans-bold",
   "conceptBake": true,
   "blenderMcp": false,
+  "brandFonts": [
+    "ibm-plex-sans-bold",
+    "ibm-plex-sans-semibold",
+    "ibm-plex-serif-bold"
+  ],
   "fonts": [
     {
-      "id": "arial-black",
-      "label": "Arial Black",
+      "id": "ibm-plex-sans-bold",
+      "label": "IBM Plex Sans Bold",
       "mesh": "wordmark-klaut-pro.glb",
-      "fontPath": "C:/Windows/Fonts/ariblk.ttf",
+      "fontPath": "C:/Users/Julian/Documents/Programming/klaut-liquid-glass/demo/scratch/fonts/IBMPlexSans-Bold.otf",
+      "brand": true,
       "primary": true,
       "conceptBake": true,
       "softBooleanTips": true,
@@ -21,16 +27,575 @@
           "sdfUnion": true,
           "tips": 1,
           "columns": [
-            -4.999589633941651
+            -4.317539367675781
           ],
-          "colW": 0.12729530334472658,
-          "lipY": -0.5563236474990845,
-          "hang": 0.645335431098938,
-          "neckR": 0.07892308807373048,
-          "bulbR": 0.1527543640136719,
-          "lipR": 0.21640201568603518,
+          "colW": 0.11469061374664306,
+          "lipY": -0.49535810947418213,
+          "hang": 0.6797950744628906,
+          "neckR": 0.0894586787223816,
+          "bulbR": 0.15483232855796814,
+          "lipR": 0.22364669680595398,
           "closedCounter": false,
-          "conceptDrip": "left"
+          "conceptDrip": "left",
+          "lipSampled": true
+        },
+        {
+          "index": 1,
+          "char": "l",
+          "meshName": "letter_1_l",
+          "softBoolean": false,
+          "sdfUnion": false,
+          "tips": 0,
+          "columns": [],
+          "colW": 0.05042996406555176,
+          "lipY": -0.5747079253196716,
+          "hang": 0.0,
+          "neckR": 0.02,
+          "bulbR": 0.03,
+          "lipR": 0.035,
+          "closedCounter": false,
+          "conceptDrip": null,
+          "lipSampled": false
+        },
+        {
+          "index": 2,
+          "char": "a",
+          "meshName": "letter_2_a",
+          "softBoolean": false,
+          "sdfUnion": false,
+          "tips": 0,
+          "columns": [],
+          "colW": 0.10100326538085937,
+          "lipY": -0.45525383949279785,
+          "hang": 0.0,
+          "neckR": 0.02,
+          "bulbR": 0.03,
+          "lipR": 0.035,
+          "closedCounter": false,
+          "conceptDrip": null,
+          "lipSampled": false
+        },
+        {
+          "index": 3,
+          "char": "u",
+          "meshName": "letter_3_u",
+          "softBoolean": false,
+          "sdfUnion": false,
+          "tips": 0,
+          "columns": [],
+          "colW": 0.09286688089370727,
+          "lipY": -0.4356677830219269,
+          "hang": 0.0,
+          "neckR": 0.02,
+          "bulbR": 0.03,
+          "lipR": 0.035,
+          "closedCounter": false,
+          "conceptDrip": null,
+          "lipSampled": false
+        },
+        {
+          "index": 4,
+          "char": "t",
+          "meshName": "letter_4_t",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            0.45174325466156007
+          ],
+          "colW": 0.0918,
+          "lipY": -0.5334858894348145,
+          "hang": 0.6656646275520325,
+          "neckR": 0.071604,
+          "bulbR": 0.12393000000000001,
+          "lipR": 0.17901,
+          "closedCounter": false,
+          "conceptDrip": "center",
+          "lipSampled": true
+        },
+        {
+          "index": 5,
+          "char": ".",
+          "meshName": "letter_5_dot",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            1.2267969143390656
+          ],
+          "colW": 0.0918,
+          "lipY": -0.17025360465049744,
+          "hang": 0.25572048187255864,
+          "neckR": 0.071604,
+          "bulbR": 0.12393000000000001,
+          "lipR": 0.17783692359924316,
+          "closedCounter": false,
+          "conceptDrip": "center",
+          "lipSampled": true
+        },
+        {
+          "index": 6,
+          "char": "p",
+          "meshName": "letter_6_p",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            2.064193720817566
+          ],
+          "colW": 0.1274096816778183,
+          "lipY": -0.5274133682250977,
+          "hang": 0.7820000648498536,
+          "neckR": 0.09937955170869828,
+          "bulbR": 0.1720030702650547,
+          "lipR": 0.24844887927174567,
+          "closedCounter": false,
+          "conceptDrip": "left",
+          "lipSampled": true
+        },
+        {
+          "index": 7,
+          "char": "r",
+          "meshName": "letter_7_r",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            3.461579041481018
+          ],
+          "colW": 0.0918,
+          "lipY": -0.3107999861240387,
+          "hang": 0.5083809971809387,
+          "neckR": 0.071604,
+          "bulbR": 0.12393000000000001,
+          "lipR": 0.17901,
+          "closedCounter": false,
+          "conceptDrip": "center",
+          "lipSampled": true
+        },
+        {
+          "index": 8,
+          "char": "o",
+          "meshName": "letter_8_o",
+          "softBoolean": true,
+          "sdfUnion": false,
+          "tips": 1,
+          "columns": [
+            4.561023483276367
+          ],
+          "colW": 0.0918,
+          "lipY": -0.29930180311203003,
+          "hang": 0.34654849529266357,
+          "neckR": 0.068,
+          "bulbR": 0.11560000000000001,
+          "lipR": 0.14229000000000003,
+          "closedCounter": true,
+          "conceptDrip": "center",
+          "lipSampled": true
+        }
+      ]
+    },
+    {
+      "id": "ibm-plex-sans-semibold",
+      "label": "IBM Plex Sans SemiBold",
+      "mesh": "wordmark-klaut-pro-ibm-plex-sans-semibold.glb",
+      "fontPath": "C:/Users/Julian/Documents/Programming/klaut-liquid-glass/demo/scratch/fonts/IBMPlexSans-SemiBold.otf",
+      "brand": true,
+      "primary": false,
+      "conceptBake": true,
+      "softBooleanTips": true,
+      "letters": [
+        {
+          "index": 0,
+          "char": "k",
+          "meshName": "letter_0_k",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            -4.205555362701416
+          ],
+          "colW": 0.11042776107788085,
+          "lipY": -0.47342783212661743,
+          "hang": 0.6803405284881592,
+          "neckR": 0.08613365364074707,
+          "bulbR": 0.14907747745513916,
+          "lipR": 0.21533413410186766,
+          "closedCounter": false,
+          "conceptDrip": "left",
+          "lipSampled": true
+        },
+        {
+          "index": 1,
+          "char": "l",
+          "meshName": "letter_1_l",
+          "softBoolean": false,
+          "sdfUnion": false,
+          "tips": 0,
+          "columns": [],
+          "colW": 0.047406034469604494,
+          "lipY": -0.574999988079071,
+          "hang": 0.0,
+          "neckR": 0.02,
+          "bulbR": 0.03,
+          "lipR": 0.035,
+          "closedCounter": false,
+          "conceptDrip": null,
+          "lipSampled": false
+        },
+        {
+          "index": 2,
+          "char": "a",
+          "meshName": "letter_2_a",
+          "softBoolean": false,
+          "sdfUnion": false,
+          "tips": 0,
+          "columns": [],
+          "colW": 0.09885383605957031,
+          "lipY": -0.4535178244113922,
+          "hang": 0.0,
+          "neckR": 0.02,
+          "bulbR": 0.03,
+          "lipR": 0.035,
+          "closedCounter": false,
+          "conceptDrip": null,
+          "lipSampled": false
+        },
+        {
+          "index": 3,
+          "char": "u",
+          "meshName": "letter_3_u",
+          "softBoolean": false,
+          "sdfUnion": false,
+          "tips": 0,
+          "columns": [],
+          "colW": 0.08994517922401428,
+          "lipY": -0.43389689922332764,
+          "hang": 0.0,
+          "neckR": 0.02,
+          "bulbR": 0.03,
+          "lipR": 0.035,
+          "closedCounter": false,
+          "conceptDrip": null,
+          "lipSampled": false
+        },
+        {
+          "index": 4,
+          "char": "t",
+          "meshName": "letter_4_t",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            0.4291434705257416
+          ],
+          "colW": 0.0918,
+          "lipY": -0.5316325426101685,
+          "hang": 0.6646114134788513,
+          "neckR": 0.071604,
+          "bulbR": 0.12393000000000001,
+          "lipR": 0.17901,
+          "closedCounter": false,
+          "conceptDrip": "center",
+          "lipSampled": true
+        },
+        {
+          "index": 5,
+          "char": ".",
+          "meshName": "letter_5_dot",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            1.1715447771549226
+          ],
+          "colW": 0.0918,
+          "lipY": -0.16436046361923218,
+          "hang": 0.24058426260948182,
+          "neckR": 0.071604,
+          "bulbR": 0.12393000000000001,
+          "lipR": 0.16643940925598144,
+          "closedCounter": false,
+          "conceptDrip": "center",
+          "lipSampled": true
+        },
+        {
+          "index": 6,
+          "char": "p",
+          "meshName": "letter_6_p",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            1.9876458168029785
+          ],
+          "colW": 0.12858228683471679,
+          "lipY": -0.5054312348365784,
+          "hang": 0.7801630306243897,
+          "neckR": 0.1002941837310791,
+          "bulbR": 0.17358608722686766,
+          "lipR": 0.25073545932769775,
+          "closedCounter": false,
+          "conceptDrip": "left",
+          "lipSampled": true
+        },
+        {
+          "index": 7,
+          "char": "r",
+          "meshName": "letter_7_r",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            3.3506165504455567
+          ],
+          "colW": 0.0918,
+          "lipY": -0.2603999972343445,
+          "hang": 0.5060510158538818,
+          "neckR": 0.071604,
+          "bulbR": 0.12393000000000001,
+          "lipR": 0.17901,
+          "closedCounter": false,
+          "conceptDrip": "center",
+          "lipSampled": true
+        },
+        {
+          "index": 8,
+          "char": "o",
+          "meshName": "letter_8_o",
+          "softBoolean": true,
+          "sdfUnion": false,
+          "tips": 1,
+          "columns": [
+            4.436643877029419
+          ],
+          "colW": 0.0918,
+          "lipY": -0.2962827980518341,
+          "hang": 0.3430528831481934,
+          "neckR": 0.068,
+          "bulbR": 0.11560000000000001,
+          "lipR": 0.14229000000000003,
+          "closedCounter": true,
+          "conceptDrip": "center",
+          "lipSampled": true
+        }
+      ]
+    },
+    {
+      "id": "ibm-plex-serif-bold",
+      "label": "IBM Plex Serif Bold",
+      "mesh": "wordmark-klaut-pro-ibm-plex-serif-bold.glb",
+      "fontPath": "C:/Users/Julian/Documents/Programming/klaut-liquid-glass/demo/scratch/fonts/IBMPlexSerif-Bold.otf",
+      "brand": true,
+      "primary": false,
+      "conceptBake": true,
+      "softBooleanTips": true,
+      "letters": [
+        {
+          "index": 0,
+          "char": "k",
+          "meshName": "letter_0_k",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            -4.715059604644775
+          ],
+          "colW": 0.13960068225860595,
+          "lipY": -0.5444238185882568,
+          "hang": 0.6818654537200928,
+          "neckR": 0.10888853216171264,
+          "bulbR": 0.18846092104911805,
+          "lipR": 0.2722213304042816,
+          "closedCounter": false,
+          "conceptDrip": "left",
+          "lipSampled": true
+        },
+        {
+          "index": 1,
+          "char": "l",
+          "meshName": "letter_1_l",
+          "softBoolean": false,
+          "sdfUnion": false,
+          "tips": 0,
+          "columns": [],
+          "colW": 0.05731507301330566,
+          "lipY": -0.5652932524681091,
+          "hang": 0.0,
+          "neckR": 0.02,
+          "bulbR": 0.03,
+          "lipR": 0.035,
+          "closedCounter": false,
+          "conceptDrip": null,
+          "lipSampled": false
+        },
+        {
+          "index": 2,
+          "char": "a",
+          "meshName": "letter_2_a",
+          "softBoolean": false,
+          "sdfUnion": false,
+          "tips": 0,
+          "columns": [],
+          "colW": 0.10041131973266601,
+          "lipY": -0.4458811581134796,
+          "hang": 0.0,
+          "neckR": 0.02,
+          "bulbR": 0.03,
+          "lipR": 0.035,
+          "closedCounter": false,
+          "conceptDrip": null,
+          "lipSampled": false
+        },
+        {
+          "index": 3,
+          "char": "u",
+          "meshName": "letter_3_u",
+          "softBoolean": false,
+          "sdfUnion": false,
+          "tips": 0,
+          "columns": [],
+          "colW": 0.11307366371154785,
+          "lipY": -0.4235549569129944,
+          "hang": 0.0,
+          "neckR": 0.02,
+          "bulbR": 0.03,
+          "lipR": 0.035,
+          "closedCounter": false,
+          "conceptDrip": null,
+          "lipSampled": false
+        },
+        {
+          "index": 4,
+          "char": "t",
+          "meshName": "letter_4_t",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            0.5300815516710281
+          ],
+          "colW": 0.09373631998896598,
+          "lipY": -0.5254741907119751,
+          "hang": 0.6636618947982788,
+          "neckR": 0.07311432959139347,
+          "bulbR": 0.12654403198510408,
+          "lipR": 0.18278582397848364,
+          "closedCounter": false,
+          "conceptDrip": "center",
+          "lipSampled": true
+        },
+        {
+          "index": 5,
+          "char": ".",
+          "meshName": "letter_5_dot",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            1.3089854192733765
+          ],
+          "colW": 0.0918,
+          "lipY": -0.16645179688930511,
+          "hang": 0.24922248601913455,
+          "neckR": 0.071604,
+          "bulbR": 0.12393000000000001,
+          "lipR": 0.17740962982177733,
+          "closedCounter": false,
+          "conceptDrip": "center",
+          "lipSampled": true
+        },
+        {
+          "index": 6,
+          "char": "p",
+          "meshName": "letter_6_p",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            2.204347002506256
+          ],
+          "colW": 0.14428972601890563,
+          "lipY": -0.5606884360313416,
+          "hang": 0.7819999837875367,
+          "neckR": 0.1125459862947464,
+          "bulbR": 0.19479113012552263,
+          "lipR": 0.281364965736866,
+          "closedCounter": false,
+          "conceptDrip": "left",
+          "lipSampled": true
+        },
+        {
+          "index": 7,
+          "char": "r",
+          "meshName": "letter_7_r",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            3.8690336894989015
+          ],
+          "colW": 0.11009266376495361,
+          "lipY": -0.34103086590766907,
+          "hang": 0.5197240591049194,
+          "neckR": 0.08587227773666381,
+          "bulbR": 0.14862509608268737,
+          "lipR": 0.21468069434165954,
+          "closedCounter": false,
+          "conceptDrip": "center",
+          "lipSampled": true
+        },
+        {
+          "index": 8,
+          "char": "o",
+          "meshName": "letter_8_o",
+          "softBoolean": true,
+          "sdfUnion": false,
+          "tips": 1,
+          "columns": [
+            5.0398010158538815
+          ],
+          "colW": 0.0918,
+          "lipY": -0.29555684328079224,
+          "hang": 0.3422123456001282,
+          "neckR": 0.068,
+          "bulbR": 0.11560000000000001,
+          "lipR": 0.14229000000000003,
+          "closedCounter": true,
+          "conceptDrip": "center",
+          "lipSampled": true
+        }
+      ]
+    },
+    {
+      "id": "arial-black",
+      "label": "Arial Black",
+      "mesh": "wordmark-klaut-pro-arial-black.glb",
+      "fontPath": "C:/Windows/Fonts/ariblk.ttf",
+      "brand": false,
+      "primary": false,
+      "conceptBake": true,
+      "softBooleanTips": true,
+      "letters": [
+        {
+          "index": 0,
+          "char": "k",
+          "meshName": "letter_0_k",
+          "softBoolean": true,
+          "sdfUnion": true,
+          "tips": 1,
+          "columns": [
+            -4.7813691139221195
+          ],
+          "colW": 0.13638782501220703,
+          "lipY": -0.4955746829509735,
+          "hang": 0.6675883769989014,
+          "neckR": 0.10638250350952148,
+          "bulbR": 0.1841235637664795,
+          "lipR": 0.2659562587738037,
+          "closedCounter": false,
+          "conceptDrip": "left",
+          "lipSampled": true
         },
         {
           "index": 1,
@@ -47,7 +612,8 @@
           "bulbR": 0.03,
           "lipR": 0.035,
           "closedCounter": false,
-          "conceptDrip": null
+          "conceptDrip": null,
+          "lipSampled": false
         },
         {
           "index": 2,
@@ -64,7 +630,8 @@
           "bulbR": 0.03,
           "lipR": 0.035,
           "closedCounter": false,
-          "conceptDrip": null
+          "conceptDrip": null,
+          "lipSampled": false
         },
         {
           "index": 3,
@@ -81,7 +648,8 @@
           "bulbR": 0.03,
           "lipR": 0.035,
           "closedCounter": false,
-          "conceptDrip": null
+          "conceptDrip": null,
+          "lipSampled": false
         },
         {
           "index": 4,
@@ -91,16 +659,17 @@
           "sdfUnion": true,
           "tips": 1,
           "columns": [
-            0.3395998477935791
+            0.5536855792999268
           ],
-          "colW": 0.0936625075340271,
-          "lipY": -0.563743531703949,
+          "colW": 0.10758760273456573,
+          "lipY": -0.5592951774597168,
           "hang": 0.6990419793128967,
-          "neckR": 0.058070754671096805,
-          "bulbR": 0.11239500904083252,
-          "lipR": 0.15922626280784608,
+          "neckR": 0.08391833013296128,
+          "bulbR": 0.14524326369166374,
+          "lipR": 0.20979582533240318,
           "closedCounter": false,
-          "conceptDrip": "center"
+          "conceptDrip": "center",
+          "lipSampled": true
         },
         {
           "index": 5,
@@ -110,16 +679,17 @@
           "sdfUnion": true,
           "tips": 1,
           "columns": [
-            1.265591025352478
+            1.3903379583358764
           ],
-          "colW": 0.042881758213043214,
-          "lipY": -0.18606264889240265,
-          "hang": 0.2679302144050598,
-          "neckR": 0.026586690092086793,
-          "bulbR": 0.05145810985565186,
-          "lipR": 0.07289898896217346,
+          "colW": 0.0918,
+          "lipY": -0.15158148109912872,
+          "hang": 0.25304520249366763,
+          "neckR": 0.071604,
+          "bulbR": 0.12393000000000001,
+          "lipR": 0.17901,
           "closedCounter": false,
-          "conceptDrip": "center"
+          "conceptDrip": "center",
+          "lipSampled": true
         },
         {
           "index": 6,
@@ -129,16 +699,17 @@
           "sdfUnion": true,
           "tips": 1,
           "columns": [
-            2.1835426902770996
+            2.314278426170349
           ],
-          "colW": 0.10272093534469605,
-          "lipY": -0.574999988079071,
-          "hang": 0.8279999828338622,
-          "neckR": 0.06368697991371156,
-          "bulbR": 0.12326512241363526,
-          "lipR": 0.17462559008598327,
+          "colW": 0.13648008108139037,
+          "lipY": -0.5516636967658997,
+          "hang": 0.7819999837875367,
+          "neckR": 0.1064544632434845,
+          "bulbR": 0.18424810945987702,
+          "lipR": 0.2661361581087112,
           "closedCounter": false,
-          "conceptDrip": "left"
+          "conceptDrip": "left",
+          "lipSampled": true
         },
         {
           "index": 7,
@@ -148,16 +719,17 @@
           "sdfUnion": true,
           "tips": 1,
           "columns": [
-            3.7297658920288086
+            3.9478307723999024
           ],
-          "colW": 0.09540338516235353,
-          "lipY": -0.43793466687202454,
-          "hang": 0.5430389869213105,
-          "neckR": 0.05915009880065918,
-          "bulbR": 0.11448406219482422,
-          "lipR": 0.162185754776001,
+          "colW": 0.1276810526847839,
+          "lipY": -0.2939999997615814,
+          "hang": 0.5255216002464295,
+          "neckR": 0.09959122109413146,
+          "bulbR": 0.1723694211244583,
+          "lipR": 0.24897805273532864,
           "closedCounter": false,
-          "conceptDrip": "center"
+          "conceptDrip": "center",
+          "lipSampled": true
         },
         {
           "index": 8,
@@ -167,16 +739,17 @@
           "sdfUnion": false,
           "tips": 1,
           "columns": [
-            4.879223823547363
+            5.095919075012207
           ],
-          "colW": 0.05417381286621094,
-          "lipY": -0.3288085162639618,
-          "hang": 0.3156561756134033,
-          "neckR": 0.026003430175781248,
-          "bulbR": 0.05146512222290039,
-          "lipR": 0.07313464736938477,
+          "colW": 0.0918,
+          "lipY": -0.2953396439552307,
+          "hang": 0.3419608569145203,
+          "neckR": 0.068,
+          "bulbR": 0.11560000000000001,
+          "lipR": 0.14229000000000003,
           "closedCounter": true,
-          "conceptDrip": "center"
+          "conceptDrip": "center",
+          "lipSampled": true
         }
       ]
     }
