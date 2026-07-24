@@ -10,8 +10,8 @@ import { chromium } from "playwright";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outDir = join(__dirname, "..", "demo", "frames");
 const url = process.argv[2] || "http://localhost:52780/demo/scratch.html";
-const outPng = join(outDir, "scratch-look-after.png");
-const outJson = join(outDir, "scratch-look-after.json");
+const outPng = join(outDir, process.argv[3] || "scratch-look-after.png");
+const outJson = outPng.replace(/\.png$/i, ".json");
 
 async function main() {
   await mkdir(outDir, { recursive: true });

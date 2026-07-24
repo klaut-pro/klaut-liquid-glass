@@ -247,6 +247,11 @@
           <input id="ior" type="range" min="1.05" max="1.55" step="0.01" value="1.42" />
           <span id="iorVal">1.42</span>
         </label>
+        <label class="row">
+          Fringe
+          <input id="fringe" type="range" min="0" max="1.5" step="0.01" value="0.9" />
+          <span id="fringeVal">0.90</span>
+        </label>
       </div>
 
       <div class="section">
@@ -453,11 +458,65 @@
 
       const meltSim = new GravityMeltSim();
 
+      /** Default look preset after softbox + Physical retune + gated fringe. */
+      const LOOK_PRESET = {
+        id: "honeyChrome",
+        exposure: 1.08,
+        environmentIntensity: 1.35,
+        fringeAmt: 0.9,
+        glass: {
+          metalness: 0.04,
+          roughness: 0.028,
+          transmission: 0.78,
+          thickness: 1.15,
+          ior: 1.42,
+          iridescence: 0.28,
+          iridescenceThicknessRange: [180, 420],
+        },
+      };
+
       const matSolid = new THREE.MeshStandardMaterial({
         color: 0xc8d0dc,
         roughness: 0.35,
         metalness: 0.15,
       });
+
+      /**
+       * Fresnel-masked edge fire (gold↔lime↔cyan) via onBeforeCompile.
+       * Gated behind Fringe slider — glance gate failed without it.
+       * Rails from src/shade/shaders.ts edgeFire (pink0 / no purple bloom).
+       */
+      function installEdgeFringe(mat, defaultAmt) {
+        const uFringeAmt = { value: defaultAmt };
+        mat.userData.uFringeAmt = uFringeAmt;
+        mat.onBeforeCompile = (shader) => {
+          shader.uniforms.uFringeAmt = uFringeAmt;
+          shader.fragmentShader =
+            "uniform float uFringeAmt;\n" + shader.fragmentShader;
+          shader.fragmentShader = shader.fragmentShader.replace(
+            "#include <opaque_fragment>",
+            `{
+              vec3 _viewDir = normalize(vViewPosition);
+              float _ndv = clamp(dot(normalize(normal), _viewDir), 0.0, 1.0);
+              float _edge = pow(1.0 - _ndv, 2.85);
+              float _t = fract(_ndv * 3.7 + normal.y * 1.35 + normal.x * 0.55);
+              vec3 _cyan = vec3(0.2, 1.35, 1.4);
+              vec3 _lime = vec3(0.55, 1.4, 0.35);
+              vec3 _gold = vec3(1.35, 1.1, 0.35);
+              vec3 _silver = vec3(0.95, 1.0, 1.08);
+              float _u = smoothstep(0.0, 1.0, _t);
+              vec3 _fire = mix(_cyan, _lime, smoothstep(0.1, 0.55, _u));
+              _fire = mix(_fire, _gold, smoothstep(0.5, 0.95, _u));
+              _fire = mix(_fire, _silver, 0.28);
+              // Edge only — no face wash
+              outgoingLight += _fire * _edge * uFringeAmt * 0.62;
+            }
+            #include <opaque_fragment>`,
+          );
+        };
+        mat.customProgramCacheKey = () => "honeyEdgeFringe_v1";
+        mat.needsUpdate = true;
+      }
 
       // Denser molten glass/chrome on #07090e — not milky water; sparse oil iridescence
       const matGlass = new THREE.MeshPhysicalMaterial({
@@ -480,6 +539,7 @@
         opacity: 1,
         side: THREE.DoubleSide,
       });
+      installEdgeFringe(matGlass, 0.9);
 
       const matLiquid = matGlass.clone();
       matLiquid.roughness = 0.045;
@@ -490,6 +550,8 @@
       matLiquid.envMapIntensity = 1.85;
       matLiquid.iridescence = 0.34;
       matLiquid.iridescenceThicknessRange = [200, 480];
+      // clone can share userData — reinstall so liquid has its own fringe uniform
+      installEdgeFringe(matLiquid, 1.05);
 
       let stage = 3;
       // Honey defaults: high freeze band = drips from lips, not whole-letter puddles
@@ -498,6 +560,7 @@
       let viscosity = 0.9;
       let sagAmpMul = 1.25;
       let bulbSoftMin = 1.0;
+      let fringeAmt = LOOK_PRESET.fringeAmt;
       let selectedLetter = 0;
       /** @type {import("../dist/field/GravityMeltSim.js").LetterMeltOverride[]} */
       let letterOverrides = [];
@@ -554,6 +617,8 @@
             m.metalness = 0.02;
             // Kill bowl oil in the counter — keep carve-out optically quiet
             m.iridescence = 0.08;
+            // Quiet fringe so counter stays open (own uniform, not shared)
+            installEdgeFringe(m, Math.min(0.08, fringeAmt * 0.08));
             letterMeshes[i].material = m;
           } else {
             letterMeshes[i].material = mat;
@@ -1258,6 +1323,14 @@
         document.getElementById("iorVal").textContent = ior.toFixed(2);
         matGlass.ior = ior;
         matLiquid.ior = ior;
+        applyMaterial();
+      });
+      const fringeEl = document.getElementById("fringe");
+      fringeEl.addEventListener("input", () => {
+        fringeAmt = Number(fringeEl.value);
+        document.getElementById("fringeVal").textContent = fringeAmt.toFixed(2);
+        if (matGlass.userData.uFringeAmt) matGlass.userData.uFringeAmt.value = fringeAmt;
+        if (matLiquid.userData.uFringeAmt) matLiquid.userData.uFringeAmt.value = fringeAmt * 1.15;
         applyMaterial();
       });
 

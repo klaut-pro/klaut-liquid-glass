@@ -46,10 +46,10 @@ assert.match(
   /stage >= 3 && ch === "o"/,
   "o carve-out must still gate on stage >= 3",
 );
-assert.doesNotMatch(
+assert.match(
   source,
   /onBeforeCompile/,
-  "Task 4 fringe onBeforeCompile must not be introduced here",
+  "Task 4 fringe onBeforeCompile must be present after glance FAIL",
 );
 assert.match(
   source,

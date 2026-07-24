@@ -1,0 +1,21 @@
+{
+  "url": "http://localhost:52780/demo/scratch.html",
+  "meta": {
+    "canvasW": 1440,
+    "canvasH": 900,
+    "dataUrlLen": 294910,
+    "roomLoaded": false,
+    "stage": "stage 5",
+    "bg": "rgb(7, 9, 14)",
+    "sceneHint": 99
+  },
+  "consoleErrors": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    }
+  ],
+  "consoleWarns": [],
+  "failed": [],
+  "softboxFallbackWarn": false
+}

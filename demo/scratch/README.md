@@ -34,7 +34,19 @@ or:
 | 3 | Clear refractive glass (IOR / Fresnel / env) | ✅ same page |
 | 4 | Liquid glass (liquify / soft surface) | ✅ slider on page |
 | 5 | Gravity melt + viscosity + freeze | ✅ `GravityMeltSim` (letter mesh only) |
-| 6 | Dispersion / light-driven fringe polish | later |
+| 6 | Softbox PMREM + Physical retune + iridescence + gated Fresnel fringe | ✅ look pass (`honeyChrome`) |
+
+## Stage 6 look (this pass)
+
+| Piece | What shipped |
+|-------|----------------|
+| Softbox PMREM | Authored 3-rect softbox + charcoal void (`createSoftboxEnvironment`); RoomEnvironment fallback only |
+| Physical retune | Denser body, tiny metalness, clearcoat, sparse `iridescence`, dark-plate lights/exposure |
+| Glance gate | Softbox+retune alone still read milky → **FAIL** → fringe ON |
+| Fringe | `onBeforeCompile` Fresnel edge fire (gold↔lime↔cyan), Fringe slider, quiet on closed `o` |
+| Preset | `honeyChrome` (default knobs in `demo/scratch.html`) |
+
+Frames: `demo/frames/scratch-look-after.png` (pre-fringe FAIL), `demo/frames/scratch-look-after-fringe.png` (fringe ON).
 
 ## Demo
 
@@ -42,7 +54,11 @@ Serve repo root, then open:
 
 **http://localhost:52780/demo/scratch.html**
 
-Drag to orbit. Controls: **Gravity**, **Freeze ht** (top fraction frozen), **Viscosity**, IOR. Resettle / Freeze now for pose control.
+```bat
+npm run demo:serve
+```
+
+Drag to orbit. Controls: **Gravity**, **Freeze ht**, **Viscosity**, **IOR**, **Fringe**. Resettle / Freeze now for pose control.
 
 **Stage 5 physics (`docs/drop-modeling-research.md` §3.1 / §5c):**
 
