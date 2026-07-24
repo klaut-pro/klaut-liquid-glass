@@ -1,0 +1,155 @@
+[
+  {
+    "name": "letter_0_k",
+    "yRange": [
+      0.605,
+      2.238
+    ],
+    "zRange": [
+      -0.226,
+      0.226
+    ],
+    "zMid": 0,
+    "bottomBandMeanZ": 0,
+    "tipMeanZ": 0,
+    "bottomN": 1332,
+    "tipN": 470,
+    "frontBias": 0
+  },
+  {
+    "name": "letter_1_l",
+    "yRange": [
+      1.228,
+      2.275
+    ],
+    "zRange": [
+      -0.28,
+      0.28
+    ],
+    "zMid": 0,
+    "bottomBandMeanZ": 0,
+    "tipMeanZ": 0,
+    "bottomN": 1092,
+    "tipN": 452,
+    "frontBias": 0
+  },
+  {
+    "name": "letter_2_a",
+    "yRange": [
+      1.299,
+      2.205
+    ],
+    "zRange": [
+      -0.28,
+      0.28
+    ],
+    "zMid": 0,
+    "bottomBandMeanZ": 0,
+    "tipMeanZ": 0,
+    "bottomN": 2562,
+    "tipN": 1508,
+    "frontBias": 0
+  },
+  {
+    "name": "letter_3_u",
+    "yRange": [
+      1.318,
+      2.183
+    ],
+    "zRange": [
+      -0.28,
+      0.28
+    ],
+    "zMid": 0,
+    "bottomBandMeanZ": 0,
+    "tipMeanZ": 0,
+    "bottomN": 2202,
+    "tipN": 1166,
+    "frontBias": 0
+  },
+  {
+    "name": "letter_4_t",
+    "yRange": [
+      0.577,
+      2.251
+    ],
+    "zRange": [
+      -0.226,
+      0.226
+    ],
+    "zMid": 0,
+    "bottomBandMeanZ": 0,
+    "tipMeanZ": 0,
+    "bottomN": 726,
+    "tipN": 264,
+    "frontBias": 0
+  },
+  {
+    "name": "letter_5_dot",
+    "yRange": [
+      1.628,
+      1.875
+    ],
+    "zRange": [
+      -0.226,
+      0.226
+    ],
+    "zMid": 0,
+    "bottomBandMeanZ": 0.001,
+    "tipMeanZ": 0.002,
+    "bottomN": 834,
+    "tipN": 388,
+    "frontBias": 0.002
+  },
+  {
+    "name": "letter_6_p",
+    "yRange": [
+      0.425,
+      2.27
+    ],
+    "zRange": [
+      -0.226,
+      0.226
+    ],
+    "zMid": 0,
+    "bottomBandMeanZ": 0,
+    "tipMeanZ": 0,
+    "bottomN": 968,
+    "tipN": 338,
+    "frontBias": 0
+  },
+  {
+    "name": "letter_7_r",
+    "yRange": [
+      0.842,
+      2.123
+    ],
+    "zRange": [
+      -0.226,
+      0.226
+    ],
+    "zMid": 0,
+    "bottomBandMeanZ": 0,
+    "tipMeanZ": 0,
+    "bottomN": 582,
+    "tipN": 216,
+    "frontBias": 0
+  },
+  {
+    "name": "letter_8_o",
+    "yRange": [
+      1.105,
+      2.08
+    ],
+    "zRange": [
+      -0.091,
+      0.091
+    ],
+    "zMid": 0,
+    "bottomBandMeanZ": 0,
+    "tipMeanZ": 0,
+    "bottomN": 129,
+    "tipN": 49,
+    "frontBias": 0
+  }
+]

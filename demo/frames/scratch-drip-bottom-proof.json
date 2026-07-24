@@ -1,0 +1,69 @@
+{
+  "url": "http://localhost:52780/demo/scratch.html",
+  "probe": {
+    "mesh": "./scratch/mesh/wordmark-klaut-pro.glb",
+    "ready": true,
+    "stage": "stage 3",
+    "gravity": 0,
+    "softBooleanBake": true
+  },
+  "shots": [
+    {
+      "view": "front",
+      "cam": {
+        "x": 0,
+        "y": 0.5499999999999998,
+        "z": 11.5
+      },
+      "target": {
+        "x": 0,
+        "y": 0.9,
+        "z": 0
+      },
+      "mesh": "./scratch/mesh/wordmark-klaut-pro.glb",
+      "verts": null,
+      "ready": true,
+      "path": "demo/frames/scratch-drip-bottom-front.png"
+    },
+    {
+      "view": "side",
+      "cam": {
+        "x": 12.5,
+        "y": 1.3499999999999994,
+        "z": 7.654042494670958e-16
+      },
+      "target": {
+        "x": 0,
+        "y": 1.2,
+        "z": 0
+      },
+      "mesh": "./scratch/mesh/wordmark-klaut-pro.glb",
+      "verts": null,
+      "ready": true,
+      "path": "demo/frames/scratch-drip-bottom-side.png"
+    },
+    {
+      "view": "threeQuarter",
+      "cam": {
+        "x": 6.5,
+        "y": 1.600000000000001,
+        "z": 7.499999999999999
+      },
+      "target": {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      "mesh": "./scratch/mesh/wordmark-klaut-pro.glb",
+      "verts": null,
+      "ready": true,
+      "path": "demo/frames/scratch-drip-bottom-3q.png"
+    }
+  ],
+  "consoleErrors": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    }
+  ]
+}

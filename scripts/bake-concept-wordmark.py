@@ -4,7 +4,9 @@ Concept-faithful klaut.pro wordmark bake (Blender bpy — no Blender MCP).
 
 Recreates the molten chrome / honey-teardrop look from
 `klaut.pro/concept_art/` (esp. 1c6PD, EL2Hz) as **baked mesh geometry**:
-plump beveled glyphs + honey drip pendants soft-unioned into letter bottoms.
+plump beveled glyphs + honey drip pendants soft-unioned into letter *undersides*
+(world -Z after orient / glTF -Y) — continuous bottom lip → neck → teardrop,
+never blobs stuck on the front face.
 
 Does NOT fight GravityMeltSim topology at runtime — drips live in the GLB.
 
@@ -60,7 +62,8 @@ TIP_RINGS = 14
 TIP_SEGS = 16
 USE_GN_SDF = True
 SDF_BAND = 4
-SDF_SOFT = REMESH_VOXEL * 2.2
+# Softer iso so underside lip melts into neck (continuous glyph→pendant)
+SDF_SOFT = REMESH_VOXEL * 3.4
 
 # Concept 1c6PD drip map: which letters get a honey teardrop, and where.
 # Values: "left" | "center" | "right" | "dual" | None
@@ -102,13 +105,14 @@ def concept_pendant_radius(u: float, neck_r: float, bulb_r: float, lip_r: float)
     return max(bulb * 0.42, bulb + (bulb * 0.4 - bulb) * tip)
 
 
-def concept_pendant_y(u: float, lip_y: float, hang: float) -> float:
+def concept_pendant_hang(u: float, lip: float, hang: float) -> float:
+    """Axis position along hang direction: lip → tip (lip decreases by hang)."""
     t = _clamp01(u)
     if t <= 0.28:
         nu = t / 0.28
-        return lip_y - hang * 0.28 * (nu ** 0.95)
+        return lip - hang * 0.28 * (nu ** 0.95)
     bu = (t - 0.28) / 0.72
-    return lip_y - hang * (0.28 + 0.72 * (bu ** 0.7))
+    return lip - hang * (0.28 + 0.72 * (bu ** 0.7))
 
 
 def clear_scene() -> None:
@@ -239,10 +243,19 @@ def drip_columns(ch: str, bb_min_x: float, bb_max_x: float) -> list[float]:
     return [cx]
 
 
-def make_pear_tip(name, cx, lip_y, cz, hang, neck_r, bulb_r, lip_r):
+def make_pear_tip(name, cx, cy, lip_z, hang, neck_r, bulb_r, lip_r):
+    """
+    Honey teardrop hanging from letter *underside* (world -Z after layout_and_orient).
+
+    Post-orient axes: X = width, Y = extrusion thickness, Z = letter height.
+    Pendant axis is -Z (below baseline). Cross-section lies in XY at mid-thickness
+    so the drip is not stuck on the front face (+Y / -Y).
+    export_yup maps Blender Z → glTF Y, so hang becomes below in Three.
+    """
     rings, segs = TIP_RINGS, TIP_SEGS
-    bury = hang * 0.42
-    lip_y_b = lip_y + bury
+    # Bury deep into the underside so SDF/boolean soft-unions continuous lip→neck
+    bury = hang * 0.62
+    lip_z_b = lip_z + bury
     mesh = bpy.data.meshes.new(name)
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.collection.objects.link(obj)
@@ -251,18 +264,18 @@ def make_pear_tip(name, cx, lip_y, cz, hang, neck_r, bulb_r, lip_r):
     for ri in range(rings + 1):
         u = ri / rings
         R = concept_pendant_radius(u, neck_r, bulb_r, lip_r)
-        y = concept_pendant_y(u, lip_y_b, hang + bury)
+        z = concept_pendant_hang(u, lip_z_b, hang + bury)
         row = []
         for s in range(segs):
             ang = (s / segs) * math.tau
             row.append(
                 bm.verts.new(
-                    (cx + math.cos(ang) * R, y, cz + math.sin(ang) * R * 0.96)
+                    (cx + math.cos(ang) * R, cy + math.sin(ang) * R * 0.96, z)
                 )
             )
         grid.append(row)
-    tip_y = concept_pendant_y(1.0, lip_y_b, hang + bury)
-    pole = bm.verts.new((cx, tip_y - hang * 0.012, cz))
+    tip_z = concept_pendant_hang(1.0, lip_z_b, hang + bury)
+    pole = bm.verts.new((cx, cy, tip_z - hang * 0.012))
     bm.verts.ensure_lookup_table()
     for ri in range(rings):
         for s in range(segs):
@@ -279,7 +292,7 @@ def make_pear_tip(name, cx, lip_y, cz, hang, neck_r, bulb_r, lip_r):
         except ValueError:
             pass
     first = grid[0]
-    lip_c = bm.verts.new((cx, lip_y_b + hang * 0.01, cz))
+    lip_c = bm.verts.new((cx, cy, lip_z_b + hang * 0.01))
     for s in range(segs):
         s2 = (s + 1) % segs
         try:
@@ -399,6 +412,13 @@ def gn_sdf_union(letter_obj, tip_obj, voxel: float, soft: float) -> bool:
 
 
 def attach_concept_drips(mesh_obj, ch: str) -> dict:
+    """
+    Soft-union honey pendants onto letter *bottom lips* (min Z), not front face.
+
+    After layout_and_orient (+90° X): height→Z, thickness→Y. Prior bake hung
+    along -Y from min_Y which is a vertical face — blobs on the front. Correct
+    lip is min_Z; hang is -Z; column sits at mid-thickness (mean Y).
+    """
     bpy.context.view_layer.update()
     bb = [mesh_obj.matrix_world @ Vector(c) for c in mesh_obj.bound_box]
     xs = [v.x for v in bb]
@@ -407,10 +427,11 @@ def attach_concept_drips(mesh_obj, ch: str) -> dict:
     min_x, max_x = min(xs), max(xs)
     min_y, max_y = min(ys), max(ys)
     min_z, max_z = min(zs), max(zs)
-    span_y = max(max_y - min_y, 1e-4)
+    # Height after orient is Z; thickness is Y (do not hang along thickness/Y)
+    span_z = max(max_z - min_z, 1e-4)
     span_x = max(max_x - min_x, 1e-4)
-    cz = (min_z + max_z) * 0.5
-    lip_y = min_y
+    cy = (min_y + max_y) * 0.5
+    lip_z = min_z
     cols = drip_columns(ch, min_x, max_x)
     closed = ch in "oOe0"
 
@@ -421,24 +442,27 @@ def attach_concept_drips(mesh_obj, ch: str) -> dict:
             "sdfUnion": False,
             "columns": [],
             "colW": span_x * 0.12,
-            "lipY": float(lip_y),
+            # lipY = Blender lip Z; export_yup → glTF/Three Y (below baseline)
+            "lipY": float(lip_z),
             "hang": 0.0,
             "neckR": 0.02,
             "bulbR": 0.03,
             "lipR": 0.035,
             "closedCounter": closed,
             "conceptDrip": CONCEPT_DRIPS.get(ch),
+            "dripAxis": "negZ",
         }
 
     spike = ch in "p.gyj"
     # Closed o: short drip under the ring — Exact boolean only (SDF fills aperture)
-    hang = span_y * (0.48 if closed else 0.72 if spike else 0.58 if ch == "k" else 0.62)
+    hang = span_z * (0.48 if closed else 0.72 if spike else 0.58 if ch == "k" else 0.62)
     col_w = max(span_x * (0.08 if closed else 0.11 if spike else 0.14), 0.024)
-    neck_r = col_w * (0.42 if closed else 0.55)
+    neck_r = col_w * (0.48 if closed else 0.62)
     bulb_r = col_w * (0.95 if closed else 1.2)  # honey bead (concept)
-    lip_r = col_w * (1.15 if closed else 1.45)
-    lip_r = min(lip_r, span_x * (0.22 if closed else 0.35))
-    lip_r = max(lip_r, neck_r * 1.15)
+    # Wide lip seat on the underside so the glyph body reads as flowing into the pendant
+    lip_r = col_w * (1.35 if closed else 1.7)
+    lip_r = min(lip_r, span_x * (0.28 if closed else 0.42))
+    lip_r = max(lip_r, neck_r * 1.25)
 
     if not closed:
         remesh(mesh_obj, REMESH_VOXEL * 1.15)
@@ -448,8 +472,8 @@ def attach_concept_drips(mesh_obj, ch: str) -> dict:
             make_pear_tip(
                 f"{mesh_obj.name}_cdrip{ti}",
                 cx,
-                lip_y,
-                cz,
+                cy,
+                lip_z,
                 hang,
                 neck_r,
                 bulb_r,
@@ -496,7 +520,8 @@ def attach_concept_drips(mesh_obj, ch: str) -> dict:
 
     print(
         f"  concept drip {ch!r}: tips={united} sdf={used_sdf} closed={closed} "
-        f"hang={hang:.3f} bulb={bulb_r:.3f} verts={len(mesh_obj.data.vertices)}"
+        f"axis=-Z lipZ={lip_z:.3f} hang={hang:.3f} bulb={bulb_r:.3f} "
+        f"verts={len(mesh_obj.data.vertices)}"
     )
     return {
         "tips": united,
@@ -504,13 +529,14 @@ def attach_concept_drips(mesh_obj, ch: str) -> dict:
         "sdfUnion": used_sdf,
         "columns": [float(c) for c in cols],
         "colW": float(col_w),
-        "lipY": float(lip_y),
+        "lipY": float(lip_z),
         "hang": float(hang),
         "neckR": float(neck_r),
         "bulbR": float(bulb_r),
         "lipR": float(lip_r),
         "closedCounter": closed,
         "conceptDrip": CONCEPT_DRIPS.get(ch),
+        "dripAxis": "negZ",
     }
 
 
@@ -714,8 +740,8 @@ def main() -> None:
         "pipeline": [
             "0-mcp: Blender MCP unavailable — use portable bpy bake",
             "1-font: Arial Black klaut.pro (per-glyph meshes, plump bevel)",
-            "2-concept-drip: honey teardrops on k/t/./p/r/o (1c6PD map) baked into mesh",
-            "2b-union: GN SDF soft-union (fallback Exact/Float boolean) + remesh/smooth",
+            "2-concept-drip: honey teardrops from letter bottoms (-Z / export Y) on k/t/./p/r/o",
+            "2b-union: GN SDF soft-union underside→neck→bulb (fallback Exact/Float) + remesh/smooth",
             "3-material: Principled chrome/glass (metallic+transmission) exported in GLB",
             "4-scratch: Three honeyChrome Physical + OrbitControls; GravityMeltSim optional (stage 5)",
         ],

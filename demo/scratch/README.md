@@ -13,7 +13,7 @@ Clean staged path — **not** the old `chromeSansP` / `scriptProP` SDF atlas QA 
 | Choice | Why |
 |--------|-----|
 | **Arial Black** | Heavy geometric display sans; plump bevel reads under glass |
-| **Concept drips** | Honey teardrops on **k / t / . / p / r / o** (map from `concept_art/1c6PD.jpg`) baked into mesh via GN SDF soft-union |
+| **Concept drips** | Honey teardrops on **k / t / . / p / r / o** hanging from letter **undersides** (world −Z after orient → glTF −Y), soft-unioned lip→neck→bulb — not front-face blobs |
 | **Chrome material** | Principled metallic + transmission exported in GLB; Three `honeyChrome` Physical + fringe for live look |
 
 Glyph: **`klaut.pro`** (per-letter meshes, OrbitControls).
