@@ -1,0 +1,24 @@
+{
+  "readyAtMs": 2208,
+  "before": {
+    "z": 17.9308850630116,
+    "dist": 17.939472237023377
+  },
+  "after": {
+    "z": 10.178184735681553,
+    "dist": 10.183059109876812,
+    "enableZoom": true
+  },
+  "zoomDeltaZ": -7.7527,
+  "zoomDeltaDist": -7.7564,
+  "zoomWorks": true,
+  "lum": {
+    "meanLum": 0.4062,
+    "brightFrac": 1,
+    "n": 165888
+  },
+  "bad": [],
+  "logs": [
+    "error: Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ]
+}

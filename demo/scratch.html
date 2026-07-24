@@ -29,13 +29,18 @@
         width: 100%;
         height: 100%;
         background: #07090e;
+        /* OrbitControls / wheel zoom must receive gestures on the canvas */
+        touch-action: none;
+        pointer-events: auto;
       }
       .hud {
         position: fixed;
         left: 16px;
         top: 16px;
         z-index: 5;
-        pointer-events: auto;
+        /* Let wheel/drag pass through the panel chrome to the canvas;
+           only interactive controls capture pointer events. */
+        pointer-events: none;
         width: min(360px, calc(100vw - 32px));
         max-height: calc(100vh - 32px);
         overflow: auto;
@@ -45,6 +50,16 @@
         backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 255, 255, 0.08);
         box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+      }
+      .hud button,
+      .hud input,
+      .hud select,
+      .hud label,
+      .hud a {
+        pointer-events: auto;
+      }
+      .hud .status.error {
+        color: #ff8f8f;
       }
       .hud h1 {
         margin: 0 0 4px;
@@ -348,9 +363,15 @@
       const controls = new OrbitControls(camera, canvas);
       controls.enableDamping = true;
       controls.dampingFactor = 0.06;
+      controls.enableRotate = true;
+      controls.enableZoom = true;
+      controls.enablePan = true;
+      controls.zoomSpeed = 1.15;
       controls.minDistance = 2.5;
       controls.maxDistance = 28;
       controls.target.set(0, 0.05, 0);
+      // Keep canvas as the event target (not the full-page HUD).
+      controls.domElement.style.touchAction = "none";
 
       // Lit card behind the wordmark so transmission has something brighter than void
       // to refract — without this, MeshPhysical glass on #07090e reads black-on-black.
@@ -469,9 +490,9 @@
         glass: {
           metalness: 0.04,
           roughness: 0.028,
-          // Keep body denser than milky water, but not so open that dark plate deletes the glyph.
-          transmission: 0.58,
-          thickness: 1.35,
+          // Dense enough to read on #07090e even before env/backplate warm up.
+          transmission: 0.42,
+          thickness: 1.55,
           ior: 1.42,
           iridescence: 0.28,
           iridescenceThicknessRange: [180, 420],
@@ -526,8 +547,8 @@
         color: 0xf2f6f0,
         metalness: 0.04,
         roughness: 0.028,
-        transmission: 0.58,
-        thickness: 1.35,
+        transmission: 0.42,
+        thickness: 1.55,
         ior: 1.42,
         specularIntensity: 1,
         envMapIntensity: 2.05,
@@ -546,10 +567,10 @@
 
       const matLiquid = matGlass.clone();
       matLiquid.roughness = 0.045;
-      matLiquid.thickness = 1.55;
-      matLiquid.transmission = 0.52;
+      matLiquid.thickness = 1.7;
+      matLiquid.transmission = 0.38;
       matLiquid.attenuationColor = new THREE.Color(0xc8d8a0);
-      matLiquid.attenuationDistance = 0.75;
+      matLiquid.attenuationDistance = 0.7;
       matLiquid.envMapIntensity = 2.2;
       matLiquid.iridescence = 0.34;
       matLiquid.iridescenceThicknessRange = [200, 480];
@@ -610,14 +631,14 @@
           // readable rim on #07090e (near-1.0 transmission was deleting the glyph).
           if (stage >= 3 && ch === "o") {
             const m = mat.clone();
-            m.thickness = stage === 3 ? 0.22 : 0.28;
-            m.transmission = stage === 3 ? 0.82 : 0.78;
-            m.attenuationDistance = 2.4;
+            m.thickness = stage === 3 ? 0.35 : 0.4;
+            m.transmission = stage === 3 ? 0.62 : 0.58;
+            m.attenuationDistance = 1.8;
             m.attenuationColor = new THREE.Color(0xe8f0e4);
             m.envMapIntensity = stage === 3 ? 1.45 : 1.55;
             m.roughness = 0.025;
-            m.opacity = 0.94;
-            m.ior = 1.12;
+            m.opacity = 0.96;
+            m.ior = 1.18;
             m.metalness = 0.02;
             // Kill bowl oil in the counter — keep carve-out optically quiet
             m.iridescence = 0.08;
@@ -795,21 +816,40 @@
         rebuildGlyphButtons();
       }
 
+      function setLoadStatus(msg, isError = false) {
+        const el = document.getElementById("meltStatus");
+        el.textContent = msg;
+        el.classList.toggle("error", !!isError);
+      }
+
+      let meltAcc = 0;
+      let normalFrame = 0;
+      function markMeshesDirty(recomputeNormals) {
+        for (const mesh of letterMeshes) {
+          mesh.geometry.attributes.position.needsUpdate = true;
+          if (recomputeNormals) mesh.geometry.computeVertexNormals();
+        }
+      }
+
       function updateMelt(dt) {
+        // Cap melt to ~20 Hz so OrbitControls stay responsive on ~430k verts.
+        meltAcc += dt;
+        if (meltAcc < 0.048) return;
+        const stepDt = Math.min(meltAcc, 0.08);
+        meltAcc = 0;
+
         if (stage < 5 || (gravityAmt < 0.001 && !letterOverrides.some((o) => (o.intensity ?? 0) > 0.001))) {
           if (stage < 4) return;
           if (stage === 4) {
-            const changed = meltSim.step(dt, {
+            const changed = meltSim.step(stepDt, {
               ...masterParams(),
               intensity: gravityAmt * 0.25,
               freezeHeight: Math.max(freezeHeight, 0.72),
               falloffPower: 1.4,
             });
             if (changed) {
-              for (const mesh of letterMeshes) {
-                mesh.geometry.attributes.position.needsUpdate = true;
-                mesh.geometry.computeVertexNormals();
-              }
+              normalFrame++;
+              markMeshesDirty(normalFrame % 3 === 0);
             }
           }
           return;
@@ -824,23 +864,28 @@
           lastParamKey = key;
         }
 
-        const changed = meltSim.step(dt, masterParams());
+        const changed = meltSim.step(stepDt, masterParams());
         if (changed) {
-          for (const mesh of letterMeshes) {
-            mesh.geometry.attributes.position.needsUpdate = true;
-            mesh.geometry.computeVertexNormals();
-          }
+          normalFrame++;
+          // Normals on ~430k verts every frame freezes orbit/zoom — every 3rd melt tick.
+          markMeshesDirty(normalFrame % 3 === 0);
         }
 
         const st = meltSim.getStatus();
         const statusEl = document.getElementById("meltStatus");
-        const enabled = letterOverrides.filter((o) => o.enable !== false).length;
-        const softBake = window.__scratch?.roundness?.softBooleanBake;
-        statusEl.textContent = st.frozen
-          ? softBake
-            ? `frozen · ${enabled}/${st.slotCount} letters · softBoolBake · softMin · dripBlobs 0`
-            : `frozen · ${enabled}/${st.slotCount} letters · tipLoft · sharedVtx · tipRemesh · softMin · dripBlobs 0`
-          : `settling ${(st.settle * 100).toFixed(0)}% · ${enabled}/${st.slotCount} letters`;
+        if (!statusEl.classList.contains("error")) {
+          const enabled = letterOverrides.filter((o) => o.enable !== false).length;
+          const softBake = window.__scratch?.roundness?.softBooleanBake;
+          const graphWarm = window.__scratch?.graphWarm;
+          const graphNote = graphWarm && graphWarm.done < graphWarm.total
+            ? ` · graph ${graphWarm.done}/${graphWarm.total}`
+            : "";
+          statusEl.textContent = st.frozen
+            ? softBake
+              ? `frozen · ${enabled}/${st.slotCount} letters · softBoolBake · softMin · dripBlobs 0${graphNote}`
+              : `frozen · ${enabled}/${st.slotCount} letters · tipLoft · sharedVtx · tipRemesh · softMin · dripBlobs 0${graphNote}`
+            : `settling ${(st.settle * 100).toFixed(0)}% · ${enabled}/${st.slotCount} letters${graphNote}`;
+        }
 
         if (window.__scratch) {
           window.__scratch.frozen = st.frozen;
@@ -1069,12 +1114,47 @@
         return weld.tipU;
       }
 
+      async function loadGlbWithProgress(glbUrl) {
+        const loader = new GLTFLoader();
+        return new Promise((resolve, reject) => {
+          loader.load(
+            glbUrl,
+            (gltf) => resolve(gltf),
+            (ev) => {
+              if (!ev.total) {
+                setLoadStatus(`loading wordmark… ${(ev.loaded / 1e6).toFixed(1)} MB`);
+                return;
+              }
+              const pct = Math.min(99, Math.round((100 * ev.loaded) / ev.total));
+              setLoadStatus(`loading wordmark… ${pct}%`);
+            },
+            (err) => reject(err),
+          );
+        });
+      }
+
       async function loadWordmark(glbName, fontMeta) {
         disposeLetterRoot();
-        const loader = new GLTFLoader();
+        setLoadStatus(`fetching ${glbName}…`);
         const glbUrl = new URL(MESH_DIR + glbName, import.meta.url).href;
-        const gltf = await loader.loadAsync(glbUrl);
+        let gltf;
+        try {
+          gltf = await loadGlbWithProgress(glbUrl);
+        } catch (err) {
+          // Fallback: lighter baked mesh if the primary ~18MB GLB fails / times out.
+          if (glbName !== "wordmark-bahnschrift.glb") {
+            setLoadStatus(`primary GLB failed — trying bahnschrift…`, true);
+            console.warn("Primary GLB failed, falling back to bahnschrift", err);
+            return loadWordmark("wordmark-bahnschrift.glb", {
+              ...fontMeta,
+              mesh: "wordmark-bahnschrift.glb",
+              label: (fontMeta?.label || currentFontLabel) + " (fallback)",
+            });
+          }
+          throw err;
+        }
         letterRoot = gltf.scene;
+        setLoadStatus("preparing letter meshes…");
 
         const found = [];
         letterRoot.traverse((obj) => {
@@ -1174,6 +1254,8 @@
           });
           obj.userData.tipU = tipU;
           obj.userData.tipSeedCount = tipU.reduce((a, u) => a + (u > 0 ? 1 : 0), 0);
+          // Yield so the early RAF loop can keep painting the plate during prep.
+          if (i % 2 === 1) await new Promise((r) => requestAnimationFrame(() => r()));
         }
 
         if (!letterMeshes.length) {
@@ -1193,8 +1275,8 @@
         wordHalfW = size.x * 0.5;
         wordHalfH = size.y * 0.5;
 
-        meltSim.bind(deformCache);
-        pushOverridesToSim();
+        // CRITICAL: add + paint BEFORE proximity-graph bind (was ~2 min freeze on
+        // the 18MB soft-boolean wordmark — blank canvas, zero orbit/zoom).
         scene.add(letterRoot);
         applyMaterial();
         frameWordmarkCamera(size);
@@ -1205,11 +1287,17 @@
         document.getElementById("meshHint").textContent = `demo/scratch/mesh/${glbName}`;
         document.getElementById("fontLabel").textContent = currentFontLabel;
 
+        const vertCounts = letterMeshes.map(
+          (m) => m.geometry.attributes.position.count,
+        );
+        const vertTotal = vertCounts.reduce((a, b) => a + b, 0);
+
         window.__scratch = {
           wordmark: WORDMARK,
           mesh: `${MESH_DIR}${glbName}`,
           size: { x: size.x, y: size.y, z: size.z },
           ready: true,
+          binding: true,
           dripBlobs: 0,
           frozen: false,
           settle: 0,
@@ -1224,6 +1312,9 @@
           fontId: currentFontId,
           fontLabel: currentFontLabel,
           fonts: fontCatalog.map((f) => f.id),
+          vertCounts,
+          vertTotal,
+          graphWarm: { done: 0, total: letterMeshes.length },
           roundness: {
             teardrop: true,
             softMinBulb: true,
@@ -1244,6 +1335,26 @@
         window.__scratchControls = controls;
         window.THREE = THREE;
         lastParamKey = "";
+        setLoadStatus(`visible · ${vertTotal} verts · binding melt…`);
+
+        // Fast bind (no proximity graph) — sag sculpt works; skip auto graph warm
+        // (per-letter ~40–80k verts still freezes the main thread for tens of seconds).
+        try {
+          meltSim.bind(deformCache, { proximityGraph: false });
+          pushOverridesToSim();
+          window.__scratch.binding = false;
+          window.__scratch.graphWarm = {
+            done: letterMeshes.length,
+            total: letterMeshes.length,
+            skipped: true,
+          };
+        } catch (err) {
+          console.error("meltSim.bind failed", err);
+          setLoadStatus(`melt bind failed: ${err?.message || err}`, true);
+          window.__scratch.binding = false;
+          window.__scratch.bindError = String(err);
+          return;
+        }
       }
 
       async function loadFontCatalog() {
@@ -1437,20 +1548,25 @@
 
       // Paint the plate immediately — GLB parse can take a long time on the 18MB
       // wordmark; without an early RAF the HUD shows over a dead black canvas.
-      document.getElementById("meltStatus").textContent = "loading wordmark mesh…";
+      setLoadStatus("loading wordmark mesh…");
       frame();
 
       try {
         const primary = await loadFontCatalog();
         await loadWordmark(primary.mesh || DEFAULT_GLB, primary);
+        // Show solid glass for a couple frames before sag so the wordmark is
+        // readable immediately; sag still starts automatically.
+        setStage(3);
+        booting = false;
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         setStage(5);
         lastParamKey = "";
-        booting = false;
       } catch (err) {
         console.error(err);
+        const msg = err?.message || String(err);
         document.querySelector(".sub").textContent =
-          "Failed to load wordmark GLB — run npm run bake:scratch -- --all-fonts";
-        document.getElementById("meltStatus").textContent = "load failed";
+          `Failed to load wordmark GLB: ${msg} — run npm run bake:scratch -- --all-fonts`;
+        setLoadStatus(`load failed: ${msg}`, true);
         window.__scratch = { wordmark: WORDMARK, ready: false, error: String(err) };
         booting = false;
       }

@@ -1252,7 +1252,12 @@ export class GravityMeltSim {
   private oneShotT = 0;
   private letterOverrides: LetterMeltOverride[] = [];
 
-  /** Bind mesh attribute buffers (pos is live; base/normal are rest snapshots). */
+  /**
+   * Bind mesh attribute buffers (pos is live; base/normal are rest snapshots).
+   * Proximity graphs are O(n·bucket) and can take minutes on ~400k soft-boolean
+   * verts — pass `{ proximityGraph: false }` to show meshes immediately, then
+   * call `buildProximityGraphsAsync()` once the first frames have painted.
+   */
   bind(
     meshes: Array<{
       pos: Float32Array;
@@ -1261,7 +1266,9 @@ export class GravityMeltSim {
       /** Optional tip-seed u per vert from `buildHoneyTipCapsuleBuffers`. */
       tipU?: Float32Array;
     }>,
+    opts?: { proximityGraph?: boolean },
   ): void {
+    const wantGraph = opts?.proximityGraph !== false;
     this.slots = meshes.map(({ pos, base, normal, tipU: tipUIn }) => {
       const n = (base.length / 3) | 0;
       const tipU = new Float32Array(n);
@@ -1313,10 +1320,12 @@ export class GravityMeltSim {
       }
       const halfW = Math.max((maxX - minX) * 0.5, 0.2);
       // Denser graph radius so tip-lattice rings smooth with letter lip
-      const neighbors = buildProximityGraph(
-        base,
-        hasTipLattice ? halfW * 0.38 : halfW * 0.28,
-      );
+      const neighbors = wantGraph
+        ? buildProximityGraph(
+            base,
+            hasTipLattice ? halfW * 0.38 : halfW * 0.28,
+          )
+        : Array.from({ length: n }, () => new Int32Array(0));
       return {
         pos,
         base,
@@ -1336,6 +1345,30 @@ export class GravityMeltSim {
     });
     this.letterOverrides = this.slots.map(() => ({}));
     this.reset();
+  }
+
+  /**
+   * Build missing proximity graphs one slot per turn so the demo stays
+   * interactive (orbit/zoom) while Taubin/collar smoothing warms up.
+   */
+  async buildProximityGraphsAsync(
+    onProgress?: (done: number, total: number) => void,
+  ): Promise<void> {
+    const total = this.slots.length;
+    for (let si = 0; si < total; si++) {
+      const s = this.slots[si]!;
+      const n = (s.base.length / 3) | 0;
+      const hasAny = s.neighbors.some((nbr) => nbr.length > 0);
+      if (!hasAny && n > 0) {
+        s.neighbors = buildProximityGraph(
+          s.base,
+          s.hasTipLattice ? s.halfW * 0.38 : s.halfW * 0.28,
+        );
+      }
+      onProgress?.(si + 1, total);
+      // Yield to the browser so OrbitControls + RAF keep running.
+      await new Promise<void>((r) => setTimeout(r, 0));
+    }
   }
 
   slotCount(): number {
@@ -2005,9 +2038,12 @@ function buildProximityGraph(base: Float32Array, radius: number): Int32Array[] {
   const maxDeg = 12;
   const cell = Math.max(radius, 1e-4);
   const inv = 1 / cell;
-  const buckets = new Map<string, number[]>();
+  // Numeric keys — string `${x},${y},${z}` was a major cost at ~400k verts.
+  const strideY = 1024;
+  const strideZ = 1024 * 1024;
   const keyOf = (x: number, y: number, z: number) =>
-    `${(x * inv) | 0},${(y * inv) | 0},${(z * inv) | 0}`;
+    ((x * inv) | 0) + ((y * inv) | 0) * strideY + ((z * inv) | 0) * strideZ;
+  const buckets = new Map<number, number[]>();
 
   for (let i = 0; i < n; i++) {
     const k = keyOf(base[i * 3]!, base[i * 3 + 1]!, base[i * 3 + 2]!);
@@ -2019,6 +2055,9 @@ function buildProximityGraph(base: Float32Array, radius: number): Int32Array[] {
     arr.push(i);
   }
 
+  const pairJ = new Int32Array(64);
+  const pairD = new Float64Array(64);
+
   for (let i = 0; i < n; i++) {
     const ix = base[i * 3]!;
     const iy = base[i * 3 + 1]!;
@@ -2026,25 +2065,56 @@ function buildProximityGraph(base: Float32Array, radius: number): Int32Array[] {
     const cx = (ix * inv) | 0;
     const cy = (iy * inv) | 0;
     const cz = (iz * inv) | 0;
-    const pairs: { j: number; d2: number }[] = [];
+    let pairN = 0;
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
         for (let dz = -1; dz <= 1; dz++) {
-          const arr = buckets.get(`${cx + dx},${cy + dy},${cz + dz}`);
+          const arr = buckets.get(cx + dx + (cy + dy) * strideY + (cz + dz) * strideZ);
           if (!arr) continue;
-          for (const j of arr) {
+          for (let ai = 0; ai < arr.length; ai++) {
+            const j = arr[ai]!;
             if (j === i) continue;
             const ddx = base[j * 3]! - ix;
             const ddy = base[j * 3 + 1]! - iy;
             const ddz = base[j * 3 + 2]! - iz;
             const d2 = ddx * ddx + ddy * ddy + ddz * ddz;
-            if (d2 <= r2 && d2 > 1e-12) pairs.push({ j, d2 });
+            if (d2 > r2 || d2 <= 1e-12) continue;
+            if (pairN < pairJ.length) {
+              pairJ[pairN] = j;
+              pairD[pairN] = d2;
+              pairN++;
+            } else {
+              // Keep the closest maxDeg by replacing the farthest when full.
+              let worst = 0;
+              for (let p = 1; p < pairN; p++) {
+                if (pairD[p]! > pairD[worst]!) worst = p;
+              }
+              if (d2 < pairD[worst]!) {
+                pairJ[worst] = j;
+                pairD[worst] = d2;
+              }
+            }
           }
         }
       }
     }
-    pairs.sort((a, b) => a.d2 - b.d2);
-    neighbors[i] = Int32Array.from(pairs.slice(0, maxDeg).map((p) => p.j));
+    // Partial sort / select closest maxDeg
+    const take = Math.min(maxDeg, pairN);
+    for (let a = 0; a < take; a++) {
+      let best = a;
+      for (let b = a + 1; b < pairN; b++) {
+        if (pairD[b]! < pairD[best]!) best = b;
+      }
+      if (best !== a) {
+        const tj = pairJ[a]!;
+        const td = pairD[a]!;
+        pairJ[a] = pairJ[best]!;
+        pairD[a] = pairD[best]!;
+        pairJ[best] = tj;
+        pairD[best] = td;
+      }
+    }
+    neighbors[i] = Int32Array.from(pairJ.subarray(0, take));
   }
   return neighbors;
 }
