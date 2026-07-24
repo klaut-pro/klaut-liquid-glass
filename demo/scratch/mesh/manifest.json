@@ -3,25 +3,20 @@
   "fontPath": "C:/Windows/Fonts/ariblk.ttf",
   "fontId": "arial-black",
   "text": "klaut.pro",
-  "char": "klaut.pro",
-  "extrude": 0.09,
-  "bevelDepth": 0.02,
-  "bevelResolution": 16,
-  "resolutionU": 32,
-  "subdivLevels": 2,
-  "remeshVoxel": 0.009,
-  "tipRemeshVoxel": 0.009,
+  "mesh": "wordmark-klaut-pro.glb",
+  "conceptBake": true,
+  "blenderMcp": false,
+  "blenderMcpNote": "No Blender MCP server in Cursor; bake via portable Blender 4.2 bpy.",
   "softBooleanTips": true,
   "gnSdfUnion": true,
-  "sdfSoftBlend": 0.0324,
   "targetHeight": 1.15,
   "bakedDimensions": {
-    "x": 6.014090571403504,
-    "y": 0.8162423372268677,
-    "z": 1.0831010341644287
+    "x": 6.2866292929649354,
+    "y": 0.8976399302482605,
+    "z": 1.0737559795379639
   },
-  "vertexCount": 428666,
-  "mesh": "wordmark-klaut-pro.glb",
+  "vertexCount": 115373,
+  "bytes": 4382464,
   "letters": [
     {
       "index": 0,
@@ -29,86 +24,69 @@
       "meshName": "letter_0_k",
       "softBoolean": true,
       "sdfUnion": true,
-      "tips": 2,
+      "tips": 1,
       "columns": [
-        -5.016366744041443,
-        -4.626476740837097
+        -4.999589633941651
       ],
-      "colW": 0.03455843210220337,
-      "lipY": -0.22941084206104279,
-      "hang": 0.3788031824111938,
-      "neckR": 0.012192214845657351,
-      "bulbR": 0.01763516790175438,
-      "lipR": 0.04091286380499602,
-      "poured": true,
+      "colW": 0.12729530334472658,
+      "lipY": -0.281113862991333,
+      "hang": 0.32609208106994625,
+      "neckR": 0.07001241683959962,
+      "bulbR": 0.1527543640136719,
+      "lipR": 0.18457818984985352,
       "closedCounter": false,
-      "extrudeMul": 1.0,
-      "isoBlendMul": 0.42
+      "conceptDrip": "left"
     },
     {
       "index": 1,
       "char": "l",
       "meshName": "letter_1_l",
-      "softBoolean": true,
-      "sdfUnion": true,
-      "tips": 1,
-      "columns": [
-        -3.561746597290039
-      ],
-      "colW": 0.03504281044006348,
-      "lipY": -0.2294108271598816,
-      "hang": 0.22023439407348633,
-      "neckR": 0.04121034507751466,
-      "bulbR": 0.05274924169921876,
-      "lipR": 0.07542964947223663,
-      "poured": false,
+      "softBoolean": false,
+      "sdfUnion": false,
+      "tips": 0,
+      "columns": [],
+      "colW": 0.0446550178527832,
+      "lipY": -0.2811138331890106,
+      "hang": 0.0,
+      "neckR": 0.02,
+      "bulbR": 0.03,
+      "lipR": 0.035,
       "closedCounter": false,
-      "extrudeMul": 1.0,
-      "isoBlendMul": 1.0
+      "conceptDrip": null
     },
     {
       "index": 2,
       "char": "a",
       "meshName": "letter_2_a",
-      "softBoolean": true,
-      "sdfUnion": true,
-      "tips": 2,
-      "columns": [
-        -2.609619016647339,
-        -2.29528582572937
-      ],
-      "colW": 0.09037079238891602,
-      "lipY": -0.2294108271598816,
-      "hang": 0.3193398714065552,
-      "neckR": 0.055263546961669935,
-      "bulbR": 0.08198438285522462,
-      "lipR": 0.13201994018554697,
-      "poured": true,
+      "softBoolean": false,
+      "sdfUnion": false,
+      "tips": 0,
+      "columns": [],
+      "colW": 0.11923776626586914,
+      "lipY": -0.281113862991333,
+      "hang": 0.0,
+      "neckR": 0.02,
+      "bulbR": 0.03,
+      "lipR": 0.035,
       "closedCounter": false,
-      "extrudeMul": 1.0,
-      "isoBlendMul": 1.08
+      "conceptDrip": null
     },
     {
       "index": 3,
       "char": "u",
       "meshName": "letter_3_u",
-      "softBoolean": true,
-      "sdfUnion": true,
-      "tips": 2,
-      "columns": [
-        -1.0860905331373214,
-        -0.801112534403801
-      ],
-      "colW": 0.08193117463588714,
-      "lipY": -0.2294108271598816,
-      "hang": 0.3193398714065552,
-      "neckR": 0.05010255191333772,
-      "bulbR": 0.07432796162967682,
-      "lipR": 0.11969075946807856,
-      "poured": true,
+      "softBoolean": false,
+      "sdfUnion": false,
+      "tips": 0,
+      "columns": [],
+      "colW": 0.10812377214431762,
+      "lipY": -0.281113862991333,
+      "hang": 0.0,
+      "neckR": 0.02,
+      "bulbR": 0.03,
+      "lipR": 0.035,
       "closedCounter": false,
-      "extrudeMul": 1.0,
-      "isoBlendMul": 1.08
+      "conceptDrip": null
     },
     {
       "index": 4,
@@ -118,18 +96,16 @@
       "sdfUnion": true,
       "tips": 1,
       "columns": [
-        0.32232558727264404
+        0.3395998477935791
       ],
-      "colW": 0.06539024114608764,
-      "lipY": -0.2294108271598816,
-      "hang": 0.22023439407348633,
-      "neckR": 0.08202551849365236,
-      "bulbR": 0.10499266367187503,
-      "lipR": 0.15013599367141722,
-      "poured": false,
+      "colW": 0.0936625075340271,
+      "lipY": -0.281113862991333,
+      "hang": 0.3485811901092529,
+      "neckR": 0.051514379143714914,
+      "bulbR": 0.11239500904083252,
+      "lipR": 0.1358106359243393,
       "closedCounter": false,
-      "extrudeMul": 1.0,
-      "isoBlendMul": 1.0
+      "conceptDrip": "center"
     },
     {
       "index": 5,
@@ -139,18 +115,16 @@
       "sdfUnion": true,
       "tips": 1,
       "columns": [
-        1.2021077275276184
+        1.265591025352478
       ],
-      "colW": 0.03685585260391235,
-      "lipY": -0.2294108122587204,
-      "hang": 0.25235189348459247,
-      "neckR": 0.04721234718561173,
-      "bulbR": 0.06519800325632095,
-      "lipR": 0.08318365932703017,
-      "poured": false,
+      "colW": 0.042881758213043214,
+      "lipY": -0.28111380338668823,
+      "hang": 0.40480387687683106,
+      "neckR": 0.02358496701717377,
+      "bulbR": 0.05145810985565186,
+      "lipR": 0.06217854940891266,
       "closedCounter": false,
-      "extrudeMul": 1.0,
-      "isoBlendMul": 1.0
+      "conceptDrip": "center"
     },
     {
       "index": 6,
@@ -160,18 +134,16 @@
       "sdfUnion": true,
       "tips": 1,
       "columns": [
-        2.2818110585212708
+        2.1835426902770996
       ],
-      "colW": 0.09241594076156617,
-      "lipY": -0.22941084206104279,
-      "hang": 0.2523519262671471,
-      "neckR": 0.11838482011556627,
-      "bulbR": 0.16348379920721057,
-      "lipR": 0.20858277829885485,
-      "poured": false,
+      "colW": 0.10272093534469605,
+      "lipY": -0.2811138331890106,
+      "hang": 0.4048039197921753,
+      "neckR": 0.05649651443958283,
+      "bulbR": 0.12326512241363526,
+      "lipR": 0.14894535624980926,
       "closedCounter": false,
-      "extrudeMul": 1.0,
-      "isoBlendMul": 1.0
+      "conceptDrip": "left"
     },
     {
       "index": 7,
@@ -181,51 +153,50 @@
       "sdfUnion": true,
       "tips": 1,
       "columns": [
-        3.5852434635162354
+        3.7297658920288086
       ],
-      "colW": 0.10064992904663085,
-      "lipY": -0.2294108271598816,
-      "hang": 0.22023439407348633,
-      "neckR": 0.12625527099609377,
-      "bulbR": 0.161606746875,
-      "lipR": 0.23109223709106444,
-      "poured": false,
+      "colW": 0.09540338516235353,
+      "lipY": -0.2811138331890106,
+      "hang": 0.34858115315437316,
+      "neckR": 0.05247186183929444,
+      "bulbR": 0.11448406219482422,
+      "lipR": 0.1383349084854126,
       "closedCounter": false,
-      "extrudeMul": 1.0,
-      "isoBlendMul": 1.0
+      "conceptDrip": "center"
     },
     {
       "index": 8,
       "char": "o",
       "meshName": "letter_8_o",
-      "softBoolean": false,
+      "softBoolean": true,
       "sdfUnion": false,
-      "tips": 0,
+      "tips": 1,
       "columns": [
-        4.705011606216431
+        4.879223823547363
       ],
-      "colW": 0.10138185024261474,
-      "lipY": -0.06423503905534744,
-      "hang": 0.0,
-      "neckR": 0.05069092512130737,
-      "bulbR": 0.055760017633438116,
-      "lipR": 0.06082911014556884,
-      "poured": false,
+      "colW": 0.05417381286621094,
+      "lipY": -0.09166756272315979,
+      "hang": 0.0880008602142334,
+      "neckR": 0.022753001403808593,
+      "bulbR": 0.05146512222290039,
+      "lipR": 0.062299884796142575,
       "closedCounter": true,
-      "extrudeMul": 0.28,
-      "isoBlendMul": 0.06
+      "conceptDrip": "center"
     }
   ],
   "perLetterMeshes": true,
-  "legacyMesh": "letter-K.glb",
   "fontsCatalog": "fonts.json",
+  "conceptRefs": [
+    "klaut.pro/concept_art/1c6PD.jpg",
+    "klaut.pro/concept_art/EL2Hz.jpg"
+  ],
   "pipeline": [
-    "1-font: Arial Black wordmark klaut.pro (per-glyph meshes)",
-    "2-mesh: Blender extrude+bevel+subdiv \u2192 GLB",
-    "2b-gn-sdf: Mesh\u2192SDF Grid \u222a pear tips \u2192 Grid to Mesh (per-glyph iso) + lip morph",
-    "2c-glyph-tune: k stem dual-tip wide-sep + seq union; closed-o Segoe+thin extrude",
-    "3-glass: Three.js MeshPhysicalMaterial (demo/scratch.html)",
-    "4-liquid: GravityMeltSim per-letter overrides",
-    "5-sag: frozen viscoplastic neck/bulb (no drip blobs)"
-  ]
+    "0-mcp: Blender MCP unavailable \u2014 use portable bpy bake",
+    "1-font: Arial Black klaut.pro (per-glyph meshes, plump bevel)",
+    "2-concept-drip: honey teardrops on k/t/./p/r/o (1c6PD map) baked into mesh",
+    "2b-union: GN SDF soft-union (fallback Exact/Float boolean) + remesh/smooth",
+    "3-material: Principled chrome/glass (metallic+transmission) exported in GLB",
+    "4-scratch: Three honeyChrome Physical + OrbitControls; GravityMeltSim optional (stage 5)"
+  ],
+  "matchHonesty": "Geometry targets concept honey beads + letter plumpness. Full iridescent chrome of concept art is approximated in Three (softbox PMREM + fringe), not pixel-matched Cycles render."
 }

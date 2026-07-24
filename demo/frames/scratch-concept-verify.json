@@ -1,0 +1,7 @@
+{
+  "ready": true,
+  "gravity": 0,
+  "verts": 177042,
+  "mesh": "./scratch/mesh/wordmark-klaut-pro.glb",
+  "stage": "stage 3"
+}

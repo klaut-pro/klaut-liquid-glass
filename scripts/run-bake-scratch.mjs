@@ -12,17 +12,34 @@ const blender = path.join(
   "blender-4.2.16-windows-x64",
   "blender.exe",
 );
-const script = path.join(root, "scripts", "bake-scratch-mesh.py");
+
+// Default: concept-faithful honey/chrome bake (no Blender MCP in Cursor).
+// Pass --legacy to use the older GravityMeltSim-tuned soft-boolean path.
+const passthrough = process.argv.slice(2);
+const legacy = passthrough.includes("--legacy");
+const filtered = passthrough.filter((a) => a !== "--legacy");
+const script = path.join(
+  root,
+  "scripts",
+  legacy ? "bake-scratch-mesh.py" : "bake-concept-wordmark.py",
+);
 
 if (!existsSync(blender)) {
   console.error("Blender portable not found at", blender);
   process.exit(1);
 }
+if (!existsSync(script)) {
+  console.error("Bake script not found at", script);
+  process.exit(1);
+}
 
-// Forward CLI after `--` to the Blender Python script
-const passthrough = process.argv.slice(2);
-const args = ["--background", "--python", script, "--", ...passthrough];
+console.log(
+  legacy
+    ? "bake:scratch legacy (bake-scratch-mesh.py)"
+    : "bake:scratch concept (bake-concept-wordmark.py) — Blender MCP: no",
+);
 
+const args = ["--background", "--python", script, "--", ...filtered];
 const r = spawnSync(blender, args, {
   cwd: root,
   stdio: "inherit",

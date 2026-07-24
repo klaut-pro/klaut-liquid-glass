@@ -2,38 +2,63 @@
 
 Clean staged path — **not** the old `chromeSansP` / `scriptProP` SDF atlas QA harness.
 
-## Stage 1 — Font
+## Blender MCP?
+
+**No.** Cursor has no Blender MCP server/tools in this environment. Bake uses portable Blender 4.2 bpy at:
+
+`%LOCALAPPDATA%\Programs\blender-portable\blender-4.2.16-windows-x64\blender.exe`
+
+## Stage 1 — Concept bake (primary)
 
 | Choice | Why |
 |--------|-----|
-| **Arial Black** (`C:\Windows\Fonts\ariblk.ttf`) | Heavy geometric display sans on every Windows box; extrudes cleanly; reads as a block letter under glass |
+| **Arial Black** | Heavy geometric display sans; plump bevel reads under glass |
+| **Concept drips** | Honey teardrops on **k / t / . / p / r / o** (map from `concept_art/1c6PD.jpg`) baked into mesh via GN SDF soft-union |
+| **Chrome material** | Principled metallic + transmission exported in GLB; Three `honeyChrome` Physical + fringe for live look |
 
-Glyph for this pass: **`klaut.pro`** (full brand wordmark, one rotatable glass mesh).
+Glyph: **`klaut.pro`** (per-letter meshes, OrbitControls).
 
-Bake:
+Bake (concept path — default):
 
 ```bat
 npm run bake:scratch
+npm run bake:concept
+```
+
+Legacy GravityMeltSim-tuned soft-boolean path:
+
+```bat
+npm run bake:scratch:legacy
 ```
 
 or:
 
 ```bat
 "%LOCALAPPDATA%\Programs\blender-portable\blender-4.2.16-windows-x64\blender.exe" ^
-  --background --python scripts/bake-scratch-mesh.py
+  --background --python scripts/bake-concept-wordmark.py
 ```
 
-→ `demo/scratch/mesh/wordmark-klaut-pro.glb` + `manifest.json`
+→ `demo/scratch/mesh/wordmark-klaut-pro.glb` + `manifest.json` (`conceptBake: true`, `blenderMcp: false`)
+
+### What the concept bake does
+
+1. Extrude + heavy bevel + subdiv per glyph
+2. Build pear-of-revolution honey pendants (fat bead, thin neck) at concept drip columns
+3. Soft-union tips into letter bottoms (GN Mesh→SDF ∪ → Grid to Mesh; Exact/Float boolean fallback)
+4. Voxel remesh + smooth so letter→filament is one surface
+5. Assign Principled chrome/glass; export GLB with materials
+
+Runtime **does not** need GravityMeltSim for the honey look (gravity defaults to 0). Stage 5 sag remains optional.
 
 ## Stages (in order)
 
 | # | Goal | Status |
 |---|------|--------|
-| 1 | Pick one font + bake wordmark mesh | ✅ this pass |
+| 1 | Pick one font + bake wordmark mesh | ✅ concept bake |
 | 2 | 3D rotatable (OrbitControls) | ✅ `demo/scratch.html` |
 | 3 | Clear refractive glass (IOR / Fresnel / env) | ✅ same page |
 | 4 | Liquid glass (liquify / soft surface) | ✅ slider on page |
-| 5 | Gravity melt + viscosity + freeze | ✅ `GravityMeltSim` (letter mesh only) |
+| 5 | Gravity melt + viscosity + freeze | ✅ optional (`GravityMeltSim`) |
 | 6 | Softbox PMREM + Physical retune + iridescence + gated Fresnel fringe | ✅ look pass (`honeyChrome`) |
 
 ## Stage 6 look (this pass)
@@ -58,13 +83,8 @@ Serve repo root, then open:
 npm run demo:serve
 ```
 
-Drag to orbit. Controls: **Gravity**, **Freeze ht**, **Viscosity**, **IOR**, **Fringe**. Resettle / Freeze now for pose control.
+Drag to orbit / scroll to zoom. Controls: **Gravity** (0 = baked sculpture), **Freeze ht**, **Viscosity**, **IOR**, **Fringe**. Stage 5 + Resettle for optional runtime sag.
 
-**Stage 5 physics (`docs/drop-modeling-research.md` §3.1 / §5c):**
+**Honest match vs concept art:** baked mesh captures plump letterforms + honey teardrop bottoms. Full iridescent chrome of the stills is approximated in Three (softbox + fringe), not a pixel-matched Cycles render of the concept frames.
 
-- **Frozen viscoplastic sag** — letter mesh yields under gravity; upper band stays identity
-- Tunable `freezeHeight` + falloff; Oh maps → neck pinch / bulb grow / settle speed
-- One-shot settle → freeze (static sculpture, not ongoing drip sim)
-- Preferential columns under stems (same mesh — **no attached drip blobs**)
-
-Drop-modeling research: [`docs/drop-modeling-research.md`](../../docs/drop-modeling-research.md).
+Drop-modeling research (legacy sag path): [`docs/drop-modeling-research.md`](../../docs/drop-modeling-research.md).

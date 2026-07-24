@@ -213,7 +213,7 @@
       <h1>Scratch pipeline <span class="badge" id="stageBadge">stage 1</span></h1>
       <p class="sub" id="subLine">
         Font: <strong id="fontLabel">Arial Black</strong> · wordmark <strong>klaut.pro</strong><br />
-        Frozen viscoplastic sag — per-letter melt, no drip blobs
+        Concept bake: honey drips in mesh · chrome glass look · OrbitControls
       </p>
       <div class="stages" id="stageButtons">
         <button type="button" data-stage="1">1 Font</button>
@@ -234,8 +234,8 @@
         <p class="mode-pill">Applies to letters without overrides</p>
         <label class="row">
           Gravity
-          <input id="gravity" type="range" min="0" max="1" step="0.01" value="0.9" />
-          <span id="gravityVal">0.90</span>
+          <input id="gravity" type="range" min="0" max="1" step="0.01" value="0" />
+          <span id="gravityVal">0.00</span>
         </label>
         <label class="row">
           Freeze ht
@@ -313,8 +313,8 @@
       <p class="status" id="meltStatus">settle —</p>
       <p class="hint">
         Drag to orbit · scroll to zoom · click a glyph mesh to select<br />
-        Stage 5: <code>GravityMeltSim</code> — master + per-letter overrides<br />
-        Round pear pendants: bake soft-boolean · tip remesh · softMin · teardrop sculpt<br />
+        Primary: Blender concept bake (honey teardrops in GLB) — no Blender MCP<br />
+        Stage 5 optional: <code>GravityMeltSim</code> (off by default; drips already baked)<br />
         Mesh: <code id="meshHint">demo/scratch/mesh/wordmark-klaut-pro.glb</code>
       </p>
     </aside>
@@ -578,8 +578,8 @@
       installEdgeFringe(matLiquid, 1.15);
 
       let stage = 3;
-      // Honey defaults: high freeze band = drips from lips, not whole-letter puddles
-      let gravityAmt = 0.9;
+      // Concept bake owns the honey look — GravityMeltSim off until stage 5
+      let gravityAmt = 0;
       let freezeHeight = 0.68;
       let viscosity = 0.9;
       let sagAmpMul = 1.25;
@@ -1554,12 +1554,10 @@
       try {
         const primary = await loadFontCatalog();
         await loadWordmark(primary.mesh || DEFAULT_GLB, primary);
-        // Show solid glass for a couple frames before sag so the wordmark is
-        // readable immediately; sag still starts automatically.
+        // Concept bake: stay on glass stage — honey drips are already in the GLB.
+        // Stage 5 / GravityMeltSim is opt-in (avoids topology fights with baked tips).
         setStage(3);
         booting = false;
-        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-        setStage(5);
         lastParamKey = "";
       } catch (err) {
         console.error(err);
