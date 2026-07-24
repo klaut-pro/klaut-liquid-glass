@@ -311,7 +311,6 @@
       import * as THREE from "three";
       import { OrbitControls } from "three/addons/controls/OrbitControls.js";
       import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-      import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
       import { GravityMeltSim, buildHoneyTipCapsuleBuffers, weldHoneyTipIntoLetter, subdivideLetterLipBand } from "../dist/field/GravityMeltSim.js";
 
       const WORDMARK = "klaut.pro";
@@ -388,10 +387,50 @@
       scene.add(new THREE.AmbientLight(0xb8c8e0, 0.28));
       scene.add(new THREE.HemisphereLight(0xd8e4f8, 0x1a2030, 0.55));
 
-      const pmrem = new THREE.PMREMGenerator(renderer);
-      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      async function createSoftboxEnvironment() {
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        try {
+          const softboxStudio = new THREE.Scene();
+          // Charcoal void preserves dark contrast between the authored softbox lobes.
+          softboxStudio.background = new THREE.Color(0x030406);
+          const softboxGeometry = new THREE.PlaneGeometry(1, 1);
+          const softboxes = [
+            { position: [4.5, 5.5, 2.5], scale: [4.2, 2.1], intensity: 7.5 },
+            { position: [-5.2, 2.2, 3.6], scale: [2.8, 4.8], intensity: 5.5 },
+            { position: [0, -3.8, 2.8], scale: [5.8, 1.3], intensity: 3.2 },
+          ];
+          for (const { position, scale, intensity } of softboxes) {
+            const panel = new THREE.Mesh(
+              softboxGeometry,
+              new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                toneMapped: false,
+                side: THREE.DoubleSide,
+              }),
+            );
+            panel.position.set(...position);
+            panel.scale.set(...scale, 1);
+            panel.lookAt(0, 0, 0);
+            panel.material.color.multiplyScalar(intensity);
+            softboxStudio.add(panel);
+          }
+          const environment = pmrem.fromScene(softboxStudio, 0.04).texture;
+          softboxGeometry.dispose();
+          for (const panel of softboxStudio.children) panel.material.dispose();
+          return environment;
+        } catch (error) {
+          console.warn("Authored softbox PMREM failed; using RoomEnvironment fallback.", error);
+          const { RoomEnvironment } = await import(
+            "three/addons/environments/RoomEnvironment.js"
+          );
+          return pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        } finally {
+          pmrem.dispose();
+        }
+      }
+
+      scene.environment = await createSoftboxEnvironment();
       scene.environmentIntensity = 1.55;
-      pmrem.dispose();
 
       /** @type {THREE.Object3D | null} */
       let letterRoot = null;
