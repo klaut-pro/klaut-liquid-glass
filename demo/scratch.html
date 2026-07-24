@@ -244,8 +244,8 @@
         </label>
         <label class="row">
           IOR
-          <input id="ior" type="range" min="1.05" max="1.55" step="0.01" value="1.33" />
-          <span id="iorVal">1.33</span>
+          <input id="ior" type="range" min="1.05" max="1.55" step="0.01" value="1.42" />
+          <span id="iorVal">1.42</span>
         </label>
       </div>
 
@@ -329,7 +329,8 @@
       renderer.setSize(innerWidth, innerHeight, false);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.25;
+      // Dark plate #07090e — keep exposure modest so softbox/env don't milk the body
+      renderer.toneMappingExposure = 1.08;
 
       const scene = new THREE.Scene();
       // Dark charcoal plate — concept art contrast so glass rims / droplets read
@@ -375,17 +376,18 @@
       grid.position.y = -2.149;
       scene.add(grid);
 
-      const key = new THREE.DirectionalLight(0xfff4e8, 2.6);
+      // Key warm / rim cool — gold↔cyan rails without cream flood on #07090e
+      const key = new THREE.DirectionalLight(0xfff0dc, 2.35);
       key.position.set(4.5, 5.5, 3.5);
       scene.add(key);
-      const rim = new THREE.DirectionalLight(0xd8ecff, 2.1);
+      const rim = new THREE.DirectionalLight(0xc8e4f0, 1.75);
       rim.position.set(-3.5, 3.5, 5);
       scene.add(rim);
-      const fill = new THREE.DirectionalLight(0x6a90c8, 0.85);
+      const fill = new THREE.DirectionalLight(0x5a7898, 0.55);
       fill.position.set(-5, 2, -2);
       scene.add(fill);
-      scene.add(new THREE.AmbientLight(0xb8c8e0, 0.28));
-      scene.add(new THREE.HemisphereLight(0xd8e4f8, 0x1a2030, 0.55));
+      scene.add(new THREE.AmbientLight(0x8a98a8, 0.16));
+      scene.add(new THREE.HemisphereLight(0xc0ccd8, 0x0c1018, 0.32));
 
       async function createSoftboxEnvironment() {
         const pmrem = new THREE.PMREMGenerator(renderer);
@@ -430,7 +432,8 @@
       }
 
       scene.environment = await createSoftboxEnvironment();
-      scene.environmentIntensity = 1.55;
+      // Softbox stays; lower intensity so env lobes read as chrome highlights, not cream wash
+      scene.environmentIntensity = 1.35;
 
       /** @type {THREE.Object3D | null} */
       let letterRoot = null;
@@ -456,30 +459,37 @@
         metalness: 0.15,
       });
 
+      // Denser molten glass/chrome on #07090e — not milky water; sparse oil iridescence
       const matGlass = new THREE.MeshPhysicalMaterial({
-        color: 0xf2f7ff,
-        metalness: 0,
-        roughness: 0.06,
-        transmission: 0.92,
-        thickness: 0.65,
-        ior: 1.33,
+        color: 0xe6ebe8,
+        metalness: 0.04,
+        roughness: 0.028,
+        transmission: 0.78,
+        thickness: 1.15,
+        ior: 1.42,
         specularIntensity: 1,
-        envMapIntensity: 2.1,
+        envMapIntensity: 1.65,
         clearcoat: 1,
-        clearcoatRoughness: 0.04,
-        attenuationColor: new THREE.Color(0xb8d8ff),
-        attenuationDistance: 1.6,
+        clearcoatRoughness: 0.02,
+        attenuationColor: new THREE.Color(0xd2e0b8),
+        attenuationDistance: 1.05,
+        iridescence: 0.28,
+        iridescenceIOR: 1.35,
+        iridescenceThicknessRange: [180, 420],
         transparent: true,
         opacity: 1,
         side: THREE.DoubleSide,
       });
 
       const matLiquid = matGlass.clone();
-      matLiquid.roughness = 0.09;
-      matLiquid.thickness = 0.9;
-      matLiquid.transmission = 0.88;
-      matLiquid.attenuationColor = new THREE.Color(0xa8d0ff);
-      matLiquid.envMapIntensity = 2.35;
+      matLiquid.roughness = 0.045;
+      matLiquid.thickness = 1.45;
+      matLiquid.transmission = 0.72;
+      matLiquid.attenuationColor = new THREE.Color(0xc8d8a0);
+      matLiquid.attenuationDistance = 0.9;
+      matLiquid.envMapIntensity = 1.85;
+      matLiquid.iridescence = 0.34;
+      matLiquid.iridescenceThicknessRange = [200, 480];
 
       let stage = 3;
       // Honey defaults: high freeze band = drips from lips, not whole-letter puddles
@@ -536,12 +546,14 @@
             m.thickness = stage === 3 ? 0.06 : 0.08;
             m.transmission = stage === 3 ? 0.998 : 0.995;
             m.attenuationDistance = 9.5;
-            m.attenuationColor = new THREE.Color(0xf4f8ff);
-            m.envMapIntensity = stage === 3 ? 1.05 : 1.1;
-            m.roughness = 0.028;
+            m.attenuationColor = new THREE.Color(0xf0f4f0);
+            m.envMapIntensity = stage === 3 ? 0.95 : 1.0;
+            m.roughness = 0.02;
             m.opacity = 0.78;
             m.ior = 1.12;
             m.metalness = 0.02;
+            // Kill bowl oil in the counter — keep carve-out optically quiet
+            m.iridescence = 0.08;
             letterMeshes[i].material = m;
           } else {
             letterMeshes[i].material = mat;
