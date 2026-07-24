@@ -249,8 +249,8 @@
         </label>
         <label class="row">
           Fringe
-          <input id="fringe" type="range" min="0" max="1.5" step="0.01" value="0.9" />
-          <span id="fringeVal">0.90</span>
+          <input id="fringe" type="range" min="0" max="1.5" step="0.01" value="1.05" />
+          <span id="fringeVal">1.05</span>
         </label>
       </div>
 
@@ -352,14 +352,16 @@
       controls.maxDistance = 28;
       controls.target.set(0, 0.05, 0);
 
+      // Lit card behind the wordmark so transmission has something brighter than void
+      // to refract — without this, MeshPhysical glass on #07090e reads black-on-black.
       const backplate = new THREE.Mesh(
         new THREE.PlaneGeometry(32, 14),
         new THREE.MeshStandardMaterial({
-          color: 0x141a24,
-          roughness: 0.92,
-          metalness: 0.05,
-          emissive: 0x1a2436,
-          emissiveIntensity: 0.22,
+          color: 0x3a4a62,
+          roughness: 0.88,
+          metalness: 0.04,
+          emissive: 0x243044,
+          emissiveIntensity: 0.55,
         }),
       );
       backplate.position.set(0, 0.6, -3.6);
@@ -463,12 +465,13 @@
         id: "honeyChrome",
         exposure: 1.08,
         environmentIntensity: 1.35,
-        fringeAmt: 0.9,
+        fringeAmt: 1.05,
         glass: {
           metalness: 0.04,
           roughness: 0.028,
-          transmission: 0.78,
-          thickness: 1.15,
+          // Keep body denser than milky water, but not so open that dark plate deletes the glyph.
+          transmission: 0.58,
+          thickness: 1.35,
           ior: 1.42,
           iridescence: 0.28,
           iridescenceThicknessRange: [180, 420],
@@ -508,30 +511,30 @@
               vec3 _fire = mix(_cyan, _lime, smoothstep(0.1, 0.55, _u));
               _fire = mix(_fire, _gold, smoothstep(0.5, 0.95, _u));
               _fire = mix(_fire, _silver, 0.28);
-              // Edge only — no face wash
-              outgoingLight += _fire * _edge * uFringeAmt * 0.62;
+              // Edge only — no face wash (gain tuned so silhouettes read on #07090e)
+              outgoingLight += _fire * _edge * uFringeAmt * 0.95;
             }
             #include <opaque_fragment>`,
           );
         };
-        mat.customProgramCacheKey = () => "honeyEdgeFringe_v1";
+        mat.customProgramCacheKey = () => "honeyEdgeFringe_v2";
         mat.needsUpdate = true;
       }
 
       // Denser molten glass/chrome on #07090e — not milky water; sparse oil iridescence
       const matGlass = new THREE.MeshPhysicalMaterial({
-        color: 0xe6ebe8,
+        color: 0xf2f6f0,
         metalness: 0.04,
         roughness: 0.028,
-        transmission: 0.78,
-        thickness: 1.15,
+        transmission: 0.58,
+        thickness: 1.35,
         ior: 1.42,
         specularIntensity: 1,
-        envMapIntensity: 1.65,
+        envMapIntensity: 2.05,
         clearcoat: 1,
         clearcoatRoughness: 0.02,
-        attenuationColor: new THREE.Color(0xd2e0b8),
-        attenuationDistance: 1.05,
+        attenuationColor: new THREE.Color(0xd8e4bc),
+        attenuationDistance: 0.85,
         iridescence: 0.28,
         iridescenceIOR: 1.35,
         iridescenceThicknessRange: [180, 420],
@@ -539,19 +542,19 @@
         opacity: 1,
         side: THREE.DoubleSide,
       });
-      installEdgeFringe(matGlass, 0.9);
+      installEdgeFringe(matGlass, 1.05);
 
       const matLiquid = matGlass.clone();
       matLiquid.roughness = 0.045;
-      matLiquid.thickness = 1.45;
-      matLiquid.transmission = 0.72;
+      matLiquid.thickness = 1.55;
+      matLiquid.transmission = 0.52;
       matLiquid.attenuationColor = new THREE.Color(0xc8d8a0);
-      matLiquid.attenuationDistance = 0.9;
-      matLiquid.envMapIntensity = 1.85;
+      matLiquid.attenuationDistance = 0.75;
+      matLiquid.envMapIntensity = 2.2;
       matLiquid.iridescence = 0.34;
       matLiquid.iridescenceThicknessRange = [200, 480];
       // clone can share userData — reinstall so liquid has its own fringe uniform
-      installEdgeFringe(matLiquid, 1.05);
+      installEdgeFringe(matLiquid, 1.15);
 
       let stage = 3;
       // Honey defaults: high freeze band = drips from lips, not whole-letter puddles
@@ -603,22 +606,23 @@
           stage <= 2 ? matSolid : stage === 3 ? matGlass : matLiquid;
         for (let i = 0; i < letterMeshes.length; i++) {
           const ch = letterChars[i] || "";
-          // Closed o: thinner transmission + lower IOR so counter reads open on dark bg
+          // Closed o: thinner body + lower IOR so counter stays open — but keep a
+          // readable rim on #07090e (near-1.0 transmission was deleting the glyph).
           if (stage >= 3 && ch === "o") {
             const m = mat.clone();
-            m.thickness = stage === 3 ? 0.06 : 0.08;
-            m.transmission = stage === 3 ? 0.998 : 0.995;
-            m.attenuationDistance = 9.5;
-            m.attenuationColor = new THREE.Color(0xf0f4f0);
-            m.envMapIntensity = stage === 3 ? 0.95 : 1.0;
-            m.roughness = 0.02;
-            m.opacity = 0.78;
+            m.thickness = stage === 3 ? 0.22 : 0.28;
+            m.transmission = stage === 3 ? 0.82 : 0.78;
+            m.attenuationDistance = 2.4;
+            m.attenuationColor = new THREE.Color(0xe8f0e4);
+            m.envMapIntensity = stage === 3 ? 1.45 : 1.55;
+            m.roughness = 0.025;
+            m.opacity = 0.94;
             m.ior = 1.12;
             m.metalness = 0.02;
             // Kill bowl oil in the counter — keep carve-out optically quiet
             m.iridescence = 0.08;
             // Quiet fringe so counter stays open (own uniform, not shared)
-            installEdgeFringe(m, Math.min(0.08, fringeAmt * 0.08));
+            installEdgeFringe(m, Math.min(0.22, fringeAmt * 0.22));
             letterMeshes[i].material = m;
           } else {
             letterMeshes[i].material = mat;
@@ -1326,11 +1330,13 @@
         applyMaterial();
       });
       const fringeEl = document.getElementById("fringe");
+      fringeEl.value = String(fringeAmt);
+      document.getElementById("fringeVal").textContent = fringeAmt.toFixed(2);
       fringeEl.addEventListener("input", () => {
         fringeAmt = Number(fringeEl.value);
         document.getElementById("fringeVal").textContent = fringeAmt.toFixed(2);
         if (matGlass.userData.uFringeAmt) matGlass.userData.uFringeAmt.value = fringeAmt;
-        if (matLiquid.userData.uFringeAmt) matLiquid.userData.uFringeAmt.value = fringeAmt * 1.15;
+        if (matLiquid.userData.uFringeAmt) matLiquid.userData.uFringeAmt.value = fringeAmt * (1.15 / 1.05);
         applyMaterial();
       });
 
@@ -1420,25 +1426,33 @@
       });
 
       const clock = new THREE.Clock();
+      let booting = true;
       function frame() {
         const dt = clock.getDelta();
         controls.update();
-        updateMelt(dt);
+        if (!booting) updateMelt(dt);
         renderer.render(scene, camera);
         requestAnimationFrame(frame);
       }
+
+      // Paint the plate immediately — GLB parse can take a long time on the 18MB
+      // wordmark; without an early RAF the HUD shows over a dead black canvas.
+      document.getElementById("meltStatus").textContent = "loading wordmark mesh…";
+      frame();
 
       try {
         const primary = await loadFontCatalog();
         await loadWordmark(primary.mesh || DEFAULT_GLB, primary);
         setStage(5);
         lastParamKey = "";
-        frame();
+        booting = false;
       } catch (err) {
         console.error(err);
         document.querySelector(".sub").textContent =
           "Failed to load wordmark GLB — run npm run bake:scratch -- --all-fonts";
+        document.getElementById("meltStatus").textContent = "load failed";
         window.__scratch = { wordmark: WORDMARK, ready: false, error: String(err) };
+        booting = false;
       }
     </script>
   </body>
